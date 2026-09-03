@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Temmy Smart Classroom</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:linear-gradient(135deg,#153B7A,#2457a6);color:#fff;padding:22px 28px}
+header h1{margin:0 0 5px;font-size:30px} header p{margin:0;opacity:.9}
+.wrap{max-width:1250px;margin:20px auto;padding:0 18px}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+nav button{border:1px solid #ccd5e2;background:#fff;padding:11px 18px;border-radius:9px;font-weight:700;cursor:pointer}
+nav button.active{background:#153B7A;color:#fff;border-color:#153B7A}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+select,input{font:inherit;border-radius:8px;border:1px solid #ccd5e2;padding:10px 12px;background:#fff}
+button{font:inherit;border-radius:8px;border:1px solid #ccd5e2;padding:9px 13px;background:#fff;cursor:pointer}
+.add{background:#153B7A;color:#fff;border-color:#153B7A}
+.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 16px #163b7a14}
+.grid{display:grid;grid-template-columns:1.45fr .75fr;gap:18px}
+h2{margin-top:0} table{width:100%;border-collapse:collapse} th,td{padding:12px;border-bottom:1px solid #edf0f5;text-align:left}
+.points{font-size:20px;font-weight:800} .actions button{margin:2px;padding:7px 10px}
+.plus{background:#eaf7ee} .minus{background:#fff0f0}
+.market{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+.item{position:relative;background:#fff;border-radius:14px;padding:20px;text-align:center;box-shadow:0 4px 16px #163b7a14;border:1px solid #edf0f5}
+.item .price{position:absolute;right:10px;top:10px;background:#ef4b55;color:#fff;border-radius:18px;padding:6px 10px;font-weight:800}
+.item .icon{font-size:48px;margin:15px 0 8px} .item h3{margin:6px 0 12px}
+.formrow{display:flex;gap:8px;flex-wrap:wrap} .formrow input{flex:1;min-width:130px}
+.badges{display:grid;grid-template-columns:1fr 1fr;gap:10px} .badge{padding:12px;border-radius:10px;background:#f5f7fb}
+.big{font-size:32px;font-weight:800} .muted{color:#667085;font-size:13px}
+.reward{padding:10px 0;border-bottom:1px solid #edf0f5}
+.notice{background:#fff8df;border:1px solid #f1d77a;border-radius:10px;padding:12px;margin-bottom:16px}
+.hidden{display:none} .danger{color:#b42318}
+@media(max-width:850px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⭐ Temmy Smart Classroom</h1>
+  <p>Smart Learning • Smart Behaviour • Smart Rewards</p>
+</header>
+
+<div class="wrap">
+<nav>
+  <button id="tabStudents" class="active" onclick="showTab('students')">👨‍🎓 Students</button>
+  <button id="tabMarket" onclick="showTab('market')">🛒 Marketplace</button>
+  <button id="tabHistory" onclick="showTab('history')">🧾 Purchases</button>
+</nav>
+
+<section id="studentsTab">
+  <div class="controls">
+    <select id="classSelect" onchange="renderStudents()"></select>
+    <button onclick="resetClass()">Reset Current Class</button>
+    <button onclick="exportData()">Export Data</button>
+  </div>
+  <div class="grid">
+    <section class="card">
+      <h2 id="classTitle"></h2>
+      <table>
+        <thead><tr><th>Rank</th><th>Student</th><th>Points</th><th>Quick Award</th></tr></thead>
+        <tbody id="students"></tbody>
+      </table>
+    </section>
+    <aside>
+      <section class="card">
+        <h2>🏆 Class Summary</h2>
+        <div class="badges">
+          <div class="badge"><div class="muted">Class Points</div><div class="big" id="total">0</div></div>
+          <div class="badge"><div class="muted">Students</div><div class="big" id="count">0</div></div>
+        </div>
+      </section>
+      <section class="card" style="margin-top:18px">
+        <h2>🎯 Suggested Awards</h2>
+        <div class="reward">+1 Participation</div>
+        <div class="reward">+2 Correct Answer</div>
+        <div class="reward">+3 Excellent Explanation</div>
+        <div class="reward">+5 Outstanding Effort</div>
+        <div class="reward">−2 Disruption</div>
+      </section>
+    </aside>
+  </div>
+</section>
+
+<section id="marketTab" class="hidden">
+  <div class="card" style="margin-bottom:18px">
+    <h2>🛒 Marketplace</h2>
+    <p class="muted">Create rewards that students can purchase with their earned points. A purchase automatically deducts the points.</p>
+    <div class="formrow">
+      <input id="itemName" placeholder="Item name (e.g. Homework Pass)">
+      <input id="itemPrice" type="number" min="1" placeholder="Points">
+      <input id="itemIcon" placeholder="Icon e.g. 🎟️" maxlength="4">
+      <button class="add" onclick="createItem()">＋ Create Item</button>
+    </div>
+  </div>
+  <div class="notice">💡 <b>How it works:</b> choose a student below, then click <b>Buy</b>. The system checks their balance, deducts the price, and records the purchase.</div>
+  <div class="market" id="market"></div>
+</section>
+
+<section id="historyTab" class="hidden">
+  <div class="card">
+    <h2>🧾 Purchase History</h2>
+    <table>
+      <thead><tr><th>Date</th><th>Class</th><th>Student</th><th>Item</th><th>Cost</th></tr></thead>
+      <tbody id="history"></tbody>
+    </table>
+  </div>
+</section>
+</div>
+
+<script>
+const initialClasses={"6A_2": ["Ahmed", "Aisha", "Daniel", "Fatima", "Hassan", "Maryam", "Michael", "Noor", "Omar", "Sarah"], "7A_1": ["Adam", "Ali", "Amal", "David", "Hana", "Ibrahim", "John", "Layla", "Mariam", "Yusuf"], "7B": ["Abdullah", "Anna", "Bilal", "Chloe", "Elias", "Grace", "Khalid", "Lina", "Peter", "Zain"]};
+const initialItems=[{"name": "REWARD", "price": 20, "icon": "\ud83c\udfc6"}, {"name": "Oral 1 Pass", "price": 20, "icon": "\ud83c\udfab"}, {"name": "Oral 2 Pass", "price": 30, "icon": "\ud83c\udfab"}, {"name": "Excellent - A", "price": 50, "icon": "\u2b50"}];
+let saved=JSON.parse(localStorage.getItem("temmySmartClassroomV2")||"null");
+let data=saved || {
+  classes:Object.fromEntries(Object.entries(initialClasses).map(([c,n])=>[c,Object.fromEntries(n.map(x=>[x,0]))])),
+  items:initialItems,
+  purchases:[]
+};
+const sel=document.getElementById("classSelect");
+Object.keys(data.classes).forEach(c=>{let o=document.createElement("option");o.value=c;o.textContent=c;sel.appendChild(o);});
+
+function save(){localStorage.setItem("temmySmartClassroomV2",JSON.stringify(data));}
+function showTab(t){
+  ["students","market","history"].forEach(x=>document.getElementById(x+"Tab").classList.toggle("hidden",x!==t));
+  ["Students","Market","History"].forEach(x=>document.getElementById("tab"+x).classList.toggle("active",x.toLowerCase()===t));
+  if(t==="students")renderStudents(); if(t==="market")renderMarket(); if(t==="history")renderHistory();
+}
+function renderStudents(){
+ const c=sel.value, rows=Object.entries(data.classes[c]).sort((a,b)=>b[1]-a[1]);
+ document.getElementById("classTitle").textContent="Class "+c;
+ document.getElementById("count").textContent=rows.length;
+ document.getElementById("total").textContent=rows.reduce((s,x)=>s+x[1],0);
+ document.getElementById("students").innerHTML=rows.map((x,i)=>`
+ <tr><td><b>${i+1}</b></td><td><b>${x[0]}</b></td><td class="points">${x[1]}</td>
+ <td class="actions"><button class="plus" onclick="award('${x[0]}',1)">+1</button>
+ <button class="plus" onclick="award('${x[0]}',2)">+2</button>
+ <button class="plus" onclick="award('${x[0]}',5)">+5</button>
+ <button class="minus" onclick="award('${x[0]}',-2)">−2</button></td></tr>`).join("");
+}
+function award(name,n){data.classes[sel.value][name]+=n;save();renderStudents();}
+function resetClass(){if(confirm("Reset all points for "+sel.value+"?")){Object.keys(data.classes[sel.value]).forEach(n=>data.classes[sel.value][n]=0);save();renderStudents();}}
+function createItem(){
+ const name=document.getElementById("itemName").value.trim(), price=Number(document.getElementById("itemPrice").value), icon=document.getElementById("itemIcon").value.trim()||"🎁";
+ if(!name||!price||price<1){alert("Enter an item name and a valid point price.");return;}
+ data.items.push({name,price,icon}); save();
+ document.getElementById("itemName").value="";document.getElementById("itemPrice").value="";document.getElementById("itemIcon").value="";
+ renderMarket();
+}
+function renderMarket(){
+ const c=sel.value;
+ document.getElementById("market").innerHTML=data.items.map((it,i)=>`
+ <div class="item">
+   <div class="price">${it.price} ⭐</div>
+   <div class="icon">${it.icon}</div><h3>${it.name}</h3>
+   <div class="muted">Buy for: ${it.price} points</div><br>
+   <select id="buyer-${i}" style="width:100%;margin-bottom:8px">
+     ${Object.keys(data.classes[c]).map(n=>`<option>${n}</option>`).join("")}
+   </select>
+   <button class="add" style="width:100%" onclick="buyItem(${i})">🛒 Buy</button>
+   <button style="margin-top:7px;width:100%" onclick="deleteItem(${i})">Delete Item</button>
+ </div>`).join("");
+}
+function buyItem(i){
+ const c=sel.value, buyer=document.getElementById("buyer-"+i).value, it=data.items[i], balance=data.classes[c][buyer];
+ if(balance<it.price){alert(buyer+" has "+balance+" points. "+it.price+" points are needed.");return;}
+ data.classes[c][buyer]-=it.price;
+ data.purchases.unshift({date:new Date().toLocaleString(),class:c,student:buyer,item:it.name,cost:it.price});
+ save(); renderMarket(); alert("Purchase successful! "+buyer+" now has "+data.classes[c][buyer]+" points.");
+}
+function deleteItem(i){if(confirm("Remove "+data.items[i].name+" from the marketplace?")){data.items.splice(i,1);save();renderMarket();}}
+function renderHistory(){
+ document.getElementById("history").innerHTML=data.purchases.length?data.purchases.map(p=>`<tr><td>${p.date}</td><td>${p.class}</td><td><b>${p.student}</b></td><td>${p.item}</td><td>−${p.cost} ⭐</td></tr>`).join(""):`<tr><td colspan="5" class="muted">No purchases yet.</td></tr>`;
+}
+function exportData(){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Temmy_Smart_Classroom_Data.json";a.click();
+}
+renderStudents();
+</script>
+</body>
+</html>
