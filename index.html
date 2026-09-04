@@ -12,7 +12,15 @@ S<!DOCTYPE html>
 })();
 </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://jozdlxxhjjublqhtiwpy.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_RqjG3UvPbbEbCs782fUVyg_kYXuVjaq';
 
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Temmy Smart Classroom — Final</title>
