@@ -141,7 +141,54 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 
 <section id="portal" class="hidden"><div class="card"><h2>🎓 Student Portal</h2><div class="notice">Student portal preview: select a student to view the personal points balance, reward level and complete activity history. Secure student login will be connected when cloud accounts are introduced.</div><div class="controls"><select id="portalClass" class="select"></select><select id="portalStudent" class="select"></select></div><div id="portalBody"></div></div></section>
 
-<section id="account" class="hidden"><div class="card"><h2>👨‍🏫 Teacher Account</h2><div id="teacherAuthStatus" class="notice">Please sign in with your teacher account.</div><div id="teacherLoginBox"><div class="formrow"><label>Teacher Email</label><input id="teacherEmail" type="email" placeholder="Enter your email"></div><div class="formrow"><label>Password</label><input id="teacherPassword" type="password" placeholder="Enter your password"></div><div class="controls"><button class="btn primary" onclick="teacherLogin()">🔐 Sign In</button><button class="btn" onclick="teacherForgotPassword()">🔄 Forgot Password?</button></div></div><div id="teacherLoggedInBox" class="hidden"><div class="grid3"><div class="stat"><small>Status</small><strong>✅ Signed In</strong></div><div class="stat"><small>Email</small><strong id="teacherSignedEmail" style="font-size:16px">—</strong></div><div class="stat"><small>Account</small><strong>Teacher</strong></div></div><div class="controls" style="margin-top:16px"><button class="btn" onclick="teacherLogout()">🚪 Sign Out</button></div></div><div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px"><h3>🔐 Security & Account Controls</h3><p>Teacher accounts control classes, student codes, points, rewards and messages. Real student data will not be stored in public GitHub files.</p><div class="small">Supabase provides the secure teacher authentication layer for the online version.</div></div></div></section>
+<section id="account" class="hidden"><div class="card"><h2>👨‍🏫 Teacher Account</h2><div id="teacherAuthStatus" class="notice">Please sign in with your teacher account.</div><div id="teacherLoginBox"><div class="formrow"><label>Teacher Email</label><input id="teacherEmail" type="email" placeholder="Enter your email"></div><div class="formrow"><label>Password</label><input id="teacherPassword" type="password" placeholder="Enter your password"></div><div class="controls"><button class="btn primary" onclick="teacherLogin()">🔐 Sign In</button><button class="btn" onclick="teacherForgotPassword()">🔄 Forgot Password?</button></div></div><div id="teacherLoggedInBox" class="hidden"><div class="grid3"><div class="stat"><small>Status</small><strong>✅ Signed In</strong></div><div class="stat"><small>Email</small><strong id="teacherSignedEmail" style="font-size:16px">—</strong></div><div class="stat"><small>Account</small><strong>Teacher</strong></div></div><div class="controls" style="margin-top:16px"><button class="btn" onclick="teacherLogout()">🚪 Sign Out</button></div></div><div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px"><h3>🔐 Security & Account Controls</h3><p>Teacher accounts control classes, student codes, points, rewards and messages. Real student data will not be stored in public GitHub files.</p><div class="small">Supabase provides the secure teacher authentication layer for the online version.</div></div></div>
+<div class="card" style="margin-top:16px">
+  <h3>👤 Teacher Profile</h3>
+  <div class="notice">
+    Complete your professional profile. This information will be securely associated with your teacher account when cloud profile storage is connected.
+  </div>
+
+  <div class="grid3">
+    <div class="formrow">
+      <label>First Name</label>
+      <input id="teacherFirstName" type="text" placeholder="First name">
+    </div>
+
+    <div class="formrow">
+      <label>Last Name</label>
+      <input id="teacherLastName" type="text" placeholder="Last name">
+    </div>
+
+    <div class="formrow">
+      <label>Email</label>
+      <input id="teacherProfileEmail" type="email" placeholder="Teacher email" readonly>
+    </div>
+
+    <div class="formrow">
+      <label>Country</label>
+      <input id="teacherCountry" type="text" placeholder="Country">
+    </div>
+
+    <div class="formrow">
+      <label>City / Location</label>
+      <input id="teacherCity" type="text" placeholder="City or location">
+    </div>
+
+    <div class="formrow">
+      <label>School / Institution</label>
+      <input id="teacherSchool" type="text" placeholder="School or institution">
+    </div>
+  </div>
+
+  <div class="formrow" style="margin-top:12px">
+    <label>Subjects</label>
+    <input id="teacherSubjects" type="text" placeholder="e.g. Mathematics, English">
+  </div>
+
+  <div class="small" style="margin-top:12px">
+    🔒 Your teacher profile will be stored securely in the online database and will not be placed in the public GitHub files.
+  </div>
+</div></section>
 <script>
 async function teacherLogin(){const email=document.getElementById('teacherEmail').value.trim(),password=document.getElementById('teacherPassword').value;if(!email||!password)return alert('Please enter your email and password.');const{data:result,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)return alert('Login failed: '+error.message);document.getElementById('teacherAuthStatus').innerHTML='<strong>Welcome, Teacher! 🎉</strong><br>You are securely signed in.';document.getElementById('teacherLoginBox').classList.add('hidden');document.getElementById('teacherLoggedInBox').classList.remove('hidden');document.getElementById('teacherSignedEmail').textContent=result.user.email||email}
 async function teacherLogout(){await supabaseClient.auth.signOut();document.getElementById('teacherAuthStatus').innerHTML='You have been signed out.';document.getElementById('teacherLoginBox').classList.remove('hidden');document.getElementById('teacherLoggedInBox').classList.add('hidden');document.getElementById('teacherSignedEmail').textContent='—'}
