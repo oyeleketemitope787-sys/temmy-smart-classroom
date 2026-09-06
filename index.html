@@ -19,7 +19,40 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_RqjG3UvPbbEbCs782fUVyg_kYXuVjaq
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
-);
+);// Restore and monitor the teacher's Supabase login session
+async function restoreTeacherSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+
+  if (session?.user) {
+    const status = document.getElementById('teacherAuthStatus');
+    const loginBox = document.getElementById('teacherLoginBox');
+    const loggedInBox = document.getElementById('teacherLoggedInBox');
+    const signedEmail = document.getElementById('teacherSignedEmail');
+
+    if (status) {
+      status.innerHTML = '<strong>Welcome back, Teacher! 🎉</strong><br>You are securely signed in.';
+    }
+    if (loginBox) loginBox.classList.add('hidden');
+    if (loggedInBox) loggedInBox.classList.remove('hidden');
+    if (signedEmail) signedEmail.textContent = session.user.email || '—';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', restoreTeacherSession);
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    const status = document.getElementById('teacherAuthStatus');
+    const loginBox = document.getElementById('teacherLoginBox');
+    const loggedInBox = document.getElementById('teacherLoggedInBox');
+    const signedEmail = document.getElementById('teacherSignedEmail');
+
+    if (status) status.textContent = 'You have been signed out.';
+    if (loginBox) loginBox.classList.remove('hidden');
+    if (loggedInBox) loggedInBox.classList.add('hidden');
+    if (signedEmail) signedEmail.textContent = '—';
+  }
+});
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
