@@ -243,8 +243,32 @@ function now(){return new Date().toLocaleString()}
 function showTab(tab){['students','classes','award','market','purchases','reports','history','portal','account','messages'].forEach(t=>document.getElementById(t).classList.toggle('hidden',t!==tab));['studentsTab','classesTab','awardTab','marketTab','purchasesTab','reportsTab','historyTab','portalTab','accountTab','messagesTab'].forEach(id=>document.getElementById(id).classList.remove('active'));document.getElementById(tab+'Tab').classList.add('active');if(tab==='award')syncAwardClass();if(tab==='reports')renderReports();if(tab==='history')syncHistorySelectors();if(tab==='portal')syncPortalSelectors()}
 function renderAll(){renderClassSelects();renderStudents();renderClasses();renderAwardStudents();renderAwardLock();renderHistory();renderMarket();renderPurchases();renderReports();syncHistorySelectors();syncPortalSelectors();save()}
 function renderClassSelects(){const opts=Object.keys(data.classes).map(c=>`<option value="${esc(c)}" ${c===data.currentClass?'selected':''}>${esc(c)}</option>`).join('');const a=document.getElementById('classSelect');a.innerHTML=opts;a.onchange=()=>{data.currentClass=a.value;selectedIds=[];renderAll()};const b=document.getElementById('awardClassSelect');b.innerHTML=opts;b.value=data.currentClass;b.onchange=()=>{data.currentClass=b.value;selectedIds=[];renderAll()};const r=document.getElementById('reportClass');r.innerHTML=opts;r.value=data.currentClass;const h=document.getElementById('historyClass');if(h){h.innerHTML=opts;h.value=data.currentClass;h.onchange=()=>syncHistorySelectors()};const pc=document.getElementById('portalClass');if(pc){pc.innerHTML=opts;pc.value=data.currentClass;pc.onchange=()=>syncPortalSelectors()}}
-function renderStudents(){const cls=current();if(!cls)return;document.getElementById('classTitle').textContent='Class '+data.currentClass;const sorted=[...cls.students].sort((a,b)=>b.points-a.points||a.name.localeCompare(b.name));document.getElementById('studentRows').innerHTML=sorted.length?sorted.map((s,i)=>{const status=s.points>=200?'🏆 Champion':s.points>=150?'🥇 Gold':s.points>=100?'🥈 Silver':s.points>=50?'🥉 Bronze':'—';return `<tr><td>${i+1}</td><td><button class="btn" onclick="openStudentHistory('${esc(s.id)}')">${esc(s.name)}</button></td><td class="points">${s.points}</td><td>${status}</td></tr>`}).join(''):`<tr><td colspan="4" class="empty">No students yet. Add your first student.</td></tr>`;const total=cls.students.reduce((a,s)=>a+s.points,0);document.getElementById('classPoints').textContent=total;document.getElementById('studentCount').textContent=cls.students.length;document.getElementById('classAverage').textContent=cls.students.length?(total/cls.students.length).toFixed(1):'0'}
-function setScope(next){scope=next;selectedIds=[];['Individual','Multiple','All'].forEach(x=>{const id='scope'+x;document.getElementById(id).classList.toggle('active',x.toLowerCase()===next)});renderAwardStudents()}
+function renderStudents(){
+  const cls=current();
+  if(!cls)return;
+
+  document.getElementById('classTitle').textContent=cls.name||data.currentClass;
+  document.getElementById('classAverage').textContent=
+    cls.students.length
+      ? (cls.students.reduce((a,s)=>a+s.points,0)/cls.students.length).toFixed(1)
+      : '0';
+
+  const body=document.getElementById('studentTable');
+  body.innerHTML=cls.students.map((s,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>
+        <span class="student-name">${esc(s.name)}</span>
+      </td>
+      <td><strong>${s.points}</strong></td>
+      <td>${levelFor(s.points).name}</td>
+      <td>
+        <button class="btn" onclick="editStudent('${s.id}')">✏️ Edit</button>
+        <button class="btn danger" onclick="deleteStudent('${s.id}')">🗑️ Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}function setScope(next){scope=next;selectedIds=[];['Individual','Multiple','All'].forEach(x=>{const id='scope'+x;document.getElementById(id).classList.toggle('active',x.toLowerCase()===next)});renderAwardStudents()}
 function renderAwardStudents(){const cls=current();if(!cls)return;let arr=[...cls.students];const q=(document.getElementById('studentSearch')?.value||'').toLowerCase();if(q)arr=arr.filter(s=>s.name.toLowerCase().includes(q));const allIds=cls.students.map(s=>s.id);if(scope==='all')selectedIds=[...allIds];if(scope==='individual'&&selectedIds.length>1)selectedIds=[selectedIds[0]];document.getElementById('selectionInfo').textContent=scope==='all'?`All ${cls.students.length} students selected`:scope==='individual'?`${selectedIds.length?1:0} student selected`:`${selectedIds.length} students selected`;document.getElementById('awardStudents').innerHTML=arr.length?arr.map(s=>`<label class="student-row"><input class="check" type="checkbox" ${selectedIds.includes(s.id)?'checked':''} ${scope==='all'?'disabled':''} onchange="toggleStudent('${s.id}')"><span class="rank">#${cls.students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points}</strong></label>`).join(''):`<div class="empty">No matching students.</div>`}
 function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents()}
 function getSelected(){const cls=current();return cls.students.filter(s=>selectedIds.includes(s.id))}
