@@ -260,8 +260,123 @@ function renderClasses(){document.getElementById('classCards').innerHTML=Object.
 function selectClass(name){data.currentClass=name;selectedIds=[];renderAll();showTab('students')}
 function renameClass(oldName){openModal('Rename Class',`<div class="formrow"><label>New class name</label><input id="renameClass" value="${esc(oldName)}"></div>`,()=>{const n=document.getElementById('renameClass').value.trim();if(!n)return alert('Please enter a name.');if(n!==oldName&&data.classes[n])return alert('That class already exists.');if(n!==oldName){data.classes[n]=data.classes[oldName];delete data.classes[oldName];data.history.forEach(h=>{if(h.className===oldName)h.className=n});if(data.lastPointAction?.className===oldName)data.lastPointAction.className=n;if(data.currentClass===oldName)data.currentClass=n}closeModal();renderAll()})}
 function deleteClass(name){if(Object.keys(data.classes).length===1)return alert('Keep at least one class.');if(!confirm(`Delete class "${name}" and its students?`))return;delete data.classes[name];data.history=data.history.filter(h=>h.className!==name);if(data.currentClass===name)data.currentClass=Object.keys(data.classes)[0];selectedIds=[];renderAll()}
-function openAddStudent(){openModal('Add Student',`<div class="formrow"><label>Student name</label><input id="studentName" placeholder="Full name" autofocus></div>`,()=>{const name=document.getElementById('studentName').value.trim();if(!name)return alert('Please enter a student name.');if(current().students.some(s=>s.name.toLowerCase()===name.toLowerCase()))return alert('That student is already in this class.');current().students.push({id:uid(),name,points:0});closeModal();renderAll()})}
-function openAddReward(){openModal('Create Marketplace Item',`<div class="formrow"><label>Item name</label><input id="rewardName" placeholder="e.g. Homework Pass"></div><div class="formrow"><label>Point price</label><input id="rewardPrice" type="number" min="1" value="20"></div><div class="formrow"><label>Icon</label><input id="rewardIcon" value="🎁"></div>`,()=>{const name=document.getElementById('rewardName').value.trim(),price=Math.floor(Number(document.getElementById('rewardPrice').value)),icon=document.getElementById('rewardIcon').value.trim()||'🎁';if(!name||!Number.isFinite(price)||price<1)return alert('Enter a valid item name and price.');data.rewards.push({id:Date.now(),name,price,icon});closeModal();renderMarket();save()})}
+function openAddStudent(){
+  openModal(
+    'Add Student',
+    `<div class="formrow">
+      <label>Student name</label>
+      <input id="studentName" placeholder="Full name" autofocus>
+    </div>`,
+    ()=>{
+      const name=document.getElementById('studentName').value.trim();
+
+      if(!name)return alert('Please enter a student name.');
+
+      if(current().students.some(
+        s=>s.name.toLowerCase()===name.toLowerCase()
+      )){
+        return alert('That student is already in this class.');
+      }
+
+      current().students.push({
+        id:uid(),
+        name,
+        points:0
+      });
+
+      closeModal();
+      renderAll();
+    }
+  );
+}
+
+function editStudent(id){
+  const student=current().students.find(s=>s.id===id);
+  if(!student)return;
+
+  openModal(
+    'Edit Student',
+    `<div class="formrow">
+      <label>Student name</label>
+      <input id="editStudentName" value="${esc(student.name)}" placeholder="Full name" autofocus>
+    </div>`,
+    ()=>{
+      const name=document.getElementById('editStudentName').value.trim();
+
+      if(!name)return alert('Please enter a student name.');
+
+      const duplicate=current().students.some(
+        s=>s.id!==id && s.name.toLowerCase()===name.toLowerCase()
+      );
+
+      if(duplicate){
+        return alert('Another student with that name already exists in this class.');
+      }
+
+      student.name=name;
+
+      data.activity.forEach(a=>{
+        if(a.studentId===id)a.student=name;
+      });
+
+      data.purchases.forEach(p=>{
+        if(p.studentId===id)p.student=name;
+      });
+
+      data.history.forEach(h=>{
+        h.deltas.forEach(d=>{
+          if(d.studentId===id)d.name=name;
+        });
+      });
+
+      closeModal();
+      renderAll();
+      alert('Student name updated successfully.');
+    }
+  );
+}
+
+function deleteStudent(id){
+  const student=current().students.find(s=>s.id===id);
+  if(!student)return;
+
+  const confirmed=confirm(
+    `Delete "${student.name}" from ${data.currentClass}?\n\n`+
+    `This will remove the student from this class.`
+  );
+
+  if(!confirmed)return;
+
+  current().students=current().students.filter(s=>s.id!==id);
+
+  data.activity=data.activity.filter(
+    a=>!(a.className===data.currentClass && a.studentId===id)
+  );
+
+  data.history.forEach(h=>{
+    if(h.className===data.currentClass){
+      h.deltas=h.deltas.filter(d=>d.studentId!==id);
+    }
+  });
+
+  data.history=data.history.filter(
+    h=>h.className!==data.currentClass || h.deltas.length>0
+  );
+
+  data.purchases=data.purchases.filter(
+    p=>!(p.className===data.currentClass && p.studentId===id)
+  );
+
+  selectedIds=selectedIds.filter(x=>x!==id);
+
+  if(data.lastPointAction?.className===data.currentClass){
+    data.lastPointAction=null;
+  }
+
+  renderAll();
+
+  alert('Student deleted successfully.');
+}function openAddReward(){openModal('Create Marketplace Item',`<div class="formrow"><label>Item name</label><input id="rewardName" placeholder="e.g. Homework Pass"></div><div class="formrow"><label>Point price</label><input id="rewardPrice" type="number" min="1" value="20"></div><div class="formrow"><label>Icon</label><input id="rewardIcon" value="🎁"></div>`,()=>{const name=document.getElementById('rewardName').value.trim(),price=Math.floor(Number(document.getElementById('rewardPrice').value)),icon=document.getElementById('rewardIcon').value.trim()||'🎁';if(!name||!Number.isFinite(price)||price<1)return alert('Enter a valid item name and price.');data.rewards.push({id:Date.now(),name,price,icon});closeModal();renderMarket();save()})}
 function renderMarket(){document.getElementById('marketItems').innerHTML=data.rewards.length?data.rewards.map(r=>`<div class="item"><div class="icon">${esc(r.icon)}</div><h3>${esc(r.name)}</h3><div class="price">${r.price} points</div><div style="margin-top:12px"><button class="btn primary" onclick="buyReward(${r.id})">Buy for Student</button> <button class="btn negative" onclick="deleteReward(${r.id})">Delete</button></div></div>`).join(''):'<div class="empty">No marketplace items yet.</div>'}
 function buyReward(id){const r=data.rewards.find(x=>x.id===id),students=current().students;if(!r)return;if(!students.length)return alert('Add a student first.');openModal('Purchase: '+r.name,`<div class="formrow"><label>Select students</label><div class="scopebar"><button type="button" class="btn" onclick="selectPurchaseAll(true)">🌟 Select All</button><button type="button" class="btn" onclick="selectPurchaseAll(false)">Clear</button></div><div id="purchaseStudents" class="student-list" style="max-height:360px">${students.map(s=>`<label class="student-row"><input class="check purchase-check" type="checkbox" value="${esc(s.id)}"><span class="rank">#${students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points} pts</strong></label>`).join('')}</div></div><div class="notice">Cost per student: <strong>${r.price} points</strong><br><span class="small">Multiple purchase is all-or-nothing: every selected student must have enough points.</span></div>`, ()=>{const ids=[...document.querySelectorAll('.purchase-check:checked')].map(x=>x.value);if(!ids.length)return alert('Please select at least one student.');const selected=students.filter(s=>ids.includes(s.id));const unable=selected.filter(s=>s.points<r.price);if(unable.length)return alert('Purchase cannot proceed. These students need more points: '+unable.map(s=>`${s.name} (${s.points})`).join(', '));const stamp=now();selected.forEach(s=>{const before=s.points;s.points-=r.price;const purchase={id:'p_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:stamp,className:data.currentClass,studentId:s.id,student:s.name,item:r.name,cost:r.price};data.purchases.unshift(purchase);data.activity.unshift({id:'a_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:stamp,className:data.currentClass,studentId:s.id,student:s.name,type:'purchase',action:'Marketplace Purchase: '+r.name,delta:-r.price,before,after:s.points,cost:r.price,item:r.name})});data.activity=data.activity.slice(0,1000);closeModal();renderAll();showTab('purchases');alert(`${r.name}: ${selected.length} student${selected.length===1?'':'s'} purchased successfully.`)},'Buy')}
 function selectPurchaseAll(flag){document.querySelectorAll('.purchase-check').forEach(c=>c.checked=flag)}
