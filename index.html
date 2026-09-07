@@ -66,7 +66,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 <div class="wrap">
 <nav class="nav">
 <button id="studentsTab" class="active" onclick="showTab('students')">🧑‍🎓 Students</button>
-<button id="classesTab" onclick="showTab('classes')">🏫 My Classes</button>
+<button id="classesTab" onclick="showTab('classes')">🏫 My Classes</button><button id="groupsTab" onclick="showTab('groups')">👥 Groups</button>
 <button id="awardTab" onclick="showTab('award')">⭐ Award Points</button>
 <button id="marketTab" onclick="showTab('market')">🛒 Marketplace</button>
 <button id="purchasesTab" onclick="showTab('purchases')">📜 Purchases</button>
@@ -91,7 +91,50 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 <div class="card"><h2>🏆 Class Summary</h2><div class="grid3"><div class="stat"><small>Class Points</small><strong id="classPoints">0</strong></div><div class="stat"><small>Students</small><strong id="studentCount">0</strong></div><div class="stat"><small>Average</small><strong id="classAverage">0</strong></div></div></div>
 <div class="card"><h2>🎯 Reward Level Progress</h2><p>🥉 <strong>Bronze</strong> — 50+ points</p><p>🥈 <strong>Silver</strong> — 100+ points</p><p>🥇 <strong>Gold</strong> — 150+ points</p><p>🏆 <strong>Champion</strong> — 200+ points</p></div>
 </div></div></section>
+</section>
 
+<section id="groups" class="hidden">
+<div class="card">
+  <div class="summary-title">
+    <div>
+      <h2>👥 Student Groups</h2>
+      <div class="small">Create groups within your current class and organise students for collaborative activities.</div>
+    </div>
+  </div>
+
+  <div class="controls" style="margin-top:16px">
+    <button class="btn primary" onclick="openCreateGroup()">➕ Create Group</button>
+    <select id="groupClassSelect" class="select" onchange="renderGroups()"></select>
+  </div>
+
+  <div id="groupsList" style="margin-top:16px"></div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h3>💡 How Groups Will Work</h3>
+
+  <div class="grid3">
+    <div class="stat">
+      <small>1. Create</small>
+      <strong>👥 Groups</strong>
+      <div class="small">Create groups for your current class.</div>
+    </div>
+
+    <div class="stat">
+      <small>2. Organise</small>
+      <strong>👨‍🎓 Students</strong>
+      <div class="small">Add or remove students from each group.</div>
+    </div>
+
+    <div class="stat">
+      <small>3. Reward</small>
+      <strong>🏆 Group Points</strong>
+      <div class="small">Award the same points to every group member.</div>
+    </div>
+  </div>
+</div></section>
+
+<section id="award" class="hidden">
 <section id="award" class="hidden">
 <div class="controls"><select id="awardClassSelect" class="select"></select><button class="btn" onclick="showTab('students')">← Students</button></div>
 <div class="grid2">
@@ -400,7 +443,220 @@ function deleteStudent(id){
   renderAll();
 
   alert('Student deleted successfully.');
-}function openAddReward(){openModal('Create Marketplace Item',`<div class="formrow"><label>Item name</label><input id="rewardName" placeholder="e.g. Homework Pass"></div><div class="formrow"><label>Point price</label><input id="rewardPrice" type="number" min="1" value="20"></div><div class="formrow"><label>Icon</label><input id="rewardIcon" value="🎁"></div>`,()=>{const name=document.getElementById('rewardName').value.trim(),price=Math.floor(Number(document.getElementById('rewardPrice').value)),icon=document.getElementById('rewardIcon').value.trim()||'🎁';if(!name||!Number.isFinite(price)||price<1)return alert('Enter a valid item name and price.');data.rewards.push({id:Date.now(),name,price,icon});closeModal();renderMarket();save()})}
+}
+function getGroupsForClass(className){
+  if(!data.groups)data.groups={};
+  if(!data.groups[className])data.groups[className]=[];
+  return data.groups[className];
+}
+
+function renderGroupClassSelect(){
+  const select=document.getElementById('groupClassSelect');
+  if(!select)return;
+
+  const classes=Object.keys(data.classes);
+
+  select.innerHTML=classes.map(name=>
+    `<option value="${esc(name)}" ${name===data.currentClass?'selected':''}>${esc(name)}</option>`
+  ).join('');
+}
+
+function renderGroups(){
+  const select=document.getElementById('groupClassSelect');
+  const className=select?.value||data.currentClass;
+  const box=document.getElementById('groupsList');
+
+  if(!box)return;
+
+  const cls=data.classes[className];
+
+  if(!cls){
+    box.innerHTML='<div class="empty">No class selected.</div>';
+    return;
+  }
+
+  const groups=getGroupsForClass(className);
+
+  if(!groups.length){
+    box.innerHTML='<div class="empty">No groups created yet. Click "Create Group" to begin.</div>';
+    return;
+  }
+
+  box.innerHTML=groups.map((group,index)=>{
+    const members=cls.students.filter(s=>group.studentIds.includes(s.id));
+
+    return `
+      <div class="card" style="margin-top:12px">
+        <div class="summary-title">
+          <div>
+            <h3>👥 ${esc(group.name)}</h3>
+            <div class="small">${members.length} student${members.length===1?'':'s'}</div>
+          </div>
+
+          <div class="controls">
+            <button class="btn" onclick="editGroup('${group.id}')">✏️ Rename</button>
+            <button class="btn danger" onclick="deleteGroup('${group.id}')">🗑️ Delete</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          ${
+            members.length
+              ? members.map(s=>`
+                  <span class="badge" style="display:inline-block;margin:4px">
+                    👤 ${esc(s.name)}
+                  </span>
+                `).join('')
+              : '<div class="small">No students assigned yet.</div>'
+          }
+        </div>
+
+        <div class="controls" style="margin-top:12px">
+          <button class="btn primary" onclick="manageGroupMembers('${group.id}')">
+            👨‍🎓 Manage Students
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openCreateGroup(){
+  const select=document.getElementById('groupClassSelect');
+  const className=select?.value||data.currentClass;
+
+  openModal(
+    'Create Group',
+    `<div class="formrow">
+      <label>Group name</label>
+      <input id="groupName" placeholder="e.g. Group A" autofocus>
+    </div>`,
+    ()=>{
+      const name=document.getElementById('groupName').value.trim();
+
+      if(!name)return alert('Please enter a group name.');
+
+      const groups=getGroupsForClass(className);
+
+      if(groups.some(g=>g.name.toLowerCase()===name.toLowerCase())){
+        return alert('A group with that name already exists in this class.');
+      }
+
+      groups.push({
+        id:uid(),
+        name,
+        studentIds:[]
+      });
+
+      closeModal();
+      renderGroups();
+      save();
+    }
+  );
+}
+
+function editGroup(id){
+  const select=document.getElementById('groupClassSelect');
+  const className=select?.value||data.currentClass;
+  const group=getGroupsForClass(className).find(g=>g.id===id);
+
+  if(!group)return;
+
+  openModal(
+    'Rename Group',
+    `<div class="formrow">
+      <label>Group name</label>
+      <input id="editGroupName" value="${esc(group.name)}" placeholder="Group name" autofocus>
+    </div>`,
+    ()=>{
+      const name=document.getElementById('editGroupName').value.trim();
+
+      if(!name)return alert('Please enter a group name.');
+
+      const duplicate=getGroupsForClass(className).some(
+        g=>g.id!==id && g.name.toLowerCase()===name.toLowerCase()
+      );
+
+      if(duplicate){
+        return alert('Another group with that name already exists in this class.');
+      }
+
+      group.name=name;
+
+      closeModal();
+      renderGroups();
+      save();
+    }
+  );
+}
+
+function deleteGroup(id){
+  const select=document.getElementById('groupClassSelect');
+  const className=select?.value||data.currentClass;
+  const groups=getGroupsForClass(className);
+  const group=groups.find(g=>g.id===id);
+
+  if(!group)return;
+
+  if(!confirm(`Delete "${group.name}" from ${className}?`))return;
+
+  data.groups[className]=groups.filter(g=>g.id!==id);
+
+  renderGroups();
+  save();
+
+  alert('Group deleted successfully.');
+}
+
+function manageGroupMembers(id){
+  const select=document.getElementById('groupClassSelect');
+  const className=select?.value||data.currentClass;
+  const cls=data.classes[className];
+  const group=getGroupsForClass(className).find(g=>g.id===id);
+
+  if(!cls||!group)return;
+
+  const body=`
+    <div class="small" style="margin-bottom:12px">
+      Select the students who belong to <strong>${esc(group.name)}</strong>.
+    </div>
+
+    <div style="max-height:320px;overflow:auto">
+      ${
+        cls.students.length
+          ? cls.students.map(s=>`
+              <label style="display:block;padding:8px;border-bottom:1px solid #e1e6ee">
+                <input
+                  type="checkbox"
+                  class="group-member-check"
+                  value="${s.id}"
+                  ${group.studentIds.includes(s.id)?'checked':''}
+                >
+                ${esc(s.name)}
+              </label>
+            `).join('')
+          : '<div class="empty">No students in this class.</div>'
+      }
+    </div>
+  `;
+
+  openModal(
+    'Manage Group Students',
+    body,
+    ()=>{
+      group.studentIds=[
+        ...document.querySelectorAll('.group-member-check:checked')
+      ].map(c=>c.value);
+
+      closeModal();
+      renderGroups();
+      save();
+    },
+    'Save'
+  );
+}
+  function openAddReward()
+{openModal('Create Marketplace Item',`<div class="formrow"><label>Item name</label><input id="rewardName" placeholder="e.g. Homework Pass"></div><div class="formrow"><label>Point price</label><input id="rewardPrice" type="number" min="1" value="20"></div><div class="formrow"><label>Icon</label><input id="rewardIcon" value="🎁"></div>`,()=>{const name=document.getElementById('rewardName').value.trim(),price=Math.floor(Number(document.getElementById('rewardPrice').value)),icon=document.getElementById('rewardIcon').value.trim()||'🎁';if(!name||!Number.isFinite(price)||price<1)return alert('Enter a valid item name and price.');data.rewards.push({id:Date.now(),name,price,icon});closeModal();renderMarket();save()})}
 function renderMarket(){document.getElementById('marketItems').innerHTML=data.rewards.length?data.rewards.map(r=>`<div class="item"><div class="icon">${esc(r.icon)}</div><h3>${esc(r.name)}</h3><div class="price">${r.price} points</div><div style="margin-top:12px"><button class="btn primary" onclick="buyReward(${r.id})">Buy for Student</button> <button class="btn negative" onclick="deleteReward(${r.id})">Delete</button></div></div>`).join(''):'<div class="empty">No marketplace items yet.</div>'}
 function buyReward(id){const r=data.rewards.find(x=>x.id===id),students=current().students;if(!r)return;if(!students.length)return alert('Add a student first.');openModal('Purchase: '+r.name,`<div class="formrow"><label>Select students</label><div class="scopebar"><button type="button" class="btn" onclick="selectPurchaseAll(true)">🌟 Select All</button><button type="button" class="btn" onclick="selectPurchaseAll(false)">Clear</button></div><div id="purchaseStudents" class="student-list" style="max-height:360px">${students.map(s=>`<label class="student-row"><input class="check purchase-check" type="checkbox" value="${esc(s.id)}"><span class="rank">#${students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points} pts</strong></label>`).join('')}</div></div><div class="notice">Cost per student: <strong>${r.price} points</strong><br><span class="small">Multiple purchase is all-or-nothing: every selected student must have enough points.</span></div>`, ()=>{const ids=[...document.querySelectorAll('.purchase-check:checked')].map(x=>x.value);if(!ids.length)return alert('Please select at least one student.');const selected=students.filter(s=>ids.includes(s.id));const unable=selected.filter(s=>s.points<r.price);if(unable.length)return alert('Purchase cannot proceed. These students need more points: '+unable.map(s=>`${s.name} (${s.points})`).join(', '));const stamp=now();selected.forEach(s=>{const before=s.points;s.points-=r.price;const purchase={id:'p_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:stamp,className:data.currentClass,studentId:s.id,student:s.name,item:r.name,cost:r.price};data.purchases.unshift(purchase);data.activity.unshift({id:'a_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:stamp,className:data.currentClass,studentId:s.id,student:s.name,type:'purchase',action:'Marketplace Purchase: '+r.name,delta:-r.price,before,after:s.points,cost:r.price,item:r.name})});data.activity=data.activity.slice(0,1000);closeModal();renderAll();showTab('purchases');alert(`${r.name}: ${selected.length} student${selected.length===1?'':'s'} purchased successfully.`)},'Buy')}
 function selectPurchaseAll(flag){document.querySelectorAll('.purchase-check').forEach(c=>c.checked=flag)}
