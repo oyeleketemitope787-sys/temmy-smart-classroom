@@ -11,26 +11,25 @@
   } catch(e) {}
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// V8.3 cloud authentication foundation. Replace ONLY the publishable key below with the key from the TEST Supabase project.
 const SUPABASE_URL = 'https://askhdgmjqezvwavfhqzj.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_EKVC5DHPb6oZu63ulxj-pQ_hEwd4bZv';
-
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY
-);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let authSession = null;
+let teacherCloudProfile = null;
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Temmy Smart Classroom — V8.2 Teacher Activity Monitoring</title>
+<title>Temmy Smart Classroom — V8.3 Teacher Authentication & Account</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;color:#172033}button,input,select{font:inherit}button{cursor:pointer}.top{background:linear-gradient(135deg,#153b7a,#2457a6);color:#fff;padding:22px 28px}.top h1{margin:0 0 5px;font-size:30px}.top p{margin:0;opacity:.9}.wrap{max-width:1380px;margin:20px auto;padding:0 18px}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.nav button{border:1px solid #ccd5e2;background:#fff;padding:11px 17px;border-radius:9px;font-weight:700}.nav button.active{background:#153b7a;color:#fff;border-color:#153b7a}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.select,input{border:1px solid #ccd5e2;border-radius:8px;padding:10px 12px;background:#fff}.btn{border:1px solid #ccd5e2;border-radius:8px;padding:9px 13px;background:#fff}.primary{background:#153b7a;color:#fff;border-color:#153b7a}.success{background:#eaf8ee;color:#12602c;border-color:#bfe3c9}.negative{background:#fff0f0;color:#a11;border-color:#e6bcbc}.gold{background:#fff8df;color:#765800;border-color:#ead58a}.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 16px rgba(21,59,122,.10);margin-bottom:18px}.hidden{display:none!important}.grid2{display:grid;grid-template-columns:1.6fr .8fr;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{background:#f6f8fc;border-radius:12px;padding:14px}.stat small{display:block;color:#637087}.stat strong{display:block;font-size:28px;margin-top:4px}h2,h3{margin-top:0}.small{font-size:13px;color:#68758a}.notice{padding:12px;border-radius:9px;background:#fff8df;border:1px solid #ead58a;margin-bottom:15px}table{width:100%;border-collapse:collapse}th,td{padding:11px;border-bottom:1px solid #edf0f5;text-align:left}th{background:#f8fafc}.points{font-size:20px;font-weight:800}.student-list{max-height:510px;overflow:auto;border:1px solid #e1e6ee;border-radius:10px}.student-row{display:grid;grid-template-columns:38px 1fr 90px 70px;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid #edf0f5}.student-row:last-child{border-bottom:0}.student-row:hover{background:#fafcff}.student-name{font-weight:700}.rank{font-weight:800;color:#6a7485}.check{width:18px;height:18px}.scopebar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.scopebar button{padding:8px 12px;border:1px solid #ccd5e2;border-radius:8px;background:#fff;font-weight:700}.scopebar button.active{background:#2457a6;color:#fff;border-color:#2457a6}.selection-info{padding:10px 12px;background:#f6f8fc;border-radius:9px;margin-bottom:12px;font-weight:700}.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.action{padding:12px;border-radius:10px;text-align:left;border:1px solid #ccd5e2;background:#fff}.action strong{display:block}.action span{font-size:12px;opacity:.75}.positive-action{background:#f0faf3;border-color:#c5e4ce}.negative-action{background:#fff4f4;border-color:#ecc4c4}.custom{border-top:1px solid #e8ecf2;margin-top:16px;padding-top:16px}.custom-row{display:grid;grid-template-columns:110px 1fr;gap:8px}.history-scroll{max-height:430px;overflow:auto}.tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}.tag.plus{background:#eaf8ee;color:#12602c}.tag.minus{background:#fff0f0;color:#a11}.market{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}.item{border:1px solid #e1e6ee;border-radius:13px;padding:16px;background:#fff}.item .icon{font-size:36px}.price{font-weight:800;color:#153b7a}.empty{text-align:center;color:#68758a;padding:28px}.class-card{border:1px solid #e1e6ee;border-radius:13px;padding:16px;margin-top:12px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}.modalbox{background:#fff;width:min(620px,100%);max-height:90vh;overflow:auto;border-radius:15px;padding:22px}.formrow{display:grid;gap:7px;margin:12px 0}.formactions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.summary-title{display:flex;justify-content:space-between;align-items:center;gap:10px}.search{width:100%}.reward-table td{vertical-align:top}.danger-link{color:#a11;font-weight:700}.menu-wrap{position:relative;display:inline-block}.menu-btn{min-width:38px;padding:8px 10px;font-weight:800}.menu{position:absolute;right:0;top:calc(100% + 4px);min-width:160px;background:#fff;border:1px solid #ccd5e2;border-radius:10px;box-shadow:0 8px 24px rgba(21,59,122,.16);padding:6px;z-index:15}.menu button{display:block;width:100%;text-align:left;border:0;background:#fff;padding:9px 10px;border-radius:7px}.menu button:hover{background:#f4f7fb}.menu .menu-danger{color:#a11}.member-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #edf0f5}.member-row:last-child{border-bottom:0}.footer-note{font-size:12px;color:#6d788a;margin-top:8px}@media(max-width:980px){.grid2,.grid3{grid-template-columns:1fr}.student-row{grid-template-columns:34px 1fr 70px 50px}.action-grid{grid-template-columns:1fr}}@media(max-width:620px){.top h1{font-size:24px}.wrap{padding:0 10px}.student-row{grid-template-columns:30px 1fr 55px}.student-row .rank{display:none}}
 </style>
 </head>
 <body>
-<header class="top"><h1>⭐ Temmy Smart Classroom</h1><p>Smart Learning • Smart Behaviour • Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD • V8.2 TEACHER ACTIVITY MONITORING</div></header>
+<header class="top"><h1>⭐ Temmy Smart Classroom</h1><p>Smart Learning • Smart Behaviour • Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD • V8.3 TEACHER AUTHENTICATION & ACCOUNT</div></header>
 <div class="wrap">
 <nav class="nav">
 <button id="studentsTab" class="active" onclick="showTab('students')">🧑‍🎓 Students</button>
@@ -185,7 +184,45 @@ const supabaseClient = window.supabase.createClient(
 </div>
 </section>
 
-<section id="account" class="hidden"><div class="card"><h2>👨‍🏫 Teacher Account</h2><div class="notice"><strong>Cloud registration planned for the online release.</strong><br>Teachers will register free with email, and the system will record the teacher profile and country/location for platform administration. No payment is required for registration.</div><div class="grid3"><div class="stat"><small>Registration</small><strong style="font-size:20px">Free</strong></div><div class="stat"><small>Teacher Identity</small><strong style="font-size:20px">Email</strong></div><div class="stat"><small>Location</small><strong style="font-size:20px">Country</strong></div></div><div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px"><h3>🔐 Security & Account Controls</h3><p>Teacher accounts will control classes, student codes, points, rewards and messages. Real student data will not be stored in the public GitHub files.</p><div class="controls"><button class="btn gold" onclick="changeAwardPin()">🔑 Change Award PIN</button><button class="btn" onclick="showRecoveryPlan()">🔄 Password & PIN Recovery</button></div><div class="small">Production security, email recovery and account identity will be enforced after cloud authentication is connected.</div></div></div></section>
+<section id="account" class="hidden">
+<div class="card"><h2>👨‍🏫 Teacher Account</h2>
+<div id="authStatusBox" class="notice">Checking secure teacher session…</div>
+<div id="teacherProfilePanel" class="hidden">
+<div class="grid3">
+<div class="stat"><small>Registration</small><strong style="font-size:20px">Free</strong></div>
+<div class="stat"><small>Signed-in Teacher</small><strong id="accountEmail" style="font-size:16px;word-break:break-word">—</strong></div>
+<div class="stat"><small>Account Status</small><strong id="accountStatus" style="font-size:20px">Verified</strong></div>
+</div>
+<div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+<h3>📋 Teacher Profile</h3>
+<div class="grid2">
+<div>
+<div class="formrow"><label>First name</label><input id="profileFirstName" placeholder="First name"></div>
+<div class="formrow"><label>Last name</label><input id="profileLastName" placeholder="Last name"></div>
+<div class="formrow"><label>Country</label><input id="profileCountry" placeholder="Country"></div>
+</div>
+<div>
+<div class="formrow"><label>City / Location</label><input id="profileCity" placeholder="City or location"></div>
+<div class="formrow"><label>School / Institution</label><input id="profileSchool" placeholder="School or institution"></div>
+<div class="formrow"><label>Subjects</label><input id="profileSubjects" placeholder="e.g. Mathematics, English"></div>
+</div>
+</div>
+<div class="controls"><button class="btn primary" onclick="saveTeacherProfile()">💾 Save Teacher Profile</button></div>
+<div id="profileMessage" class="small"></div>
+</div>
+<div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+<h3>🔐 Security & Account Controls</h3>
+<p>Teacher identity is authenticated by Supabase. Password recovery uses the registered email address. The Award Point PIN is stored as a hash in the teacher profile, not as plain text.</p>
+<div class="controls">
+<button class="btn gold" onclick="changeAwardPinCloud()">🔑 Change Award PIN</button>
+<button class="btn" onclick="sendPasswordRecovery()">📧 Password Recovery Email</button>
+<button class="btn" onclick="changePasswordCloud()">🔒 Change Password</button>
+<button class="btn negative" onclick="signOutTeacher()">↪️ Sign Out</button>
+</div>
+</div>
+</div>
+</div>
+</section>
 
 <section id="messages" class="hidden"><div class="card"><h2>💬 Teacher–Student Messages</h2><div class="notice"><strong>Chat-only communication.</strong><br>Students can message their teacher when they need help with a mathematics problem, and the teacher can reply. The online version will use secure teacher/student identities and will not expose personal contact details.</div><div class="empty">Messaging will be activated with the secure cloud database and student login system.</div></div></section>
 
@@ -743,13 +780,123 @@ function toggleAwardLock(){
  else{data.awardLocked=true;renderAwardLock();save();clearTimeout(awardAutoTimer);}
 }
 function changeAwardPin(){if(!data.awardPin)return alert('Set the Award Point PIN first.');openModal('Change Teacher Award PIN',`<div class="formrow"><label>Current PIN</label><input id="oldPin" type="password" inputmode="numeric" maxlength="6"></div><div class="formrow"><label>New PIN</label><input id="newPin" type="password" inputmode="numeric" maxlength="6" placeholder="4–6 digits"></div><div class="formrow"><label>Confirm New PIN</label><input id="confirmPin" type="password" inputmode="numeric" maxlength="6"></div>`,()=>{const old=document.getElementById('oldPin').value.trim(),n=document.getElementById('newPin').value.trim(),c=document.getElementById('confirmPin').value.trim();if(old!==data.awardPin)return alert('Current PIN is incorrect.');if(!/^\d{4,6}$/.test(n))return alert('New PIN must contain 4–6 digits.');if(n!==c)return alert('New PIN entries do not match.');data.awardPin=n;data.awardLocked=true;closeModal();renderAwardLock();save();alert('Award Point PIN changed successfully. Award Points is now locked.');});}
-function showRecoveryPlan(){openModal('Account & PIN Recovery',`<div class="notice"><strong>Local testing version:</strong> secure email recovery is not available offline.</div><p><strong>Final online version:</strong> the teacher will recover the platform password through the registered email address, and recover the Award Point PIN only after secure teacher-account verification.</p><p>If a PIN is exposed, the teacher can change it immediately from Teacher Account → Security & Account Controls.</p><p class="small">This prevents students from recovering or changing teacher security credentials.</p>`,null)}
+function showRecoveryPlan(){sendPasswordRecovery()}
+
+async function sha256Hex(value){
+ const bytes=new TextEncoder().encode(value);
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+ return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function authConfigured(){return SUPABASE_PUBLISHABLE_KEY && !SUPABASE_PUBLISHABLE_KEY.includes('sb_publishable_EKVC5DHPb6oZu63ulxj-pQ_hEwd4bZv');}
+function showAuthRequired(){
+ const box=document.getElementById('authStatusBox');
+ if(!box)return;
+ box.innerHTML='<strong>🔐 Teacher sign-in required.</strong><br>This classroom is now connected to secure teacher authentication. Sign in with your teacher email and password to continue.'+
+ '<div class="formrow"><label>Email</label><input id="authEmail" type="email" autocomplete="username" placeholder="Teacher email"></div>'+
+ '<div class="formrow"><label>Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Password"></div>'+
+ '<div class="controls"><button class="btn primary" onclick="signInTeacher()">🔑 Sign In</button><button class="btn" onclick="sendPasswordRecoveryFromLogin()">📧 Forgot Password</button></div>';
+ document.getElementById('teacherProfilePanel')?.classList.add('hidden');
+}
+async function signInTeacher(){
+ const email=document.getElementById('authEmail')?.value.trim(),password=document.getElementById('authPassword')?.value;
+ if(!email||!password)return alert('Enter your teacher email and password.');
+ const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+ if(error)return alert(error.message);
+ authSession=data.session; await initTeacherAccount();
+}
+async function sendPasswordRecoveryFromLogin(){
+ const email=document.getElementById('authEmail')?.value.trim();
+ if(!email)return alert('Enter your teacher email first.');
+ const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+ if(error)return alert(error.message);
+ alert('Password recovery email sent. Check the teacher email inbox.');
+}
+async function sendPasswordRecovery(){
+ if(!authSession?.user?.email)return;
+ const {error}=await supabaseClient.auth.resetPasswordForEmail(authSession.user.email,{redirectTo:location.origin+location.pathname});
+ if(error)return alert(error.message);
+ alert('Password recovery email sent to '+authSession.user.email+'.');
+}
+async function changePasswordCloud(){
+ if(!authSession)return alert('Please sign in first.');
+ openModal('Change Teacher Password',`<div class="notice">Choose a new private password. Do not share it with students.</div><div class="formrow"><label>New password</label><input id="newTeacherPassword" type="password" autocomplete="new-password" minlength="8"></div><div class="formrow"><label>Confirm new password</label><input id="confirmTeacherPassword" type="password" autocomplete="new-password" minlength="8"></div>`,async()=>{
+   const a=document.getElementById('newTeacherPassword').value,b=document.getElementById('confirmTeacherPassword').value;
+   if(a.length<8)return alert('Password must be at least 8 characters.');
+   if(a!==b)return alert('Passwords do not match.');
+   const {error}=await supabaseClient.auth.updateUser({password:a});
+   if(error)return alert(error.message);
+   closeModal(); alert('Teacher password changed successfully.');
+ });
+}
+async function loadTeacherProfile(){
+ if(!authSession?.user?.id)return null;
+ const {data,error}=await supabaseClient.from('teacher_profiles').select('id,first_name,last_name,email,country,city,school_name,subjects,award_pin_hash').eq('id',authSession.user.id).maybeSingle();
+ if(error){console.error(error);return null;}
+ return data;
+}
+function fillTeacherProfile(p){
+ teacherCloudProfile=p||{};
+ document.getElementById('profileFirstName').value=p?.first_name||'';
+ document.getElementById('profileLastName').value=p?.last_name||'';
+ document.getElementById('profileCountry').value=p?.country||'';
+ document.getElementById('profileCity').value=p?.city||'';
+ document.getElementById('profileSchool').value=p?.school_name||'';
+ document.getElementById('profileSubjects').value=Array.isArray(p?.subjects)?p.subjects.join(', '):'';
+}
+async function initTeacherAccount(){
+ const {data,error}=await supabaseClient.auth.getSession();
+ if(error){console.error(error);showAuthRequired();return;}
+ authSession=data.session;
+ const status=document.getElementById('authStatusBox');
+ if(!authSession){showAuthRequired();return;}
+ const user=authSession.user;
+ const verified=user.email_confirmed_at?true:false;
+ status.className='notice';
+ status.innerHTML='<strong>🟢 Secure teacher session active.</strong><br>'+esc(user.email||'')+' • '+(verified?'Email confirmed':'Email confirmation pending');
+ document.getElementById('teacherProfilePanel').classList.remove('hidden');
+ document.getElementById('accountEmail').textContent=user.email||'—';
+ document.getElementById('accountStatus').textContent=verified?'Verified':'Pending';
+ const p=await loadTeacherProfile();
+ fillTeacherProfile(p);
+ if(!p){
+   document.getElementById('profileMessage').textContent='New teacher profile. Complete the fields and save.';
+ }else{document.getElementById('profileMessage').textContent='Cloud teacher profile loaded.';}
+}
+async function saveTeacherProfile(){
+ if(!authSession?.user?.id)return alert('Please sign in first.');
+ const profile={id:authSession.user.id,first_name:document.getElementById('profileFirstName').value.trim(),last_name:document.getElementById('profileLastName').value.trim(),email:authSession.user.email,country:document.getElementById('profileCountry').value.trim(),city:document.getElementById('profileCity').value.trim(),school_name:document.getElementById('profileSchool').value.trim(),subjects:document.getElementById('profileSubjects').value.split(',').map(x=>x.trim()).filter(Boolean)};
+ const {data,error}=await supabaseClient.from('teacher_profiles').upsert(profile,{onConflict:'id'}).select().single();
+ if(error)return alert('Could not save teacher profile: '+error.message);
+ teacherCloudProfile=data; document.getElementById('profileMessage').textContent='Teacher profile saved securely to the cloud database.'; alert('Teacher profile saved successfully.');
+}
+async function changeAwardPinCloud(){
+ if(!authSession?.user?.id)return alert('Please sign in first.');
+ const p=await loadTeacherProfile();
+ openModal('Change Teacher Award PIN',`<div class="notice">Your Award Point PIN is protected by your teacher account. Use a 4–6 digit PIN.</div><div class="formrow"><label>Current PIN ${p?.award_pin_hash?'':'(not set)'}</label><input id="cloudOldPin" type="password" inputmode="numeric" maxlength="6"></div><div class="formrow"><label>New PIN</label><input id="cloudNewPin" type="password" inputmode="numeric" maxlength="6"></div><div class="formrow"><label>Confirm New PIN</label><input id="cloudConfirmPin" type="password" inputmode="numeric" maxlength="6"></div>`,async()=>{
+   const old=document.getElementById('cloudOldPin').value.trim(),n=document.getElementById('cloudNewPin').value.trim(),c=document.getElementById('cloudConfirmPin').value.trim();
+   if(!/^\d{4,6}$/.test(n))return alert('New PIN must contain 4–6 digits.');
+   if(n!==c)return alert('New PIN entries do not match.');
+   if(p?.award_pin_hash){const oldHash=await sha256Hex(old);if(oldHash!==p.award_pin_hash)return alert('Current PIN is incorrect.');}
+   const newHash=await sha256Hex(n);
+   const {error}=await supabaseClient.from('teacher_profiles').upsert({id:authSession.user.id,email:authSession.user.email,award_pin_hash:newHash},{onConflict:'id'});
+   if(error)return alert('Could not update Award PIN: '+error.message);
+   data.awardLocked=true; awardLocked=true; save(); renderAwardLock(); closeModal(); alert('Award Point PIN changed successfully. Award Points is now locked.');
+ });
+}
+async function signOutTeacher(){
+ const {error}=await supabaseClient.auth.signOut();
+ if(error)return alert(error.message);
+ authSession=null; teacherCloudProfile=null; showAuthRequired(); showTab('account');
+}
+supabaseClient.auth.onAuthStateChange((_event,session)=>{authSession=session; setTimeout(()=>initTeacherAccount(),0);});
 
 function syncAwardClass(){const a=document.getElementById('awardClassSelect');if(a)a.value=data.currentClass;renderAwardStudents()}
 function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='temmy-smart-classroom-v4-data.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 renderAll();
 resetAwardAutoLock();
+setTimeout(()=>{ if(authConfigured()) initTeacherAccount(); else { const b=document.getElementById('authStatusBox'); if(b)b.innerHTML='<strong>⚠️ Supabase key required.</strong><br>Paste the TEST project publishable key into the V8.3 configuration block before deploying.'; } },300);
 ['click','keydown','touchstart'].forEach(evt=>document.addEventListener(evt,()=>{if(!data.awardLocked&&document.getElementById('award')&&!document.getElementById('award').classList.contains('hidden'))resetAwardAutoLock();},{passive:true}));
 </script>
 </body>
 </html>
+S
