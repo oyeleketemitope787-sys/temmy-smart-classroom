@@ -787,7 +787,7 @@ async function sha256Hex(value){
  const digest=await crypto.subtle.digest('SHA-256',bytes);
  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function authConfigured(){return SUPABASE_PUBLISHABLE_KEY && !SUPABASE_PUBLISHABLE_KEY.includes('sb_publishable_EKVC5DHPb6oZu63ulxj-pQ_hEwd4bZv');}
+function authConfigured(){return SUPABASE_PUBLISHABLE_KEY && !SUPABASE_PUBLISHABLE_KEY.includes('PASTE_TEST_PROJECT_PUBLISHABLE_KEY_HERE');}
 function showAuthRequired(){
  const box=document.getElementById('authStatusBox');
  if(!box)return;
