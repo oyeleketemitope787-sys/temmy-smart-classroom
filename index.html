@@ -32,7 +32,7 @@ let passwordFlowActive=false;
 </script>
 </head>
 <body>
-<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.5.1 CLOUD CLASSES & STUDENTS</div></header>
+<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.5.2 CLOUD CLASSES & STUDENTS</div></header>
 <div class="wrap">
 <nav class="nav">
 <button id="studentsTab" class="active" onclick="showTab('students')">ðŸ§‘â€ðŸŽ“ Students</button>
@@ -238,9 +238,9 @@ async function loadCloudClasses(){
  if(error){cloudLoading=false;showCloudStatus('Cloud classes could not be loaded: '+error.message,true);return;}
  const mapped=[];
  for(const c of (rows||[])){
-  const {data:students,error:se}=await supabaseClient.from('students').select('*').eq('class_id',c.id).order('name');
+  const {data:students,error:se}=await supabaseClient.from('students').select('*').eq('class_id',c.id).order('first_name');
   if(se){cloudLoading=false;showCloudStatus('Class loaded, but students could not be loaded: '+se.message,true);return;}
-  mapped.push({id:c.id,name:c.name,description:c.description||'',students:(students||[]).filter(x=>x.active!==false).map(x=>({id:x.id,name:String(x.name||'Unnamed'),points:Number(x.points)||0,cloud:true}))});
+  mapped.push({id:c.id,name:c.name,description:c.description||'',students:(students||[]).filter(x=>x.active!==false).map(x=>({id:x.id,name:[x.first_name,x.last_name].filter(Boolean).join(' ').trim()||'Unnamed',first_name:x.first_name||'',last_name:x.last_name||'',student_code_hint:x.student_code_hint||'',points:0,cloud:true}))});
  }
  cloudClasses=mapped;
  data.classes={};
@@ -252,11 +252,13 @@ function showCloudStatus(msg,isError){const el=document.getElementById('cloudSta
 async function openAddStudent(){
  if(!authSession)return showTab('account');
  const cls=current(); if(!cls||!cls.id)return alert('Create or select a cloud class first.');
- openModal('Add Student',`<div class="formrow"><label>Student name</label><input id="studentName" placeholder="Full name" autofocus></div><div class="notice">This student will be saved to the selected cloud class.</div>`,async()=>{
-  const name=document.getElementById('studentName').value.trim();
-  if(!name)return alert('Please enter a student name.');
+ openModal('Add Student',`<div class="formrow"><label>First name</label><input id="studentFirstName" placeholder="First name" autofocus></div><div class="formrow"><label>Last name</label><input id="studentLastName" placeholder="Last name"></div><div class="notice">This student will be saved to the selected cloud class. A secure student login code will be added later.</div>`,async()=>{
+  const first=document.getElementById('studentFirstName').value.trim();
+  const last=document.getElementById('studentLastName').value.trim();
+  const name=[first,last].filter(Boolean).join(' ');
+  if(!first)return alert('Please enter the student first name.');
   if(cls.students.some(s=>s.name.toLowerCase()===name.toLowerCase()))return alert('That student is already in this class.');
-  const {error}=await supabaseClient.from('students').insert({class_id:cls.id,name,active:true});
+  const {error}=await supabaseClient.from('students').insert({class_id:cls.id,first_name:first,last_name:last,active:true});
   if(error)return alert('Could not add student: '+error.message);
   closeModal();await loadCloudClasses();showTab('students');
  });
