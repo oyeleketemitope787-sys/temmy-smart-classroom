@@ -32,7 +32,7 @@ let passwordFlowActive=false;
 </script>
 </head>
 <body>
-<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.5.2 CLOUD CLASSES & STUDENTS</div></header>
+<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.5.3 CLOUD AWARD POINTS</div></header>
 <div class="wrap">
 <nav class="nav">
 <button id="studentsTab" class="active" onclick="showTab('students')">ðŸ§‘â€ðŸŽ“ Students</button>
@@ -196,10 +196,131 @@ function setScope(next){scope=next;selectedIds=[];['Individual','Multiple','All'
 function renderAwardStudents(){const cls=current();if(!cls)return;let arr=[...cls.students];const q=(document.getElementById('studentSearch')?.value||'').toLowerCase();if(q)arr=arr.filter(s=>s.name.toLowerCase().includes(q));const allIds=cls.students.map(s=>s.id);if(scope==='all')selectedIds=[...allIds];if(scope==='individual'&&selectedIds.length>1)selectedIds=[selectedIds[0]];document.getElementById('selectionInfo').textContent=scope==='all'?`All ${cls.students.length} students selected`:scope==='individual'?`${selectedIds.length?1:0} student selected`:`${selectedIds.length} students selected`;document.getElementById('awardStudents').innerHTML=arr.length?arr.map(s=>`<label class="student-row"><input class="check" type="checkbox" ${selectedIds.includes(s.id)?'checked':''} ${scope==='all'?'disabled':''} onchange="toggleStudent('${s.id}')"><span class="rank">#${cls.students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points}</strong></label>`).join(''):`<div class="empty">No matching students.</div>`}
 function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents()}
 function getSelected(){const cls=current();return cls.students.filter(s=>selectedIds.includes(s.id))}
-function applyAward(amount,reason){const targets=getSelected();if(!targets.length)return alert('Please select at least one student.');const deltas=targets.map(s=>({studentId:s.id,name:s.name,before:s.points,after:Math.max(0,s.points+amount),delta:Math.max(0,s.points+amount)-s.points}));deltas.forEach(d=>{const s=targets.find(x=>x.id===d.studentId);s.points=d.after});recordPointAction(reason,deltas);renderAll();alert(`${reason}: ${deltas.length} student${deltas.length===1?'':'s'} updated.`)}
-function applyCustom(sign){if(awardLocked){alert('Award Points is locked. Unlock it first.');return}const id=sign>0?'customPlus':'customMinus';const n=Math.floor(Number(document.getElementById(id).value));if(!Number.isFinite(n)||n<1)return alert('Enter a valid point amount.');applyAward(sign*n,sign>0?'Custom Positive Adjustment':'Custom Negative Adjustment')}
-function recordPointAction(reason,deltas){const action={id:Date.now(),date:now(),className:data.currentClass,reason,deltas};data.history.unshift(action);data.history=data.history.slice(0,200);deltas.forEach(d=>data.activity.unshift({id:'a_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:action.date,className:data.currentClass,studentId:d.studentId,student:d.name,type:'points',action:reason,delta:d.delta,before:d.before,after:d.after}));data.activity=data.activity.slice(0,1000);data.lastPointAction=action}
-function undoLastPointAction(){const a=data.lastPointAction;if(!a)return alert('There is no point action to undo.');if(!confirm(`Undo "${a.reason}" for ${a.deltas.length} student${a.deltas.length===1?'':'s'}?`))return;const cls=data.classes[a.className];if(!cls)return alert('The class no longer exists.');const stamp=now();a.deltas.forEach(d=>{const s=cls.students.find(x=>x.id===d.studentId);if(s){const before=s.points;s.points=d.before;const delta=s.points-before;data.activity.unshift({id:'a_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:stamp,className:a.className,studentId:s.id,student:s.name,type:'points',action:'Undo: '+a.reason,delta,before,after:s.points})}});data.activity=data.activity.slice(0,1000);data.history=data.history.filter(x=>x.id!==a.id);data.lastPointAction=data.history.find(x=>x.className===a.className)||null;renderAll();alert('Last point action has been undone and the reversal has been recorded in student history.')}
+async function applyAward(amount,reason){
+ if(awardLocked){alert('Award Points is locked. Unlock it first.');return;}
+ if(!authSession){alert('Please sign in as the teacher first.');return;}
+ const cls=current();
+ if(!cls||!cls.id){alert('Please select a cloud class first.');return;}
+
+ const targets=getSelected();
+ if(!targets.length)return alert('Please select at least one student.');
+
+ const deltas=targets.map(s=>({
+   studentId:s.id,
+   name:s.name,
+   before:Number(s.points)||0,
+   after:Math.max(0,(Number(s.points)||0)+amount),
+   delta:Math.max(0,(Number(s.points)||0)+amount)-(Number(s.points)||0)
+ })).filter(d=>d.delta!==0);
+
+ if(!deltas.length)return alert('No points were changed. The selected students are already at 0 points.');
+
+ const stamp=new Date().toISOString();
+ const rows=deltas.map(d=>({
+   student_id:d.studentId,
+   teacher_id:authSession.user.id,
+   points:d.delta,
+   action_name:reason,
+   action_type:amount>0?'positive':'negative',
+   reason:reason,
+   source:'teacher',
+   created_at:stamp
+ }));
+
+ const {error}=await supabaseClient.from('point_transactions').insert(rows);
+ if(error)return alert('Could not save points to Supabase: '+error.message);
+
+ deltas.forEach(d=>{
+   const s=targets.find(x=>x.id===d.studentId);
+   if(s)s.points=d.after;
+ });
+ recordPointAction(reason,deltas,stamp);
+ await loadCloudClasses();
+ alert(`${reason}: ${deltas.length} student${deltas.length===1?'':'s'} updated in the cloud.`);
+}
+
+function applyCustom(sign){
+ if(awardLocked){alert('Award Points is locked. Unlock it first.');return}
+ const id=sign>0?'customPlus':'customMinus';
+ const n=Math.floor(Number(document.getElementById(id).value));
+ if(!Number.isFinite(n)||n<1)return alert('Enter a valid point amount.');
+ applyAward(sign*n,sign>0?'Custom Positive Adjustment':'Custom Negative Adjustment');
+}
+
+function recordPointAction(reason,deltas,stamp){
+ const action={id:Date.now(),date:stamp||new Date().toISOString(),className:data.currentClass,reason,deltas};
+ data.history.unshift(action);
+ data.history=data.history.slice(0,200);
+ deltas.forEach(d=>data.activity.unshift({
+   id:'a_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),
+   date:action.date,
+   className:data.currentClass,
+   studentId:d.studentId,
+   student:d.name,
+   type:'points',
+   action:reason,
+   delta:d.delta,
+   before:d.before,
+   after:d.after
+ }));
+ data.activity=data.activity.slice(0,1000);
+ data.lastPointAction=action;
+}
+
+async function undoLastPointAction(){
+ if(awardLocked){alert('Award Points is locked. Unlock it first.');return;}
+ if(!authSession){alert('Please sign in as the teacher first.');return;}
+
+ const a=data.lastPointAction;
+ if(!a)return alert('There is no point action to undo.');
+ if(!confirm(`Undo "${a.reason}" for ${a.deltas.length} student${a.deltas.length===1?'':'s'}?`))return;
+
+ const cls=data.classes[a.className];
+ if(!cls||!cls.id)return alert('The cloud class is no longer available.');
+
+ const reversible=a.deltas.filter(d=>Number(d.delta)!==0);
+ if(!reversible.length)return alert('There is no cloud point change to undo.');
+
+ const stamp=new Date().toISOString();
+ const rows=reversible.map(d=>({
+   student_id:d.studentId,
+   teacher_id:authSession.user.id,
+   points:-Number(d.delta),
+   action_name:'Undo: '+a.reason,
+   action_type:'undo',
+   reason:'Undo: '+a.reason,
+   source:'teacher',
+   created_at:stamp
+ }));
+
+ const {error}=await supabaseClient.from('point_transactions').insert(rows);
+ if(error)return alert('Could not save the undo to Supabase: '+error.message);
+
+ reversible.forEach(d=>{
+   const s=cls.students.find(x=>x.id===d.studentId);
+   if(s)s.points=d.before;
+   data.activity.unshift({
+     id:'a_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),
+     date:stamp,
+     className:a.className,
+     studentId:d.studentId,
+     student:d.name,
+     type:'points',
+     action:'Undo: '+a.reason,
+     delta:-Number(d.delta),
+     before:d.after,
+     after:d.before
+   });
+ });
+
+ data.activity=data.activity.slice(0,1000);
+ data.history=data.history.filter(x=>x.id!==a.id);
+ data.lastPointAction=data.history.find(x=>x.className===a.className)||null;
+
+ await loadCloudClasses();
+ alert('Last point action has been undone in the cloud and the reversal has been recorded.');
+}
+
 function renderHistory(){const box=document.getElementById('recentHistory'),list=data.history.filter(h=>h.className===data.currentClass).slice(0,12);const last=data.lastPointAction;if(last&&last.className===data.currentClass)document.getElementById('lastActionBox').innerHTML=`<strong>${esc(last.reason)}</strong><br>${last.deltas.length} student${last.deltas.length===1?'':'s'} â€¢ ${esc(last.date)}<br><span class="small">${last.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</span>`;else document.getElementById('lastActionBox').textContent='No point action recorded for this class.';box.innerHTML=list.length?list.map(h=>`<div style="padding:9px 0;border-bottom:1px solid #edf0f5"><strong>${esc(h.reason)}</strong> <span class="small">â€¢ ${esc(h.date)}</span><div class="small">${h.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</div></div>`).join(''):'<div class="empty">No recent activity.</div>'}
 function openModal(title,body,fn,buttonText='Save'){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalSave').textContent=buttonText;document.getElementById('modalSave').onclick=fn;document.getElementById('modal').classList.remove('hidden')}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
@@ -234,19 +355,48 @@ function selectClass(name){data.currentClass=name;selectedIds=[];renderAll();sho
 async function loadCloudClasses(){
  if(!authSession)return;
  cloudLoading=true;renderClasses();
+
  const {data:rows,error}=await supabaseClient.from('classes').select('*').eq('teacher_id',authSession.user.id).eq('active',true).order('name');
  if(error){cloudLoading=false;showCloudStatus('Cloud classes could not be loaded: '+error.message,true);return;}
+
+ const {data:txRows,error:txError}=await supabaseClient.from('point_transactions').select('student_id,points,created_at,action_name,action_type,reason,source').eq('teacher_id',authSession.user.id).order('created_at',{ascending:false});
+ if(txError){cloudLoading=false;showCloudStatus('Classes loaded, but cloud points could not be loaded: '+txError.message,true);return;}
+
+ const totals={};
+ (txRows||[]).forEach(t=>{
+   totals[t.student_id]=(totals[t.student_id]||0)+(Number(t.points)||0);
+ });
+
  const mapped=[];
  for(const c of (rows||[])){
   const {data:students,error:se}=await supabaseClient.from('students').select('*').eq('class_id',c.id).order('first_name');
   if(se){cloudLoading=false;showCloudStatus('Class loaded, but students could not be loaded: '+se.message,true);return;}
-  mapped.push({id:c.id,name:c.name,description:c.description||'',students:(students||[]).filter(x=>x.active!==false).map(x=>({id:x.id,name:[x.first_name,x.last_name].filter(Boolean).join(' ').trim()||'Unnamed',first_name:x.first_name||'',last_name:x.last_name||'',student_code_hint:x.student_code_hint||'',points:0,cloud:true}))});
+  mapped.push({
+   id:c.id,
+   name:c.name,
+   description:c.description||'',
+   students:(students||[]).filter(x=>x.active!==false).map(x=>({
+     id:x.id,
+     name:[x.first_name,x.last_name].filter(Boolean).join(' ').trim()||'Unnamed',
+     first_name:x.first_name||'',
+     last_name:x.last_name||'',
+     student_code_hint:x.student_code_hint||'',
+     points:Math.max(0,totals[x.id]||0),
+     cloud:true
+   }))
+  });
  }
+
  cloudClasses=mapped;
  data.classes={};
  mapped.forEach(c=>{data.classes[c.name]={id:c.id,students:c.students}});
- if(!mapped.length)data.currentClass=''; else if(!data.classes[data.currentClass])data.currentClass=mapped[0].name;
- cloudLoading=false;cloudReady=true;showCloudStatus('Cloud classes connected. Your classes and students are being loaded from Supabase.',false);renderAll();
+ if(!mapped.length)data.currentClass='';
+ else if(!data.classes[data.currentClass])data.currentClass=mapped[0].name;
+
+ cloudLoading=false;
+ cloudReady=true;
+ showCloudStatus('Cloud classes and point balances connected. Points are loaded from Supabase.',false);
+ renderAll();
 }
 function showCloudStatus(msg,isError){const el=document.getElementById('cloudStatus');if(!el)return;el.style.display='block';el.textContent=msg;el.style.background=isError?'#fff0f0':'#eef7ff';el.style.borderColor=isError?'#e6bcbc':'#c8def4';}
 async function openAddStudent(){
