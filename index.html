@@ -34,7 +34,7 @@ let passwordFlowActive=false;
 </script>
 </head>
 <body>
-<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.7 CLOUD ACTIVITIES â€¢ FOUNDATION</div></header>
+<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.7.1 CLOUD ACTIVITIES â€¢ SCHEMA ALIGNED</div></header>
 <div class="wrap">
 <nav class="nav">
 <button id="studentsTab" class="active" onclick="showTab('students')">ðŸ§‘â€ðŸŽ“ Students</button>
@@ -413,7 +413,7 @@ function manageGroupMembers(id){const g=groupById(id);if(!g)return;const cls=clo
 async function loadCloudActivities(){
  if(!authSession)return;
  const classId=document.getElementById('activityClassSelect')?.value||current()?.id||'';
- let q=supabaseClient.from('class_activities').select('*').eq('created_by',authSession.user.id).order('created_at',{ascending:false});
+ let q=supabaseClient.from('class_activities').select('*').eq('teacher_id',authSession.user.id).order('created_at',{ascending:false});
  if(classId)q=q.eq('class_id',classId);
  const {data:rows,error}=await q;
  if(error){
@@ -421,7 +421,7 @@ async function loadCloudActivities(){
    if(el)el.innerHTML='<div class="notice" style="background:#fff0f0;border-color:#e6bcbc"><strong>Activities could not be loaded.</strong><br>'+esc(error.message)+'</div>';
    return;
  }
- cloudActivities=(rows||[]).map(a=>({id:a.id,classId:a.class_id,type:a.type,title:a.title,instructions:a.instructions||'',points:Number(a.points)||0,status:a.status||'draft',createdBy:a.created_by,createdAt:a.created_at}));
+ cloudActivities=(rows||[]).map(a=>({id:a.id,classId:a.class_id,type:a.activity_type,title:a.title,instructions:a.description||'',points:Number(a.points)||0,status:a.status||'draft',createdBy:a.teacher_id,createdAt:a.created_at}));
  renderActivities();
 }
 function syncActivityClassSelect(){
@@ -456,16 +456,16 @@ function openCreateActivity(){
    const type=document.getElementById('activityType').value,title=document.getElementById('activityTitle').value.trim(),instructions=document.getElementById('activityInstructions').value.trim(),points=Math.floor(Number(document.getElementById('activityPoints').value));
    if(!title)return alert('Please enter an activity title.');
    if(!Number.isFinite(points)||points<1)return alert('Maximum points must be at least 1.');
-   const payload={class_id:classId,type,title,instructions:instructions||null,points,status:'draft',created_by:authSession.user.id};
+   const payload={class_id:classId,activity_type:type,title,description:instructions||null,points,status:'draft',teacher_id:authSession.user.id,active:true};
    const {error}=await supabaseClient.from('class_activities').insert(payload);
    if(error)return alert('Could not create activity: '+error.message);
    closeModal();await loadCloudActivities();alert('âœ“ Activity "'+title+'" created successfully.');
  });
 }
 function findActivity(id){return cloudActivities.find(a=>a.id===id)||null}
-async function launchActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Launch "'+a.title+'"? Students will be able to receive the activity when the student portal is connected.'))return;const {error}=await supabaseClient.from('class_activities').update({status:'live'}).eq('id',a.id).eq('created_by',authSession.user.id);if(error)return alert('Could not launch activity: '+error.message);await loadCloudActivities();alert('âœ“ "'+a.title+'" is now LIVE.')}
-async function closeActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Close "'+a.title+'"?'))return;const {error}=await supabaseClient.from('class_activities').update({status:'closed'}).eq('id',a.id).eq('created_by',authSession.user.id);if(error)return alert('Could not close activity: '+error.message);await loadCloudActivities();alert('âœ“ "'+a.title+'" is now closed.')}
-async function deleteActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Delete "'+a.title+'"? This removes the draft activity from the cloud.'))return;const {error}=await supabaseClient.from('class_activities').delete().eq('id',a.id).eq('created_by',authSession.user.id);if(error)return alert('Could not delete activity: '+error.message);await loadCloudActivities();alert('âœ“ Activity deleted.')}
+async function launchActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Launch "'+a.title+'"? Students will be able to receive the activity when the student portal is connected.'))return;const {error}=await supabaseClient.from('class_activities').update({status:'live'}).eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert('Could not launch activity: '+error.message);await loadCloudActivities();alert('âœ“ "'+a.title+'" is now LIVE.')}
+async function closeActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Close "'+a.title+'"?'))return;const {error}=await supabaseClient.from('class_activities').update({status:'closed'}).eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert('Could not close activity: '+error.message);await loadCloudActivities();alert('âœ“ "'+a.title+'" is now closed.')}
+async function deleteActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Delete "'+a.title+'"? This removes the draft activity from the cloud.'))return;const {error}=await supabaseClient.from('class_activities').delete().eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert('Could not delete activity: '+error.message);await loadCloudActivities();alert('âœ“ Activity deleted.')}
 function viewActivityDetails(id){const a=findActivity(id);if(!a)return;const cls=cloudClasses.find(c=>c.id===a.classId);openModal(activityTypeLabel(a.type)+' â€” '+a.title,'<div class="notice"><strong>Status:</strong> '+activityStatusLabel(a.status)+'<br><strong>Class:</strong> '+esc(cls?.name||'')+'<br><strong>Maximum points:</strong> '+a.points+'</div><div class="formrow"><label>Instructions</label><div class="card" style="box-shadow:none;border:1px solid #e1e6ee">'+esc(a.instructions||'No instructions provided.')+'</div></div><div class="small">Created: '+esc(a.createdAt||'')+'</div>',null,'Close')}
 
 function renderHistory(){const box=document.getElementById('recentHistory'),list=data.history.filter(h=>h.className===data.currentClass).slice(0,12);const last=data.lastPointAction;if(last&&last.className===data.currentClass)document.getElementById('lastActionBox').innerHTML=`<strong>${esc(last.reason)}</strong><br>${last.deltas.length} student${last.deltas.length===1?'':'s'} â€¢ ${esc(last.date)}<br><span class="small">${last.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</span>`;else document.getElementById('lastActionBox').textContent='No point action recorded for this class.';box.innerHTML=list.length?list.map(h=>`<div style="padding:9px 0;border-bottom:1px solid #edf0f5"><strong>${esc(h.reason)}</strong> <span class="small">â€¢ ${esc(h.date)}</span><div class="small">${h.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</div></div>`).join(''):'<div class="empty">No recent activity.</div>'}
