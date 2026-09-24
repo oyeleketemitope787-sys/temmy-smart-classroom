@@ -28,16 +28,18 @@ let authSession=null;
 let cloudReady=false;
 let cloudGroups=[];
 let cloudClasses=[];
+let cloudActivities=[];
 let cloudLoading=false;
 let passwordFlowActive=false;
 </script>
 </head>
 <body>
-<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.6.1.1 CLOUD GROUPS â€¢ SCHEMA FIXED</div></header>
+<header class="top"><h1>â­ Temmy Smart Classroom</h1><p>Smart Learning â€¢ Smart Behaviour â€¢ Smart Rewards</p><div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD â€¢ V8.7 CLOUD ACTIVITIES â€¢ FOUNDATION</div></header>
 <div class="wrap">
 <nav class="nav">
 <button id="studentsTab" class="active" onclick="showTab('students')">ðŸ§‘â€ðŸŽ“ Students</button>
 <button id="classesTab" onclick="showTab('classes')">ðŸ« My Classes</button><button id="groupsTab" onclick="showTab('groups')">ðŸ‘¥ Groups</button>
+<button id="activitiesTab" onclick="showTab('activities')">ðŸ“š Activities</button>
 <button id="awardTab" onclick="showTab('award')">â­ Award Points</button>
 <button id="marketTab" onclick="showTab('market')">ðŸ›’ Marketplace</button>
 <button id="purchasesTab" onclick="showTab('purchases')">ðŸ“œ Purchases</button>
@@ -78,6 +80,20 @@ let passwordFlowActive=false;
 <div id="groupsList"></div>
 </div>
 </section>
+<section id="activities" class="hidden">
+<div class="card">
+<div class="summary-title">
+<div><h2>ðŸ“š Learning Activities</h2><div class="small">Create and manage cloud Live Tasks, Live Assignments and Live Quizzes for your classes.</div></div>
+<button class="btn primary" onclick="openCreateActivity()">âž• Create Activity</button>
+</div>
+<div class="controls" style="margin-top:16px">
+<select id="activityClassSelect" class="select"></select>
+<button class="btn" onclick="refreshActivities()">ðŸ”„ Refresh</button>
+</div>
+<div id="activitiesList"></div>
+</div>
+</section>
+
 <section id="award" class="hidden">
 <div class="controls"><select id="awardClassSelect" class="select"></select><button class="btn" onclick="showTab('students')">â† Students</button></div>
 <div class="grid2">
@@ -178,19 +194,20 @@ function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
 function current(){return data.classes[data.currentClass]||null}
 function now(){return new Date().toLocaleString()}
 function showTab(tab){
-const tabs=['students','classes','groups','award','market','purchases','reports','history','portal','account','messages'];
+const tabs=['students','classes','groups','activities','award','market','purchases','reports','history','portal','account','messages'];
 tabs.forEach(t=>{const el=document.getElementById(t);if(el)el.classList.toggle('hidden',t!==tab);});
-const buttons=['studentsTab','classesTab','groupsTab','awardTab','marketTab','purchasesTab','reportsTab','historyTab','portalTab','accountTab','messagesTab'];
+const buttons=['studentsTab','classesTab','groupsTab','activitiesTab','awardTab','marketTab','purchasesTab','reportsTab','historyTab','portalTab','accountTab','messagesTab'];
 buttons.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active');});
 const active=document.getElementById(tab+'Tab');if(active)active.classList.add('active');
 if(tab==='award')syncAwardClass();
 if(tab==='groups')renderGroups();
+if(tab==='activities')loadCloudActivities();
 if(tab==='reports')renderReports();
 if(tab==='history')syncHistorySelectors();
 if(tab==='portal')syncPortalSelectors();
 }
 function renderAll(){
-renderClassSelects();renderStudents();renderClasses();renderGroups();renderAwardStudents();renderAwardLock();renderHistory();renderMarket();renderPurchases();renderReports();syncHistorySelectors();syncPortalSelectors();save();
+renderClassSelects();renderStudents();renderClasses();renderGroups();renderActivities();renderAwardStudents();renderAwardLock();renderHistory();renderMarket();renderPurchases();renderReports();syncHistorySelectors();syncPortalSelectors();save();
 }
 function renderClassSelects(){const opts=Object.keys(data.classes).map(c=>`<option value="${esc(c)}" ${c===data.currentClass?'selected':''}>${esc(c)}</option>`).join('');const a=document.getElementById('classSelect');a.innerHTML=opts;a.onchange=()=>{data.currentClass=a.value;selectedIds=[];renderAll()};const b=document.getElementById('awardClassSelect');b.innerHTML=opts;b.value=data.currentClass;b.onchange=()=>{data.currentClass=b.value;selectedIds=[];renderAll()};const r=document.getElementById('reportClass');r.innerHTML=opts;r.value=data.currentClass;const h=document.getElementById('historyClass');if(h){h.innerHTML=opts;h.value=data.currentClass;h.onchange=()=>syncHistorySelectors()};const pc=document.getElementById('portalClass');if(pc){pc.innerHTML=opts;pc.value=data.currentClass;pc.onchange=()=>syncPortalSelectors()}}
 function renderStudents(){const cls=current();if(!cls)return;document.getElementById('classTitle').textContent='Class '+data.currentClass;const sorted=[...cls.students].sort((a,b)=>b.points-a.points||a.name.localeCompare(b.name));document.getElementById('studentRows').innerHTML=sorted.length?sorted.map((s,i)=>{const status=s.points>=200?'ðŸ† Champion':s.points>=150?'ðŸ¥‡ Gold':s.points>=100?'ðŸ¥ˆ Silver':s.points>=50?'ðŸ¥‰ Bronze':'â€”';return `<tr><td>${i+1}</td><td><button class="btn" onclick="openStudentHistory('${esc(s.id)}')">${esc(s.name)}</button></td><td class="points">${s.points}</td><td>${status} <span class="menu-wrap"><button class="btn menu-btn" onclick="toggleMenu('studentMenu_${s.id}')">â‹®</button><span id="studentMenu_${s.id}" class="menu hidden"><button onclick="editStudent('${esc(s.id)}');closeAllMenus()">âœï¸ Edit Student</button><button class="menu-danger" onclick="deleteStudent('${esc(s.id)}');closeAllMenus()">ðŸ—‘ï¸ Delete Student</button></span></span></td></tr>`}).join(''):`<tr><td colspan="4" class="empty">No students yet. Add your first student.</td></tr>`;const total=cls.students.reduce((a,s)=>a+s.points,0);document.getElementById('classPoints').textContent=total;document.getElementById('studentCount').textContent=cls.students.length;document.getElementById('classAverage').textContent=cls.students.length?(total/cls.students.length).toFixed(1):'0'}
@@ -392,6 +409,65 @@ function groupById(id){return cloudGroups.find(g=>g.id===id)||null}
 function editGroup(id){const g=groupById(id);if(!g)return;openModal('Edit Student Group',`<div class="formrow"><label>Group name</label><input id="editGroupName" value="${esc(g.name)}"></div><div class="formrow"><label>Description</label><input id="editGroupDescription" value="${esc(g.description||'')}"></div>`,async()=>{const name=document.getElementById('editGroupName').value.trim();const description=document.getElementById('editGroupDescription').value.trim();if(!name)return alert('Please enter a group name.');const {error}=await supabaseClient.from('groups').update({name,description:description||null}).eq('id',g.id);if(error)return alert('Could not update group: '+error.message);closeModal();await loadCloudGroups();alert('âœ“ Group updated successfully.');});}
 async function deleteGroup(id){const g=groupById(id);if(!g)return;if(!confirm(`Delete group "${g.name}"? Student records will remain in the class.`))return;const {error}=await supabaseClient.from('groups').delete().eq('id',g.id);if(error)return alert('Could not delete group: '+error.message);await loadCloudGroups();alert(`âœ“ Group "${g.name}" deleted successfully.`);}
 function manageGroupMembers(id){const g=groupById(id);if(!g)return;const cls=cloudClasses.find(c=>c.id===g.classId);if(!cls)return;const body=`<div class="small" style="margin-bottom:10px">Select the students who belong to <strong>${esc(g.name)}</strong>. A student may belong to more than one group.</div><div class="member-check-list">${cls.students.map(s=>`<label class="member-check"><input type="checkbox" class="group-member-check" value="${esc(s.id)}" ${g.members.includes(s.id)?'checked':''}> <span>${esc(s.name)}</span></label>`).join('')}</div>`;openModal('Manage Group Members',body,async()=>{const ids=[...document.querySelectorAll('.group-member-check:checked')].map(x=>x.value);const {error:de}=await supabaseClient.from('group_members').delete().eq('group_id',g.id);if(de)return alert('Could not update group members: '+de.message);if(ids.length){const rows=ids.map(student_id=>({group_id:g.id,student_id}));const {error:ie}=await supabaseClient.from('group_members').insert(rows);if(ie)return alert('Could not save group members: '+ie.message);}closeModal();await loadCloudGroups();alert(`âœ“ ${ids.length} student${ids.length===1?'':'s'} assigned to "${g.name}".`);});}
+
+async function loadCloudActivities(){
+ if(!authSession)return;
+ const classId=document.getElementById('activityClassSelect')?.value||current()?.id||'';
+ let q=supabaseClient.from('class_activities').select('*').eq('created_by',authSession.user.id).order('created_at',{ascending:false});
+ if(classId)q=q.eq('class_id',classId);
+ const {data:rows,error}=await q;
+ if(error){
+   const el=document.getElementById('activitiesList');
+   if(el)el.innerHTML='<div class="notice" style="background:#fff0f0;border-color:#e6bcbc"><strong>Activities could not be loaded.</strong><br>'+esc(error.message)+'</div>';
+   return;
+ }
+ cloudActivities=(rows||[]).map(a=>({id:a.id,classId:a.class_id,type:a.type,title:a.title,instructions:a.instructions||'',points:Number(a.points)||0,status:a.status||'draft',createdBy:a.created_by,createdAt:a.created_at}));
+ renderActivities();
+}
+function syncActivityClassSelect(){
+ const el=document.getElementById('activityClassSelect');if(!el)return;
+ const previous=el.value;
+ el.innerHTML=cloudClasses.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');
+ const wanted=cloudClasses.some(c=>c.id===previous)?previous:(current()?.id||cloudClasses[0]?.id||'');
+ if(wanted)el.value=wanted;
+ el.onchange=()=>loadCloudActivities();
+}
+function activityTypeLabel(type){return type==='live_quiz'?'ðŸ§  Live Quiz':type==='live_assignment'?'ðŸ“š Live Assignment':'ðŸ“ Live Task'}
+function activityStatusLabel(status){return status==='live'?'LIVE':status==='closed'?'CLOSED':'DRAFT'}
+function renderActivities(){
+ const el=document.getElementById('activitiesList');if(!el)return;
+ if(!authSession){el.innerHTML='<div class="notice">Sign in as a teacher to manage cloud activities.</div>';return;}
+ if(!cloudClasses.length){el.innerHTML='<div class="group-empty">Create a class first before creating an activity.</div>';return;}
+ syncActivityClassSelect();
+ const classId=document.getElementById('activityClassSelect')?.value||current()?.id;
+ const rows=cloudActivities.filter(a=>a.classId===classId);
+ if(!rows.length){el.innerHTML='<div class="group-empty"><strong>No activities yet.</strong><br>Create your first Live Task, Live Assignment or Live Quiz.</div>';return;}
+ el.innerHTML='<div class="group-grid">'+rows.map(a=>{
+   const tag=a.status==='live'?'plus':a.status==='closed'?'minus':'';
+   return '<div class="group-card"><div class="summary-title"><div><h3>'+activityTypeLabel(a.type)+'</h3><div class="small">'+esc(a.title)+'</div></div><span class="tag '+tag+'">'+activityStatusLabel(a.status)+'</span></div><div class="small" style="margin-top:10px">'+esc(a.instructions||'No instructions provided.')+'</div><div style="margin-top:10px"><strong>'+a.points+' points</strong> <span class="small">available</span></div><div class="group-actions" style="margin-top:14px">'+(a.status==='draft'?'<button class="btn primary" onclick="launchActivity(\''+esc(a.id)+'\')">â–¶ Launch</button>':'')+(a.status==='live'?'<button class="btn negative" onclick="closeActivity(\''+esc(a.id)+'\')">â–  Close</button>':'')+'<button class="btn" onclick="viewActivityDetails(\''+esc(a.id)+'\')">View</button>'+(a.status==='draft'?'<button class="btn danger" onclick="deleteActivity(\''+esc(a.id)+'\')">ðŸ—‘ï¸ Delete</button>':'')+'</div></div>';
+ }).join('')+'</div>';
+}
+function refreshActivities(){loadCloudActivities()}
+function openCreateActivity(){
+ if(!authSession)return showTab('account');
+ const classId=document.getElementById('activityClassSelect')?.value||current()?.id;
+ const cls=cloudClasses.find(c=>c.id===classId);if(!cls)return alert('Please select a class first.');
+ openModal('Create Learning Activity','<div class="formrow"><label>Class</label><input value="'+esc(cls.name)+'" disabled></div><div class="formrow"><label>Activity type</label><select id="activityType"><option value="live_task">ðŸ“ Live Task</option><option value="live_assignment">ðŸ“š Live Assignment</option><option value="live_quiz">ðŸ§  Live Quiz</option></select></div><div class="formrow"><label>Title</label><input id="activityTitle" placeholder="e.g. Factors Challenge" autofocus></div><div class="formrow"><label>Instructions</label><textarea id="activityInstructions" rows="4" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px" placeholder="Tell students what they need to do."></textarea></div><div class="formrow"><label>Maximum points</label><input id="activityPoints" type="number" min="1" value="5"></div><div class="notice"><strong>Important:</strong> submitting an activity will not automatically award classroom points. The teacher will review and score the activity first.</div>',async()=>{
+   const type=document.getElementById('activityType').value,title=document.getElementById('activityTitle').value.trim(),instructions=document.getElementById('activityInstructions').value.trim(),points=Math.floor(Number(document.getElementById('activityPoints').value));
+   if(!title)return alert('Please enter an activity title.');
+   if(!Number.isFinite(points)||points<1)return alert('Maximum points must be at least 1.');
+   const payload={class_id:classId,type,title,instructions:instructions||null,points,status:'draft',created_by:authSession.user.id};
+   const {error}=await supabaseClient.from('class_activities').insert(payload);
+   if(error)return alert('Could not create activity: '+error.message);
+   closeModal();await loadCloudActivities();alert('âœ“ Activity "'+title+'" created successfully.');
+ });
+}
+function findActivity(id){return cloudActivities.find(a=>a.id===id)||null}
+async function launchActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Launch "'+a.title+'"? Students will be able to receive the activity when the student portal is connected.'))return;const {error}=await supabaseClient.from('class_activities').update({status:'live'}).eq('id',a.id).eq('created_by',authSession.user.id);if(error)return alert('Could not launch activity: '+error.message);await loadCloudActivities();alert('âœ“ "'+a.title+'" is now LIVE.')}
+async function closeActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Close "'+a.title+'"?'))return;const {error}=await supabaseClient.from('class_activities').update({status:'closed'}).eq('id',a.id).eq('created_by',authSession.user.id);if(error)return alert('Could not close activity: '+error.message);await loadCloudActivities();alert('âœ“ "'+a.title+'" is now closed.')}
+async function deleteActivity(id){const a=findActivity(id);if(!a)return;if(!confirm('Delete "'+a.title+'"? This removes the draft activity from the cloud.'))return;const {error}=await supabaseClient.from('class_activities').delete().eq('id',a.id).eq('created_by',authSession.user.id);if(error)return alert('Could not delete activity: '+error.message);await loadCloudActivities();alert('âœ“ Activity deleted.')}
+function viewActivityDetails(id){const a=findActivity(id);if(!a)return;const cls=cloudClasses.find(c=>c.id===a.classId);openModal(activityTypeLabel(a.type)+' â€” '+a.title,'<div class="notice"><strong>Status:</strong> '+activityStatusLabel(a.status)+'<br><strong>Class:</strong> '+esc(cls?.name||'')+'<br><strong>Maximum points:</strong> '+a.points+'</div><div class="formrow"><label>Instructions</label><div class="card" style="box-shadow:none;border:1px solid #e1e6ee">'+esc(a.instructions||'No instructions provided.')+'</div></div><div class="small">Created: '+esc(a.createdAt||'')+'</div>',null,'Close')}
+
 function renderHistory(){const box=document.getElementById('recentHistory'),list=data.history.filter(h=>h.className===data.currentClass).slice(0,12);const last=data.lastPointAction;if(last&&last.className===data.currentClass)document.getElementById('lastActionBox').innerHTML=`<strong>${esc(last.reason)}</strong><br>${last.deltas.length} student${last.deltas.length===1?'':'s'} â€¢ ${esc(last.date)}<br><span class="small">${last.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</span>`;else document.getElementById('lastActionBox').textContent='No point action recorded for this class.';box.innerHTML=list.length?list.map(h=>`<div style="padding:9px 0;border-bottom:1px solid #edf0f5"><strong>${esc(h.reason)}</strong> <span class="small">â€¢ ${esc(h.date)}</span><div class="small">${h.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</div></div>`).join(''):'<div class="empty">No recent activity.</div>'}
 function openModal(title,body,fn,buttonText='Save'){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalSave').textContent=buttonText;document.getElementById('modalSave').onclick=fn;document.getElementById('modal').classList.remove('hidden')}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
@@ -469,6 +545,7 @@ async function loadCloudClasses(){
  showCloudStatus('Cloud classes and point balances connected. Points are loaded from Supabase.',false);
  renderAll();
  await loadCloudGroups();
+ await loadCloudActivities();
 }
 function showCloudStatus(msg,isError){const el=document.getElementById('cloudStatus');if(!el)return;el.style.display='block';el.textContent=msg;el.style.background=isError?'#fff0f0':'#eef7ff';el.style.borderColor=isError?'#e6bcbc':'#c8def4';}
 async function openAddStudent(){
