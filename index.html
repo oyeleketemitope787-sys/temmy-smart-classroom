@@ -924,7 +924,7 @@ function renderPortal(){
     </div>
   </div>
 
-  <div id="studentHistoryList" style="margin-top:14px"></div>
+  <div id="studentPortalHistoryList" style="margin-top:14px"></div>
 </div>`;
   renderStudentPortalActivities();
   renderStudentPortalHistory();
@@ -962,9 +962,8 @@ async function loadStudentPortalHistory(){
   renderPortal();
 }
 function renderStudentPortalHistory(){
-  const list=document.getElementById('studentHistoryList');
+const list=document.getElementById('studentPortalHistoryList');
   if(!list)return;
-
   if(!studentPortalHistory.length){
     list.innerHTML='<div class="empty">No point history recorded yet.</div>';
     return;
