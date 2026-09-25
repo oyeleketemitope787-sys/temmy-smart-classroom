@@ -784,20 +784,73 @@ function renderStudentPortalActivities(){
 function findStudentActivity(id){return studentPortalActivities.find(a=>a.id===id)}
 
 function openStudentActivity(id){
-  const a=findStudentActivity(id);if(!a)return;
-  const submitted=!!a.record_id||a.record_status==='submitted';
-  openModal(submitted?'Your Submission':a.title,`<div class="notice"><strong>${activityTypeLabel(a.type)}</strong><br>${esc(a.instructions||'No instructions provided.')}<br><br><strong>Maximum points:</strong> ${Number(a.points)||0}</div>${submitted?`<div class="formrow"><label>Your submitted response</label><textarea id="studentActivityAnswer" rows="7" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px" readonly>${esc(a.answer||'')}</textarea></div><div class="notice">Your response has already been submitted. The teacher will review it before any classroom points are awarded.</div>`:`<div class="formrow"><label>Your response</label><textarea id="studentActivityAnswer" rows="7" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px" placeholder="Type your answer here..."></textarea></div><div class="notice"><strong>Important:</strong> submitting your response does not automatically award classroom points. Your teacher will review and score it first.</div>`}`,async()=>{
-    if(submitted){closeModal();return;}
-    const answer=document.getElementById('studentActivityAnswer')?.value.trim();
-    if(!answer)return alert('Please enter your response before submitting.');
-    const {data:result,error}=await supabaseClient.rpc('submit_student_activity',{p_access_code:studentPortalSession.accessCode,p_activity_id:a.id,p_answer:answer});
-    if(error)return alert('Could not submit activity: '+error.message);
-    closeModal();
-    await loadStudentPortalActivities();
-    alert('âœ“ Your response was submitted successfully.');
-  },submitted?'Close':'Submit Response');
-}
+  const a=findStudentActivity(id);
+  if(!a)return;
 
+  const submitted=!!a.record_id||a.record_status==='submitted'||a.record_status==='scored';
+  const scored=a.record_status==='scored'&&a.points_awarded!==null&&a.points_awarded!==undefined;
+
+  openModal(
+    submitted?'Your Submission':a.title,
+    `<div class="notice">
+      <strong>${activityTypeLabel(a.type)}</strong><br>
+      ${esc(a.instructions||'No instructions provided.')}<br><br>
+      <strong>Maximum points:</strong> ${Number(a.points)||0}
+    </div>
+    ${submitted?`
+      <div class="formrow">
+        <label>Your submitted response</label>
+        <textarea id="studentActivityAnswer" rows="7" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px" readonly>${esc(a.answer||'')}</textarea>
+      </div>
+
+      ${scored?`
+        <div class="notice">
+          <strong>Assessment Result</strong><br><br>
+          <strong>Score:</strong> ${Number(a.points_awarded)||0} / ${Number(a.points)||0}<br><br>
+          <strong>Teacher Feedback:</strong><br>
+          ${esc(a.notes||'No feedback provided.')}
+        </div>
+      `:`
+        <div class="notice">
+          Your response has been submitted. The teacher will review it before any classroom points are awarded.
+        </div>
+      `}
+    `:`
+      <div class="formrow">
+        <label>Your response</label>
+        <textarea id="studentActivityAnswer" rows="7" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="notice">
+        <strong>Important:</strong> submitting your response does not automatically award classroom points. Your teacher will review and score it first.
+      </div>
+    `}
+    `,
+    async()=>{
+      if(submitted){
+        closeModal();
+        return;
+      }
+
+      const answer=document.getElementById('studentActivityAnswer')?.value.trim();
+
+      if(!answer)return alert('Please enter your response before submitting.');
+
+      const {data:result,error}=await supabaseClient.rpc('submit_student_activity',{
+        p_access_code:studentPortalSession.accessCode,
+        p_activity_id:a.id,
+        p_answer:answer
+      });
+
+      if(error)return alert('Could not submit activity: '+error.message);
+
+      closeModal();
+      await loadStudentPortalActivities();
+      alert('✓ Your response was submitted successfully.');
+    },
+    submitted?'Close':'Submit Response'
+  );
+}
 function studentPortalLogout(){
   studentPortalSession=null;studentPortalActivities=[];
   const input=document.getElementById('studentAccessCode');if(input)input.value='';
