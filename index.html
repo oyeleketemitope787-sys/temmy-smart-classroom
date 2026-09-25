@@ -330,7 +330,7 @@ async function applyPunctuality(){
 
     for(const studentId of targets){
       const {error}=await supabaseClient.rpc('record_student_punctuality',{
-        p_student_id:studentId,
+       p_student_id:[studentId],
         p_class_id:cls.id,
         p_status:status.status,
         p_points:status.points,
