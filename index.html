@@ -329,7 +329,7 @@ async function applyPunctuality(){
     awardBusy=true;
 
     for(const studentId of targets){
-      const {error}=await supabase.rpc('record_student_punctuality',{
+      const {error}=await supabaseClient.rpc('record_student_punctuality',{
         p_student_id:studentId,
         p_class_id:cls.id,
         p_status:status.status,
