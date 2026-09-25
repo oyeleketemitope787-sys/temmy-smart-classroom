@@ -915,8 +915,19 @@ function renderPortal(){
 <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
       <div class="summary-title"><div><h3>ðŸ“š My Live Activities</h3><div class="small">Activities currently available for your class.</div></div><button class="btn" onclick="loadStudentPortalActivities()">ðŸ”„ Refresh</button></div>
       <div id="studentActivityList" style="margin-top:14px"></div>
-    </div>`;
+    </div>
+    <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+  <div class="summary-title">
+    <div>
+      <h3>My History</h3>
+      <div class="small">Your complete points and activity history.</div>
+    </div>
+  </div>
+
+  <div id="studentHistoryList" style="margin-top:14px"></div>
+</div>`;
   renderStudentPortalActivities();
+  renderStudentPortalHistory();
 }
 async function loadStudentPortalHistory(){
   if(!studentPortalSession){
@@ -950,7 +961,50 @@ async function loadStudentPortalHistory(){
   studentPortalHistory=rows||[];
   renderPortal();
 }
-async function studentPortalLogin(){
+function renderStudentPortalHistory(){
+  const list=document.getElementById('studentHistoryList');
+  if(!list)return;
+
+  if(!studentPortalHistory.length){
+    list.innerHTML='<div class="empty">No point history recorded yet.</div>';
+    return;
+  }
+
+  let balance=studentPortalHistory.reduce(
+    (sum,r)=>sum+(Number(r.points)||0),
+    0
+  );
+
+  list.innerHTML=`
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Activity</th>
+            <th>Type</th>
+            <th>Points</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${studentPortalHistory.map(r=>`
+            <tr>
+              <td>${esc(r.created_at||'')}</td>
+              <td>${esc(r.action_name||'')}</td>
+              <td>${esc(r.action_type||'')}</td>
+              <td>
+                <strong>${Number(r.points)>0?'+':''}${Number(r.points)||0}</strong>
+              </td>
+              <td>${esc(r.reason||'')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+  async function studentPortalLogin(){
   const input=document.getElementById('studentAccessCode');
   const msg=document.getElementById('studentPortalLoginMsg');
   const code=(input?.value||'').trim();
