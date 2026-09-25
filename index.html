@@ -276,7 +276,8 @@ function setPunctualityScope(next){
       : '0 students selected';
   }
 }
-  function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents()}
+
+  function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');if(info){const cls=current();info.textContent=scope==='all'?`All ${cls.students.length} students selected`:selectedIds.length?`${selectedIds.length} student${selectedIds.length===1?'':'s'} selected`:'Select students';}}
 function getSelected(){const cls=current();if(!cls)return[];const domIds=[...document.querySelectorAll('#awardStudents input.check:checked')].map(el=>el.dataset.studentId).filter(Boolean);if(domIds.length){selectedIds=[...new Set(domIds)];if(scope==='all')selectedIds=[...cls.students.map(s=>s.id)];}return cls.students.filter(s=>selectedIds.includes(s.id))}
 async function applyAward(amount,reason){
  if(awardLocked){alert('Award Points is locked. Unlock it first.');return;}
