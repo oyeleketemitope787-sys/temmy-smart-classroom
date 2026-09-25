@@ -756,6 +756,7 @@ async function studentPortalLogin(){
   const r=row[0];
   studentPortalSession={accessCode:code,student_id:r.student_id,class_id:r.class_id,class_name:r.class_name,first_name:r.first_name,last_name:r.last_name};
   if(msg)msg.textContent='Access verified successfully.';
+ renderPortal();
   await loadStudentPortalActivities();
 }
 
