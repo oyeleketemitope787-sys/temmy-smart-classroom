@@ -851,6 +851,7 @@ async function renderStudentHistory(){
 }
 let studentPortalSession=null;
 let studentPortalActivities=[];
+let studentPortalHistory=[];
 
 function syncPortalSelectors(){
   renderPortal();
@@ -865,19 +866,84 @@ function renderPortal(){
   }
   const s=studentPortalSession;
   const fullName=[s.first_name,s.last_name].filter(Boolean).join(' ')||'Student';
+    const totalPoints=studentPortalHistory.reduce((sum,r)=>sum+(Number(r.points)||0),0);
+  const level=totalPoints>=200?'Champion':totalPoints>=150?'Gold':totalPoints>=100?'Silver':totalPoints>=50?'Bronze':'Starter';
+  const next=totalPoints>=200?200:totalPoints>=150?200:totalPoints>=100?150:totalPoints>=50?100:50;
+  const previous=level==='Champion'?200:level==='Gold'?150:level==='Silver'?100:level==='Bronze'?50:0;
+  const progress=level==='Champion'?100:Math.min(100,Math.max(0,((totalPoints-previous)/(next-previous))*100));
+   const todayKey=new Date().toISOString().slice(0,10);
+  const todayRows=studentPortalHistory.filter(r=>(r.created_at||'').slice(0,10)===todayKey);
+  const todayNet=todayRows.reduce((sum,r)=>sum+(Number(r.points)||0),0);
   body.innerHTML=`
-    <div class="grid3" style="margin-top:16px">
-      <div class="stat"><small>Student</small><strong style="font-size:18px">${esc(fullName)}</strong></div>
-      <div class="stat"><small>Class</small><strong style="font-size:18px">${esc(s.class_name||'')}</strong></div>
-      <div class="stat"><small>Status</small><strong style="font-size:18px">ðŸŸ¢ Connected</strong></div>
-    </div>
-    <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+   <div class="grid3" style="margin-top:16px">
+  <div class="stat">
+    <small>Current Points</small>
+    <strong>${totalPoints}</strong>
+  </div>
+
+  <div class="stat">
+    <small>Reward Level</small>
+    <strong style="font-size:22px">${level}</strong>
+  </div>
+
+  <div class="stat">
+    <small>Today's Points</small>
+    <strong>${todayNet>=0?'+':''}${todayNet}</strong>
+  </div>
+</div>
+<div class="notice" style="margin-top:14px;margin-bottom:0">
+  <strong>Reward Progress</strong><br>
+  ${level==='Champion'
+    ?'Champion achieved.'
+    :`${Math.max(0,next-totalPoints)} more points to ${next===200?'Champion':next===150?'Gold':next===100?'Silver':'Bronze'}.`
+  }
+
+  <div style="margin-top:8px;height:12px;background:#edf0f5;border-radius:999px;overflow:hidden">
+    <div style="height:100%;width:${progress}%;background:#2457a6"></div>
+  </div>
+
+  <div class="small" style="margin-top:5px">
+    ${Math.min(totalPoints,200)} / 200 points
+  </div>
+</div>
+<div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
       <div class="summary-title"><div><h3>ðŸ“š My Live Activities</h3><div class="small">Activities currently available for your class.</div></div><button class="btn" onclick="loadStudentPortalActivities()">ðŸ”„ Refresh</button></div>
       <div id="studentActivityList" style="margin-top:14px"></div>
     </div>`;
   renderStudentPortalActivities();
 }
+async function loadStudentPortalHistory(){
+  if(!studentPortalSession){
+    studentPortalHistory=[];
+    renderPortal();
+    return;
+  }
 
+  const {data:rows,error}=await supabaseClient.rpc(
+    'get_student_point_history',
+    {p_access_code:studentPortalSession.accessCode}
+  );
+
+  if(error){
+    studentPortalHistory=[];
+    const body=document.getElementById('studentPortalBody');
+
+    if(body){
+      body.insertAdjacentHTML(
+        'afterbegin',
+        `<div class="notice" style="background:#fff0f0;border-color:#e6bcbc">
+          <strong>Student history could not be loaded.</strong><br>
+          ${esc(error.message)}
+        </div>`
+      );
+    }
+
+    return;
+  }
+
+  studentPortalHistory=rows||[];
+  renderPortal();
+}
 async function studentPortalLogin(){
   const input=document.getElementById('studentAccessCode');
   const msg=document.getElementById('studentPortalLoginMsg');
@@ -891,6 +957,7 @@ async function studentPortalLogin(){
   studentPortalSession={accessCode:code,student_id:r.student_id,class_id:r.class_id,class_name:r.class_name,first_name:r.first_name,last_name:r.last_name};
   if(msg)msg.textContent='Access verified successfully.';
  renderPortal();
+await loadStudentPortalHistory();
   await loadStudentPortalActivities();
 }
 
