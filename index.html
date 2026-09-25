@@ -135,22 +135,22 @@ let passwordFlowActive=false;
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-    <button type="button" class="btn success">
+    <button type="button" id="punctualityOnTimeBtn" class="btn success" onclick="selectPunctualityStatus('On Time',2)">
       <strong>On Time</strong><br>
       <span class="small">+2 points</span>
     </button>
 
-    <button type="button" class="btn gold">
+    <button type="button" id="punctualityLateBtn" class="btn gold" onclick="selectPunctualityStatus('Late',1)">
       <strong>Late</strong><br>
       <span class="small">+1 point</span>
     </button>
 
-    <button type="button" class="btn">
+    <button type="button" id="punctualityAbsentBtn" class="btn" onclick="selectPunctualityStatus('Absent',0)">
       <strong>Absent</strong><br>
       <span class="small">0 points</span>
     </button>
 
-    <button type="button" class="btn">
+    <button type="button" id="punctualityExcusedBtn" class="btn" onclick="selectPunctualityStatus('Excused',0)">
       <strong>Excused</strong><br>
       <span class="small">0 points</span>
     </button>
@@ -276,7 +276,30 @@ function setPunctualityScope(next){
       : '0 students selected';
   }
 }
+function selectPunctualityStatus(status,points){
+  window.punctualityStatus={status,points};
 
+  const ids={
+    'On Time':'punctualityOnTimeBtn',
+    'Late':'punctualityLateBtn',
+    'Absent':'punctualityAbsentBtn',
+    'Excused':'punctualityExcusedBtn'
+  };
+
+  Object.values(ids).forEach(id=>{
+    const btn=document.getElementById(id);
+    if(btn){
+      btn.style.outline='';
+      btn.style.outlineOffset='';
+    }
+  });
+
+  const selected=document.getElementById(ids[status]);
+  if(selected){
+    selected.style.outline='3px solid #2457a6';
+    selected.style.outlineOffset='2px';
+  }
+}
   function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');if(info){const cls=current();info.textContent=scope==='all'?`All ${cls.students.length} students selected`:selectedIds.length?`${selectedIds.length} student${selectedIds.length===1?'':'s'} selected`:'Select students';}}
 function getSelected(){const cls=current();if(!cls)return[];const domIds=[...document.querySelectorAll('#awardStudents input.check:checked')].map(el=>el.dataset.studentId).filter(Boolean);if(domIds.length){selectedIds=[...new Set(domIds)];if(scope==='all')selectedIds=[...cls.students.map(s=>s.id)];}return cls.students.filter(s=>selectedIds.includes(s.id))}
 async function applyAward(amount,reason){
