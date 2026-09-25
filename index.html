@@ -127,8 +127,8 @@ let passwordFlowActive=false;
   </div>
 
   <div class="scopebar" style="margin-bottom:12px">
-    <button type="button" class="active">ALL</button>
-    <button type="button">MULTIPLE</button>
+<button type="button" id="punctualityAllBtn" class="active" onclick="setPunctualityScope('all')">ALL</button>
+<button type="button" id="punctualityMultipleBtn" onclick="setPunctualityScope('multiple')">MULTIPLE</button>
   </div>
 
   <div class="selection-info">
@@ -256,7 +256,28 @@ function renderClassSelects(){const opts=Object.keys(data.classes).map(c=>`<opti
 function renderStudents(){const cls=current();if(!cls)return;document.getElementById('classTitle').textContent='Class '+data.currentClass;const sorted=[...cls.students].sort((a,b)=>b.points-a.points||a.name.localeCompare(b.name));document.getElementById('studentRows').innerHTML=sorted.length?sorted.map((s,i)=>{const status=s.points>=200?'ðŸ† Champion':s.points>=150?'ðŸ¥‡ Gold':s.points>=100?'ðŸ¥ˆ Silver':s.points>=50?'ðŸ¥‰ Bronze':'â€”';return `<tr><td>${i+1}</td><td><button class="btn" onclick="openStudentHistory('${esc(s.id)}')">${esc(s.name)}</button></td><td class="points">${s.points}</td><td>${status} <span class="menu-wrap"><button class="btn menu-btn" onclick="toggleMenu('studentMenu_${s.id}')">â‹®</button><span id="studentMenu_${s.id}" class="menu hidden"><button onclick="editStudent('${esc(s.id)}');closeAllMenus()">âœï¸ Edit Student</button><button class="menu-danger" onclick="deleteStudent('${esc(s.id)}');closeAllMenus()">ðŸ—‘ï¸ Delete Student</button></span></span></td></tr>`}).join(''):`<tr><td colspan="4" class="empty">No students yet. Add your first student.</td></tr>`;const total=cls.students.reduce((a,s)=>a+s.points,0);document.getElementById('classPoints').textContent=total;document.getElementById('studentCount').textContent=cls.students.length;document.getElementById('classAverage').textContent=cls.students.length?(total/cls.students.length).toFixed(1):'0'}
 function setScope(next){scope=next;selectedIds=[];['Individual','Multiple','All'].forEach(x=>{const id='scope'+x;document.getElementById(id).classList.toggle('active',x.toLowerCase()===next)});renderAwardStudents()}
 function renderAwardStudents(){const cls=current();if(!cls)return;let arr=[...cls.students];const q=(document.getElementById('studentSearch')?.value||'').toLowerCase();if(q)arr=arr.filter(s=>s.name.toLowerCase().includes(q));const allIds=cls.students.map(s=>s.id);if(scope==='all')selectedIds=[...allIds];if(scope==='individual'&&selectedIds.length>1)selectedIds=[selectedIds[0]];document.getElementById('selectionInfo').textContent=scope==='all'?`All ${cls.students.length} students selected`:scope==='individual'?`${selectedIds.length?1:0} student selected`:`${selectedIds.length} students selected`;document.getElementById('awardStudents').innerHTML=arr.length?arr.map(s=>`<label class="student-row"><input class="check" data-student-id="${esc(s.id)}" type="checkbox" ${selectedIds.includes(s.id)?'checked':''} ${scope==='all'?'disabled':''} onchange="toggleStudent('${s.id}')"><span class="rank">#${cls.students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points}</strong></label>`).join(''):`<div class="empty">No matching students.</div>`}
-function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents()}
+function setPunctualityScope(next){
+  scope=next;
+  selectedIds=[];
+
+  const allBtn=document.getElementById('punctualityAllBtn');
+  const multipleBtn=document.getElementById('punctualityMultipleBtn');
+
+  if(allBtn)allBtn.classList.toggle('active',next==='all');
+  if(multipleBtn)multipleBtn.classList.toggle('active',next==='multiple');
+
+  renderAwardStudents();
+
+  const info=document.getElementById('punctualitySelectionInfo');
+  const cls=current();
+
+  if(info&&cls){
+    info.textContent=next==='all'
+      ? `All ${cls.students.length} students selected`
+      : '0 students selected';
+  }
+}
+  function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents()}
 function getSelected(){const cls=current();if(!cls)return[];const domIds=[...document.querySelectorAll('#awardStudents input.check:checked')].map(el=>el.dataset.studentId).filter(Boolean);if(domIds.length){selectedIds=[...new Set(domIds)];if(scope==='all')selectedIds=[...cls.students.map(s=>s.id)];}return cls.students.filter(s=>selectedIds.includes(s.id))}
 async function applyAward(amount,reason){
  if(awardLocked){alert('Award Points is locked. Unlock it first.');return;}
