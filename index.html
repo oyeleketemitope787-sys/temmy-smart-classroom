@@ -117,8 +117,50 @@ let passwordFlowActive=false;
 <button class="action positive-action" onclick="applyAward(3,'Live Assignment Completed')"><strong>ðŸ“š Live Assignment +3</strong><span>Completed an assignment during the live lesson</span></button>
 <button class="action positive-action" onclick="applyAward(5,'Live Quiz Completed')"><strong>ðŸ§  Live Quiz +5</strong><span>Completed a quiz during the live lesson</span></button>
 <button class="action positive-action" onclick="applyAward(5,'Excellent Task Performance')"><strong>ðŸ… Task Excellence +5</strong><span>Outstanding performance on a learning task</span></button>
-<button class="action positive-action" onclick="applyAward(2,'Punctuality')"><strong>â° Punctuality +2</strong><span>Present and ready on time</span></button>
-</div>
+<div style="grid-column:1 / -1;border:1px solid #d9e3f4;border-radius:12px;padding:16px;background:#f8fbff">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <div>
+      <h3 style="margin:0">⏰ Punctuality</h3>
+      <div class="small">Record punctuality for selected students.</div>
+    </div>
+    <div style="font-weight:700;color:#2457a6">Today</div>
+  </div>
+
+  <div class="scopebar" style="margin-bottom:12px">
+    <button type="button" class="active">ALL</button>
+    <button type="button">MULTIPLE</button>
+  </div>
+
+  <div class="selection-info">
+    All students selected
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    <button type="button" class="btn success">
+      <strong>On Time</strong><br>
+      <span class="small">+2 points</span>
+    </button>
+
+    <button type="button" class="btn gold">
+      <strong>Late</strong><br>
+      <span class="small">+1 point</span>
+    </button>
+
+    <button type="button" class="btn">
+      <strong>Absent</strong><br>
+      <span class="small">0 points</span>
+    </button>
+
+    <button type="button" class="btn">
+      <strong>Excused</strong><br>
+      <span class="small">0 points</span>
+    </button>
+  </div>
+
+  <div style="margin-top:12px;text-align:right">
+    <button type="button" class="btn primary">Apply Punctuality</button>
+  </div>
+</div></div>
 <div class="custom"><h3>âž• Custom Positive Adjustment</h3><div class="custom-row"><input id="customPlus" type="number" min="1" value="1"><button class="btn success" onclick="applyCustom(1)">Add Points</button></div></div>
 </div></div>
 <div class="grid2">
