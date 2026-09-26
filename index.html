@@ -591,11 +591,16 @@ function openGameLauncher(){
   if(!cls)return alert('Please select a class first.');
   if(!cls.students.length)return alert('This class has no active students.');
 
-  const studentsHtml=cls.students.map(s=>`
-    <label class="student-row">
-<input type="checkbox" class="game-student-check" value="${esc(s.id)}" onchange="document.getElementById('gameSelectionInfo').textContent=document.querySelectorAll('.game-student-check:checked').length+(document.querySelectorAll('.game-student-check:checked').length===1?' student selected':' students selected')">      <strong>${s.points}</strong>
-    </label>
-  `).join('');
+const studentsHtml=cls.students.map(s=>`
+  <label class="student-row" data-name="${esc(s.name.toLowerCase())}">
+    <input type="checkbox"
+           class="game-student-check"
+           value="${esc(s.id)}"
+           onchange="document.getElementById('gameSelectionInfo').textContent=document.querySelectorAll('.game-student-check:checked').length+(document.querySelectorAll('.game-student-check:checked').length===1?' student selected':' students selected')">
+    <span class="student-name">${esc(s.name)}</span>
+    <strong>${s.points}</strong>
+  </label>
+`).join('');
 
   openModal(
     'Start Temmy Smart Game',
@@ -612,6 +617,26 @@ function openGameLauncher(){
      <div class="small" style="margin:10px 0">
        Select the student(s) who will receive the game session.
      </div>
+     <div class="controls" style="margin:10px 0;gap:8px;flex-wrap:wrap">
+  <input
+    class="search"
+    placeholder="🔎 Search students..."
+    oninput="const q=this.value.toLowerCase().trim();document.querySelectorAll('#gameStudentList .student-row').forEach(row=>row.style.display=(row.dataset.name||'').includes(q)?'':'none')"
+  >
+  <button
+    type="button"
+    class="btn"
+onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=true);const n=document.querySelectorAll('.game-student-check:checked').length;document.getElementById('gameSelectionInfo').textContent=n+(n===1?' student selected':' students selected')"  >
+    ✅ Select All
+  </button>
+  <button
+    type="button"
+    class="btn"
+    onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=false);document.getElementById('gameSelectionInfo').textContent='0 students selected'"
+  >
+    ↩ Clear All
+  </button>
+</div>
      <div class="selection-info" id="gameSelectionInfo">
        0 students selected
      </div>
