@@ -84,9 +84,11 @@ let passwordFlowActive=false;
 <section id="activities" class="hidden">
 <div class="card">
 <div class="summary-title">
-<div><h2>ðŸ“š Learning Activities</h2><div class="small">Create and manage Live Tasks and Temmy Smart Games for your classes..</div></div>
-<button class="btn primary" onclick="openCreateActivity()">âž• Create Live Task</button>
-</div>
+<div><h2>ðŸ“š Learning Activities</h2><div class="small">Create and manage Live Tasks and Temmy Smart Games for your classes.</div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn primary" onclick="openCreateActivity()">➕ Create Live Task</button>
+<button class="btn gold" onclick="openGameLauncher()">🎮 Start Smart Game</button>
+</div></div>
 <div class="controls" style="margin-top:16px">
 <select id="activityClassSelect" class="select"></select>
 <button class="btn" onclick="refreshActivities()">ðŸ”„ Refresh</button>
@@ -580,7 +582,135 @@ function renderActivities(){
  }).join('')+'</div>';
 }
 function refreshActivities(){loadCloudActivities()}
-function openCreateActivity(){
+function openGameLauncher(){
+  if(!authSession)return showTab('account');
+
+  const classId=document.getElementById('activityClassSelect')?.value||current()?.id;
+  const cls=cloudClasses.find(c=>c.id===classId);
+
+  if(!cls)return alert('Please select a class first.');
+  if(!cls.students.length)return alert('This class has no active students.');
+
+  const studentsHtml=cls.students.map(s=>`
+    <label class="student-row">
+      <input type="checkbox" class="game-student-check" value="${esc(s.id)}">
+      <span class="student-name">${esc(s.name)}</span>
+      <strong>${s.points}</strong>
+    </label>
+  `).join('');
+
+  openModal(
+    'Start Temmy Smart Game',
+    `<div class="formrow">
+       <label>Class</label>
+       <input value="${esc(cls.name)}" disabled>
+     </div>
+     <div class="formrow">
+       <label>Game</label>
+       <select id="gameSelect" class="select">
+         <option value="grade3-temmy-number-challenge">Temmy Number Challenge</option>
+       </select>
+     </div>
+     <div class="small" style="margin:10px 0">
+       Select the student(s) who will receive the game session.
+     </div>
+     <div class="selection-info" id="gameSelectionInfo">
+       0 students selected
+     </div>
+     <div class="student-list" id="gameStudentList">
+       ${studentsHtml}
+     </div>
+     <div class="footer-note" style="margin-top:10px">
+       Each selected student receives a secure 30-minute game session.
+     </div>`,
+    async()=>{
+      const gameId=document.getElementById('gameSelect')?.value;
+      const ids=[...document.querySelectorAll('.game-student-check:checked')].map(el=>el.value);
+
+      if(!ids.length)return alert('Please select at least one student.');
+
+      const selected=cls.students.filter(s=>ids.includes(s.id));
+      const results=[];
+
+      for(const student of selected){
+        const {data,error}=await supabaseClient.rpc(
+          'start_teacher_game_session',
+          {
+            p_student_id:student.id,
+            p_game_id:gameId
+          }
+        );
+
+        if(error){
+          results.push({name:student.name,error:error.message});
+          continue;
+        }
+
+        const row=data?.[0];
+
+        if(!row?.session_token){
+          results.push({name:student.name,error:'No game session was returned.'});
+          continue;
+        }
+
+        const gameUrl=new URL(
+          'https://games.stgloriousschool.org/games/temmy-number-challenge.html'
+        );
+
+        gameUrl.searchParams.set('session',row.session_token);
+
+        results.push({
+          name:student.name,
+          url:gameUrl.toString()
+        });
+      }
+
+      const success=results.filter(r=>r.url);
+      const failed=results.filter(r=>r.error);
+
+      document.getElementById('modalTitle').textContent='Game Sessions Ready';
+
+      document.getElementById('modalBody').innerHTML=
+        (success.length
+          ? `<div class="notice">
+               <strong>${success.length} game session${success.length===1?'':'s'} created successfully.</strong>
+             </div>
+             <div class="group-grid" style="margin-top:12px">
+               ${success.map(r=>`
+                 <div class="group-card">
+                   <div class="summary-title">
+                     <div>
+                       <h3>${esc(r.name)}</h3>
+                       <div class="small">Temmy Number Challenge</div>
+                     </div>
+                     <span class="tag plus">READY</span>
+                   </div>
+                   <div class="group-actions" style="margin-top:14px">
+                     <a class="btn primary"
+                        href="${esc(r.url)}"
+                        target="_blank"
+                        rel="noopener">
+                       Open Game
+                     </a>
+                   </div>
+                 </div>
+               `).join('')}
+             </div>`
+          : '')+
+        (failed.length
+          ? `<div class="notice" style="margin-top:12px;background:#fff0f0;border-color:#e6bcbc">
+               <strong>Some sessions could not be created:</strong><br>
+               ${failed.map(r=>`${esc(r.name)} — ${esc(r.error)}`).join('<br>')}
+             </div>`
+          : '');
+
+      document.getElementById('modalSave').textContent='Done';
+      document.getElementById('modalSave').onclick=closeModal;
+    },
+    'Start Smart Game'
+  );
+}
+  function openCreateActivity(){
  if(!authSession)return showTab('account');
  const classId=document.getElementById('activityClassSelect')?.value||current()?.id;
  const cls=cloudClasses.find(c=>c.id===classId);if(!cls)return alert('Please select a class first.');
