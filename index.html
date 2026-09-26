@@ -84,8 +84,8 @@ let passwordFlowActive=false;
 <section id="activities" class="hidden">
 <div class="card">
 <div class="summary-title">
-<div><h2>ðŸ“š Learning Activities</h2><div class="small">Create and manage cloud Live Tasks, Live Assignments and Live Quizzes for your classes.</div></div>
-<button class="btn primary" onclick="openCreateActivity()">âž• Create Activity</button>
+<div><h2>ðŸ“š Learning Activities</h2><div class="small">Create and manage Live Tasks and Temmy Smart Games for your classes..</div></div>
+<button class="btn primary" onclick="openCreateActivity()">âž• Create Live Task</button>
 </div>
 <div class="controls" style="margin-top:16px">
 <select id="activityClassSelect" class="select"></select>
@@ -114,8 +114,6 @@ let passwordFlowActive=false;
 <button class="action positive-action" onclick="applyAward(2,'Homework Completed')"><strong>ðŸ“˜ Homework Completed +2</strong><span>Work completed responsibly</span></button>
 <button class="action positive-action" onclick="applyAward(3,'Excellent Behaviour')"><strong>ðŸ‘ Excellent Behaviour +3</strong><span>Consistently positive conduct</span></button>
 <button class="action positive-action" onclick="applyAward(3,'Live Task Completed')"><strong>ðŸ“ Live Task +3</strong><span>Completed an in-class live task</span></button>
-<button class="action positive-action" onclick="applyAward(3,'Live Assignment Completed')"><strong>ðŸ“š Live Assignment +3</strong><span>Completed an assignment during the live lesson</span></button>
-<button class="action positive-action" onclick="applyAward(5,'Live Quiz Completed')"><strong>ðŸ§  Live Quiz +5</strong><span>Completed a quiz during the live lesson</span></button>
 <button class="action positive-action" onclick="applyAward(5,'Excellent Task Performance')"><strong>ðŸ… Task Excellence +5</strong><span>Outstanding performance on a learning task</span></button>
 <div style="grid-column:1 / -1;border:1px solid #d9e3f4;border-radius:12px;padding:16px;background:#f8fbff">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
@@ -567,8 +565,7 @@ function syncActivityClassSelect(){
  if(wanted)el.value=wanted;
  el.onchange=()=>loadCloudActivities();
 }
-function activityTypeLabel(type){return type==='live_quiz'?'ðŸ§  Live Quiz':type==='live_assignment'?'ðŸ“š Live Assignment':'ðŸ“ Live Task'}
-function activityStatusLabel(status){return status==='live'?'LIVE':status==='closed'?'CLOSED':'DRAFT'}
+function activityTypeLabel(type){return type==='live_task'?'Live Task':'Activity'}function activityStatusLabel(status){return status==='live'?'LIVE':status==='closed'?'CLOSED':'DRAFT'}
 function renderActivities(){
  const el=document.getElementById('activitiesList');if(!el)return;
  if(!authSession){el.innerHTML='<div class="notice">Sign in as a teacher to manage cloud activities.</div>';return;}
@@ -587,7 +584,7 @@ function openCreateActivity(){
  if(!authSession)return showTab('account');
  const classId=document.getElementById('activityClassSelect')?.value||current()?.id;
  const cls=cloudClasses.find(c=>c.id===classId);if(!cls)return alert('Please select a class first.');
- openModal('Create Learning Activity','<div class="formrow"><label>Class</label><input value="'+esc(cls.name)+'" disabled></div><div class="formrow"><label>Activity type</label><select id="activityType"><option value="live_task">ðŸ“ Live Task</option><option value="live_assignment">ðŸ“š Live Assignment</option><option value="live_quiz">ðŸ§  Live Quiz</option></select></div><div class="formrow"><label>Title</label><input id="activityTitle" placeholder="e.g. Factors Challenge" autofocus></div><div class="formrow"><label>Instructions</label><textarea id="activityInstructions" rows="4" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px" placeholder="Tell students what they need to do."></textarea></div><div class="formrow"><label>Maximum points</label><input id="activityPoints" type="number" min="1" value="5"></div><div class="notice"><strong>Important:</strong> submitting an activity will not automatically award classroom points. The teacher will review and score the activity first.</div>',async()=>{
+ openModal('Create Learning Activity','<div class="formrow"><label>Class</label><input value="'+esc(cls.name)+'" disabled></div><div class="formrow"><label>Activity type</label><select id="activityType"><option value="live_task">ðŸ“ Live Task</select></div><div class="formrow"><label>Title</label><input id="activityTitle" placeholder="e.g. Factors Challenge" autofocus></div><div class="formrow"><label>Instructions</label><textarea id="activityInstructions" rows="4" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px" placeholder="Tell students what they need to do."></textarea></div><div class="formrow"><label>Maximum points</label><input id="activityPoints" type="number" min="1" value="5"></div><div class="notice"><strong>Important:</strong> submitting an activity will not automatically award classroom points. The teacher will review and score the activity first.</div>',async()=>{
    const type=document.getElementById('activityType').value,title=document.getElementById('activityTitle').value.trim(),instructions=document.getElementById('activityInstructions').value.trim(),points=Math.floor(Number(document.getElementById('activityPoints').value));
    if(!title)return alert('Please enter an activity title.');
    if(!Number.isFinite(points)||points<1)return alert('Maximum points must be at least 1.');
