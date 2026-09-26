@@ -1002,6 +1002,7 @@ async function renderStudentHistory(){
 let studentPortalSession=null;
 let studentPortalActivities=[];
 let studentPortalHistory=[];
+let studentPortalGames=[];
 
 function syncPortalSelectors(){
   renderPortal();
@@ -1066,9 +1067,20 @@ function renderPortal(){
       <div class="summary-title"><div><h3>ðŸ“š My Live Activities</h3><div class="small">Activities currently available for your class.</div></div><button class="btn" onclick="loadStudentPortalActivities()">ðŸ”„ Refresh</button></div>
       <div id="studentActivityList" style="margin-top:14px"></div>
     </div>
-    <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+   <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
   <div class="summary-title">
     <div>
+      <h3>🎮 Temmy Smart Games</h3>
+      <div class="small">Games assigned to you by your teacher.</div>
+    </div>
+    <button class="btn" onclick="loadStudentPortalGames()">🔄 Refresh</button>
+  </div>
+
+  <div id="studentPortalGamesList" style="margin-top:14px"></div>
+</div>
+    <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+  <div class="summary-title">
+       <div>
       <h3>My History</h3>
       <div class="small">Your complete points and activity history.</div>
     </div>
@@ -1077,6 +1089,7 @@ function renderPortal(){
   <div id="studentPortalHistoryList" style="margin-top:14px"></div>
 </div>`;
   renderStudentPortalActivities();
+  renderStudentPortalGames();
   renderStudentPortalHistory();
 }
 async function loadStudentPortalHistory(){
@@ -1110,6 +1123,99 @@ async function loadStudentPortalHistory(){
 
   studentPortalHistory=rows||[];
   renderPortal();
+}
+async function loadStudentPortalGames(){
+  if(!studentPortalSession){
+    studentPortalGames=[];
+    renderPortal();
+    return;
+  }
+
+  const {data:rows,error}=await supabaseClient.rpc(
+    'get_student_game_sessions',
+    {p_access_code:studentPortalSession.accessCode}
+  );
+
+  if(error){
+    studentPortalGames=[];
+    const body=document.getElementById('studentPortalBody');
+
+    if(body){
+      body.insertAdjacentHTML(
+        'afterbegin',
+        `<div class="notice" style="background:#fff0f0;border-color:#e6bcbc">
+          <strong>Smart Games could not be loaded.</strong><br>
+          ${esc(error.message)}
+        </div>`
+      );
+    }
+
+    return;
+  }
+
+  studentPortalGames=rows||[];
+  renderPortal();
+}
+
+function renderStudentPortalGames(){
+  const list=document.getElementById('studentPortalGamesList');
+  if(!list)return;
+
+  if(!studentPortalSession){
+    list.innerHTML='<div class="empty">Please enter your student access code first.</div>';
+    return;
+  }
+
+  if(!studentPortalGames.length){
+    list.innerHTML='<div class="empty">No Smart Games are currently assigned to you.</div>';
+    return;
+  }
+
+  list.innerHTML='<div class="group-grid">'+
+    studentPortalGames.map(g=>{
+      const gameName=
+        g.game_id==='grade3-temmy-number-challenge'
+          ?'Temmy Number Challenge'
+          :g.game_id;
+
+      const gameUrl=new URL(
+        'https://games.stgloriousschool.org/games/temmy-number-challenge.html'
+      );
+
+      gameUrl.searchParams.set('session',g.session_token);
+
+      return `
+        <div class="group-card">
+          <div class="summary-title">
+            <div>
+              <h3>${esc(gameName)}</h3>
+              <div class="small">Temmy Smart Games</div>
+            </div>
+            <span class="tag plus">READY</span>
+          </div>
+
+          <div class="small" style="margin-top:10px">
+            Assigned ${esc(g.created_at||'')}
+          </div>
+
+          <div class="small" style="margin-top:4px">
+            Session available until ${esc(g.expires_at||'')}
+          </div>S
+
+          <div class="group-actions" style="margin-top:14px">
+            <a
+              class="btn primary"
+              href="${esc(gameUrl.toString())}"
+              target="_blank"
+              rel="noopener"
+            >
+              🎮 Open Game
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('')+
+  '</div>';
 }
 function renderStudentPortalHistory(){
 const list=document.getElementById('studentPortalHistoryList');
@@ -1168,6 +1274,7 @@ const list=document.getElementById('studentPortalHistoryList');
  renderPortal();
 await loadStudentPortalHistory();
   await loadStudentPortalActivities();
+    await loadStudentPortalGames();
 }
 
 async function loadStudentPortalActivities(){
