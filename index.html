@@ -593,9 +593,7 @@ function openGameLauncher(){
 
   const studentsHtml=cls.students.map(s=>`
     <label class="student-row">
-      <input type="checkbox" class="game-student-check" value="${esc(s.id)}">
-      <span class="student-name">${esc(s.name)}</span>
-      <strong>${s.points}</strong>
+<input type="checkbox" class="game-student-check" value="${esc(s.id)}" onchange="document.getElementById('gameSelectionInfo').textContent=document.querySelectorAll('.game-student-check:checked').length+(document.querySelectorAll('.game-student-check:checked').length===1?' student selected':' students selected')">      <strong>${s.points}</strong>
     </label>
   `).join('');
 
