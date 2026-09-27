@@ -189,8 +189,76 @@ let passwordFlowActive=false;
 <div class="card"><h2>Teacher Account</h2><div id="authPanel"></div></div>
 </section>
 
-<section id="messages" class="hidden"><div class="card"><h2>ðŸ’¬ Teacherâ€“Student Messages</h2><div class="notice"><strong>Chat-only communication.</strong><br>Students can message their teacher when they need help with a mathematics problem, and the teacher can reply. The online version will use secure teacher/student identities and will not expose personal contact details.</div><div class="empty">Messaging will be activated with the secure cloud database and student login system.</div></div></section>
+<section id="messages" class="hidden">
+  <div class="card">
 
+    <div class="summary-title">
+      <div>
+        <h2>💬 Teacher–Student Messages</h2>
+        <div class="small">
+          Private chat between you and your students.
+        </div>
+      </div>
+
+      <button class="btn" onclick="loadTeacherMessages()">
+        🔄 Refresh
+      </button>
+    </div>
+
+    <div id="teacherMessageStatus"
+         class="notice"
+         style="margin-top:14px">
+      Click Refresh to load your messages.
+    </div>
+
+    <div class="grid2" style="margin-top:16px">
+
+      <div class="card"
+           style="box-shadow:none;border:1px solid #d9e2ef">
+
+        <div class="summary-title">
+          <div>
+            <h3>Inbox</h3>
+            <div class="small">
+              Select a student conversation.
+            </div>
+          </div>
+        </div>
+
+        <div id="teacherMessageInbox"
+             style="margin-top:14px">
+        </div>
+
+      </div>
+
+      <div class="card"
+           style="box-shadow:none;border:1px solid #d9e2ef">
+
+        <div class="summary-title">
+          <div>
+            <h3 id="teacherConversationTitle">
+              Conversation
+            </h3>
+
+            <div class="small">
+              Your private conversation with the selected student.
+            </div>
+          </div>
+        </div>
+
+        <div id="teacherConversation"
+             style="margin-top:14px">
+          <div class="empty">
+            Select a student from the inbox.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
 <section id="reports" class="hidden"><div class="card"><h2>ðŸ“Š Class Reports</h2><div class="controls"><select id="reportClass" class="select"></select><button class="btn" onclick="renderReports()">Refresh</button></div><div id="reportBody"></div></div></section>
 </div>
 
