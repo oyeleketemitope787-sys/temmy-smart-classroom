@@ -1662,7 +1662,63 @@ function renderPortal(){
 
   <div id="studentPortalGamesList" style="margin-top:14px"></div>
 </div>
-    <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+<div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
+
+  <div class="summary-title">
+    <div>
+      <h3>💬 My Messages</h3>
+      <div class="small">
+        Private messages with your teacher.
+      </div>
+    </div>
+
+    <button
+      class="btn"
+      onclick="loadStudentMessages()"
+    >
+      🔄 Refresh
+    </button>
+  </div>
+
+  <div
+    id="studentMessageStatus"
+    class="notice"
+    style="margin-top:14px"
+  >
+    Loading your messages...
+  </div>
+
+  <div
+    id="studentMessageList"
+    style="margin-top:14px"
+  ></div>
+
+  <div style="margin-top:14px">
+
+    <textarea
+      id="studentMessageInput"
+      class="select"
+      rows="4"
+      maxlength="2000"
+      placeholder="Write a message to your teacher..."
+      style="width:100%;resize:vertical"
+    ></textarea>
+
+    <div style="margin-top:10px;text-align:right">
+
+      <button
+        type="button"
+        class="btn primary"
+        onclick="sendStudentPortalMessage()"
+      >
+        Send Message
+      </button>
+
+    </div>
+
+  </div>
+
+</div>    <div class="card" style="box-shadow:none;border:1px solid #e1e6ee;margin-top:16px">
   <div class="summary-title">
        <div>
       <h3>My History</h3>
