@@ -946,8 +946,7 @@ async function reviewActivitySubmission(recordId,activityId){
 }
 
 function renderHistory(){const box=document.getElementById('recentHistory'),list=data.history.filter(h=>h.className===data.currentClass).slice(0,12);const last=data.lastPointAction;if(last&&last.className===data.currentClass)document.getElementById('lastActionBox').innerHTML=`<strong>${esc(last.reason)}</strong><br>${last.deltas.length} student${last.deltas.length===1?'':'s'} â€¢ ${esc(last.date)}<br><span class="small">${last.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</span>`;else document.getElementById('lastActionBox').textContent='No point action recorded for this class.';box.innerHTML=list.length?list.map(h=>`<div style="padding:9px 0;border-bottom:1px solid #edf0f5"><strong>${esc(h.reason)}</strong> <span class="small">â€¢ ${esc(h.date)}</span><div class="small">${h.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' â€¢ ')}</div></div>`).join(''):'<div class="empty">No recent activity.</div>'}
-function openModal(title,body,fn,buttonText='Save'){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalSave').textContent=buttonText;document.getElementById('modalSave').onclick=fn;document.getElementById('modal').classList.remove('hidden')}
-function closeModal(){document.getElementById('modal').classList.add('hidden')}
+function openModal(title,body,fn,buttonText='Save',hideCancel=false){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalSave').textContent=buttonText;document.getElementById('modalSave').onclick=fn;const cancelBtn=document.querySelector('#modal .formactions .btn:not(#modalSave)');if(cancelBtn)cancelBtn.style.display=hideCancel?'none':'';document.getElementById('modal').classList.remove('hidden')}function closeModal(){document.getElementById('modal').classList.add('hidden')}
 function closeAllMenus(){document.querySelectorAll('.menu').forEach(m=>m.classList.add('hidden'))}
 function toggleMenu(id){const target=document.getElementById(id);if(!target)return;const wasHidden=target.classList.contains('hidden');closeAllMenus();if(wasHidden)target.classList.remove('hidden')}
 document.addEventListener('click',e=>{if(!e.target.closest('.menu-wrap'))closeAllMenus()});
@@ -1121,8 +1120,7 @@ async function openAddStudent(){
         <div class="footer-note" style="margin-top:14px">
           Give this code to the student. Keep it private.
         </div>`,
-        ()=>closeModal(),'Done'
-      );
+()=>closeModal(),'Done',true      );
     }
   );
 }
