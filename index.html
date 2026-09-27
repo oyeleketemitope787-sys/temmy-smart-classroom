@@ -456,10 +456,24 @@ function renderTeacherMessageInbox(){
   }).join('');
 }
 
-function openTeacherConversation(studentId){
+async function openTeacherConversation(studentId){
   selectedTeacherStudentId=studentId;
-  renderTeacherMessageInbox();
-  renderTeacherConversation(studentId);
+
+  const {error}=await supabaseClient.rpc(
+    'mark_teacher_messages_read',
+    {
+      p_student_id:studentId
+    }
+  );
+
+  if(error){
+    console.error(
+      'Unable to mark messages as read:',
+      error
+    );
+  }
+
+  await loadTeacherMessages();
 }
 
 function renderTeacherConversation(studentId){
