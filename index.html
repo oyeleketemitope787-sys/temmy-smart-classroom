@@ -1663,7 +1663,19 @@ async function loadStudentMessages(){
   }
 
   studentPortalMessages=rows||[];
+const {error:readError}=await supabaseClient.rpc(
+  'mark_student_messages_read',
+  {
+    p_access_code:studentPortalSession.accessCode
+  }
+);
 
+if(readError){
+  console.error(
+    'Unable to mark teacher messages as read:',
+    readError
+  );
+}
   if(status){
     status.textContent=
       studentPortalMessages.length
