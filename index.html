@@ -882,20 +882,107 @@ async function loadCloudClasses(){
 }
 function showCloudStatus(msg,isError){const el=document.getElementById('cloudStatus');if(!el)return;el.style.display='block';el.textContent=msg;el.style.background=isError?'#fff0f0':'#eef7ff';el.style.borderColor=isError?'#e6bcbc':'#c8def4';}
 async function openAddStudent(){
- if(!authSession)return showTab('account');
- const cls=current(); if(!cls||!cls.id)return alert('Create or select a cloud class first.');
- openModal('Add Student',`<div class="formrow"><label>First name</label><input id="studentFirstName" placeholder="First name" autofocus></div><div class="formrow"><label>Last name</label><input id="studentLastName" placeholder="Last name"></div><div class="notice">This student will be saved to the selected cloud class. A secure student login code will be added later.</div>`,async()=>{
-  const first=document.getElementById('studentFirstName').value.trim();
-  const last=document.getElementById('studentLastName').value.trim();
-  const name=[first,last].filter(Boolean).join(' ');
-  if(!first)return alert('Please enter the student first name.');
-  if(cls.students.some(s=>s.name.toLowerCase()===name.toLowerCase()))return alert('That student is already in this class.');
-  const {error}=await supabaseClient.from('students').insert({class_id:cls.id,first_name:first,last_name:last,active:true});
-  if(error)return alert('Could not add student: '+error.message);
-  closeModal();await loadCloudClasses();showTab('students');
- });
-}
+  if(!authSession)return showTab('account');
 
+  const cls=current();
+
+  if(!cls||!cls.id){
+    return alert('Create or select a cloud class first.');
+  }
+
+  openModal(
+    'Add Student',
+    `<div class="formrow">
+      <label>First name</label>
+      <input id="studentFirstName" placeholder="First name" autofocus>
+    </div>
+
+    <div class="formrow">
+      <label>Last name</label>
+      <input id="studentLastName" placeholder="Last name">
+    </div>
+
+    <div class="notice">
+      A secure Student Access Code will be generated automatically after the student is added.
+    </div>`,
+    async()=>{
+      const first=document.getElementById('studentFirstName').value.trim();
+      const last=document.getElementById('studentLastName').value.trim();
+      const name=[first,last].filter(Boolean).join(' ');
+
+      if(!first){
+        return alert('Please enter the student first name.');
+      }
+
+      if(
+        cls.students.some(
+          s=>s.name.toLowerCase()===name.toLowerCase()
+        )
+      ){
+        return alert('That student is already in this class.');
+      }
+
+      const {data:student,error}=await supabaseClient
+        .from('students')
+        .insert({
+          class_id:cls.id,
+          first_name:first,
+          last_name:last,
+          active:true
+        })
+        .select('id')
+        .single();
+
+      if(error){
+        return alert('Could not add student: '+error.message);
+      }
+
+      const {data:codeResult,error:codeError}=await supabaseClient.rpc(
+        'generate_student_access_code',
+        {p_student_id:student.id}
+      );
+
+      if(codeError){
+        return alert(
+          'Student was added, but the access code could not be generated: '+
+          codeError.message
+        );
+      }
+
+      const accessCode=codeResult?.[0]?.student_code;
+
+      if(!accessCode){
+        return alert(
+          'Student was added, but no access code was returned.'
+        );
+      }
+
+      closeModal();
+
+      await loadCloudClasses();
+      showTab('students');
+
+      openModal(
+        'Student Added Successfully',
+        `<div class="notice">
+          <strong>${esc(name)}</strong> has been added to <strong>${esc(cls.name)}</strong>.
+        </div>
+
+        <div style="margin-top:16px;padding:20px;border:2px dashed #c99700;border-radius:12px;text-align:center;background:#fffaf0">
+          <div class="small">Student Access Code</div>
+          <div style="font-size:32px;font-weight:800;letter-spacing:4px;margin-top:8px">
+            ${esc(accessCode)}
+          </div>
+        </div>
+
+        <div class="footer-note" style="margin-top:14px">
+          Give this code to the student. Keep it private.
+        </div>`,
+        ()=>{}
+      );
+    }
+  );
+}
 function renameClass(oldName){openModal('Rename Class',`<div class="formrow"><label>New class name</label><input id="renameClass" value="${esc(oldName)}"></div>`,()=>{const n=document.getElementById('renameClass').value.trim();if(!n)return alert('Please enter a name.');if(n!==oldName&&data.classes[n])return alert('That class already exists.');if(n!==oldName){data.classes[n]=data.classes[oldName];delete data.classes[oldName];data.history.forEach(h=>{if(h.className===oldName)h.className=n});if(data.lastPointAction?.className===oldName)data.lastPointAction.className=n;if(data.currentClass===oldName)data.currentClass=n}closeModal();renderAll()})}
 function deleteClass(name){if(Object.keys(data.classes).length===1)return alert('Keep at least one class.');if(!confirm(`Delete class "${name}" and its students?`))return;delete data.classes[name];data.history=data.history.filter(h=>h.className!==name);if(data.currentClass===name)data.currentClass=Object.keys(data.classes)[0];selectedIds=[];renderAll()}
 function openAddReward(){openModal('Create Marketplace Item',`<div class="formrow"><label>Item name</label><input id="rewardName" placeholder="e.g. Homework Pass"></div><div class="formrow"><label>Point price</label><input id="rewardPrice" type="number" min="1" value="20"></div><div class="formrow"><label>Icon</label><input id="rewardIcon" value="ðŸŽ"></div>`,()=>{const name=document.getElementById('rewardName').value.trim(),price=Math.floor(Number(document.getElementById('rewardPrice').value)),icon=document.getElementById('rewardIcon').value.trim()||'ðŸŽ';if(!name||!Number.isFinite(price)||price<1)return alert('Enter a valid item name and price.');data.rewards.push({id:Date.now(),name,price,icon});closeModal();renderMarket();save()})}
