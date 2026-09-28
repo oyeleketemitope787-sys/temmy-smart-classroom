@@ -862,7 +862,9 @@ async function deactivateStudent(id){
     <div class="footer-note" style="margin-top:14px">
       Give this code to the student. Keep it private.
     </div>`,
-    ()=>{}
+    closeModal,
+'Done',
+true
   );
 }function setScope(next){scope=next;selectedIds=[];['Individual','Multiple','All'].forEach(x=>{const id='scope'+x;document.getElementById(id).classList.toggle('active',x.toLowerCase()===next)});renderAwardStudents()}
 function renderAwardStudents(){const cls=current();if(!cls)return;let arr=[...cls.students];const q=(document.getElementById('studentSearch')?.value||'').toLowerCase();if(q)arr=arr.filter(s=>s.name.toLowerCase().includes(q));const allIds=cls.students.map(s=>s.id);if(scope==='all')selectedIds=[...allIds];if(scope==='individual'&&selectedIds.length>1)selectedIds=[selectedIds[0]];document.getElementById('selectionInfo').textContent=scope==='all'?`All ${cls.students.length} students selected`:scope==='individual'?`${selectedIds.length?1:0} student selected`:`${selectedIds.length} students selected`;document.getElementById('awardStudents').innerHTML=arr.length?arr.map(s=>`<label class="student-row"><input class="check" data-student-id="${esc(s.id)}" type="checkbox" ${selectedIds.includes(s.id)?'checked':''} ${scope==='all'?'disabled':''} onchange="toggleStudent('${s.id}')"><span class="rank">#${cls.students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points}</strong></label>`).join(''):`<div class="empty">No matching students.</div>`}
