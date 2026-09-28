@@ -711,7 +711,71 @@ function renderStudents(){
       ? (total/cls.students.length).toFixed(1)
       : '0';
 }
+async function editStudent(id){
+  const cls=current();
 
+  if(!cls)return;
+
+  const student=cls.students.find(
+    s=>s.id===id
+  );
+
+  if(!student)return;
+
+  openModal(
+    'Edit Student',
+    `<div class="formrow">
+      <label>First name</label>
+      <input
+        id="editStudentFirstName"
+        value="${esc(student.first_name||student.name.split(' ')[0]||'')}"
+        autofocus
+      >
+    </div>
+
+    <div class="formrow">
+      <label>Last name</label>
+      <input
+        id="editStudentLastName"
+        value="${esc(student.last_name||student.name.split(' ').slice(1).join(' ')||'')}"
+      >
+    </div>`,
+    async()=>{
+      const first=document
+        .getElementById('editStudentFirstName')
+        .value
+        .trim();
+
+      const last=document
+        .getElementById('editStudentLastName')
+        .value
+        .trim();
+
+      if(!first){
+        return alert('Please enter the student first name.');
+      }
+
+      const {error}=await supabaseClient
+        .from('students')
+        .update({
+          first_name:first,
+          last_name:last
+        })
+        .eq('id',id);
+
+      if(error){
+        return alert(
+          'Could not update student: '+error.message
+        );
+      }
+
+      closeModal();
+      await loadCloudClasses();
+      showTab('students');
+    },
+    'Save Changes'
+  );
+}
 async function openStudentCode(id){
   const cls=current();
 
