@@ -683,9 +683,9 @@ function renderStudents(){
 
                     <button
                       class="menu-danger"
-                      onclick="deleteStudent('${esc(s.id)}');closeAllMenus()"
+                      onclick="deactivateStudent('${esc(s.id)}');closeAllMenus()"
                     >
-                      Delete Student
+                      Deactivate Student
                     </button>
                   </span>
                 </span>
@@ -776,7 +776,40 @@ async function editStudent(id){
     'Save Changes'
   );
 }
-async function openStudentCode(id){
+async function deactivateStudent(id){
+  const cls=current();
+
+  if(!cls)return;
+
+  const student=cls.students.find(
+    s=>s.id===id
+  );
+
+  if(!student)return;
+
+  if(!confirm(
+    `Deactivate ${student.name}? This will remove the student from the active class list, but their points, history, messages and records will be preserved.`
+  )){
+    return;
+  }
+
+  const {error}=await supabaseClient
+    .from('students')
+    .update({
+      active:false
+    })
+    .eq('id',id);
+
+  if(error){
+    return alert(
+      'Could not deactivate student: '+error.message
+    );
+  }
+
+  await loadCloudClasses();
+  showTab('students');
+}
+  async function openStudentCode(id){
   const cls=current();
 
   if(!cls)return;
