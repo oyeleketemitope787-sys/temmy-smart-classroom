@@ -1628,8 +1628,9 @@ function buyReward(id){
     const selected=students.filter(s=>ids.includes(s.id)),unable=selected.filter(s=>Number(s.points)<Number(r.price));if(unable.length)return alert('Purchase cannot proceed. These students need more points: '+unable.map(s=>`${s.name} (${s.points})`).join(', '));
     const stamp=new Date().toISOString();
     const pointRows=selected.map(s=>({student_id:s.id,teacher_id:authSession.user.id,points:-Number(r.price),action_name:'Marketplace Purchase: '+r.name,action_type:'marketplace_purchase',reason:'Marketplace Purchase: '+r.name,source:'teacher',created_at:stamp}));
-    const {error:pointError}=await supabaseClient.from('point_transactions').insert(pointRows);
+    const {data:savedPointRows,error:pointError}=await supabaseClient.from('point_transactions').insert(pointRows).select('id,student_id,points,action_name');
     if(pointError)return alert('Purchase was not completed because the points transaction failed: '+pointError.message);
+    if(!savedPointRows||savedPointRows.length!==pointRows.length)return alert('Purchase stopped: Supabase did not confirm every point deduction. No purchase record was created. Please refresh the page and contact the administrator before trying again.');
     const purchaseRows=selected.map(s=>({student_id:s.id,teacher_id:authSession.user.id,reward_id:r.id,reward_name:r.name,points_spent:Number(r.price),created_at:stamp}));
     const {error:purchaseError}=await supabaseClient.from('purchases').insert(purchaseRows);
     if(purchaseError){
