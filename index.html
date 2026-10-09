@@ -1622,24 +1622,47 @@ function renderMarket(){
 }
 function buyReward(id){
   const r=data.rewards.find(x=>String(x.id)===String(id)),cls=current(),students=cls?.students||[];
-  if(!r)return alert('Marketplace item not found.');if(!authSession)return showTab('account');if(!cls||!cls.id)return alert('Please select a cloud class first.');if(!students.length)return alert('Add a student first.');
-  openModal('Purchase: '+r.name,`<div class="formrow"><label>Select students</label><div class="scopebar"><button type="button" class="btn" onclick="selectPurchaseAll(true)">🌟 Select All</button><button type="button" class="btn" onclick="selectPurchaseAll(false)">Clear</button></div><div id="purchaseStudents" class="student-list" style="max-height:360px">${students.map(s=>`<label class="student-row"><input class="check purchase-check" type="checkbox" value="${esc(s.id)}"><span class="rank">#${students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points} pts</strong></label>`).join('')}</div></div><div class="notice">Cost per student: <strong>${r.price} points</strong><br><span class="small">Multiple purchase is all-or-nothing: every selected student must have enough points.</span></div>`,async()=>{
-    const ids=[...document.querySelectorAll('.purchase-check:checked')].map(x=>x.value);if(!ids.length)return alert('Please select at least one student.');
-    const selected=students.filter(s=>ids.includes(s.id)),unable=selected.filter(s=>Number(s.points)<Number(r.price));if(unable.length)return alert('Purchase cannot proceed. These students need more points: '+unable.map(s=>`${s.name} (${s.points})`).join(', '));
-    const stamp=new Date().toISOString();
-    const pointRows=selected.map(s=>({student_id:s.id,teacher_id:authSession.user.id,points:-Number(r.price),action_name:'Marketplace Purchase: '+r.name,action_type:'marketplace_purchase',reason:'Marketplace Purchase: '+r.name,source:'teacher',created_at:stamp}));
-    const {data:savedPointRows,error:pointError}=await supabaseClient.from('point_transactions').insert(pointRows).select('id,student_id,points,action_name');
-    if(pointError)return alert('Purchase was not completed because the points transaction failed: '+pointError.message);
-    if(!savedPointRows||savedPointRows.length!==pointRows.length)return alert('Purchase stopped: Supabase did not confirm every point deduction. No purchase record was created. Please refresh the page and contact the administrator before trying again.');
-    const purchaseRows=selected.map(s=>({student_id:s.id,teacher_id:authSession.user.id,reward_id:r.id,reward_name:r.name,points_spent:Number(r.price),created_at:stamp}));
-    const {error:purchaseError}=await supabaseClient.from('purchases').insert(purchaseRows);
-    if(purchaseError){
-      const rollbackRows=selected.map(s=>({student_id:s.id,teacher_id:authSession.user.id,points:Number(r.price),action_name:'Marketplace Purchase Rollback: '+r.name,action_type:'marketplace_purchase_rollback',reason:'Marketplace purchase record failed; points restored',source:'system',created_at:new Date().toISOString()}));
-      const {error:rollbackError}=await supabaseClient.from('point_transactions').insert(rollbackRows);
-      if(rollbackError)return alert('Purchase record failed and the automatic point rollback also failed. Please stop testing this item and contact the administrator. Details: '+purchaseError.message);
-      await loadCloudClasses();return alert('Purchase could not be completed. The points were restored.');
+  if(!r)return alert('Marketplace item not found.');
+  if(!authSession)return showTab('account');
+  if(!cls||!cls.id)return alert('Please select a cloud class first.');
+  if(!students.length)return alert('Add a student first.');
+  let requestSignature='',requestId='';
+  openModal('Purchase: '+r.name,`<div class="formrow"><label>Select students</label><div class="scopebar"><button type="button" class="btn" onclick="selectPurchaseAll(true)">🌟 Select All</button><button type="button" class="btn" onclick="selectPurchaseAll(false)">Clear</button></div><div id="purchaseStudents" class="student-list" style="max-height:360px">${students.map(s=>`<label class="student-row"><input class="check purchase-check" type="checkbox" value="${esc(s.id)}"><span class="rank">#${students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points} pts</strong></label>`).join('')}</div></div><div class="notice">Cost per student: <strong>${r.price} points</strong><br><span class="small">Multiple purchase is all-or-nothing. Balances will be verified by Supabase before any deduction.</span></div>`,async()=>{
+    const saveButton=document.getElementById('modalSave');
+    if(saveButton?.disabled)return;
+    const ids=[...new Set([...document.querySelectorAll('.purchase-check:checked')].map(x=>x.value))].sort();
+    if(!ids.length)return alert('Please select at least one student.');
+    const signature=JSON.stringify({rewardId:r.id,studentIds:ids});
+    if(signature!==requestSignature){
+      requestSignature=signature;
+      requestId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():null;
     }
-    closeModal();await loadCloudClasses();showTab('purchases');alert(r.name+': '+selected.length+' student'+(selected.length===1?'':'s')+' purchased successfully. '+Number(r.price)+' points deducted per student.');
+    if(!requestId)return alert('This browser cannot create a secure purchase request ID. Please use an updated browser.');
+    if(saveButton)saveButton.disabled=true;
+    try{
+      const {data:result,error}=await supabaseClient.rpc('purchase_marketplace_reward',{
+        p_request_id:requestId,
+        p_reward_id:r.id,
+        p_student_ids:ids
+      });
+      if(error){
+        alert('Marketplace purchase was not confirmed: '+error.message+'. You may retry with the same selection; the request ID will be reused.');
+        return;
+      }
+      if(!result||result.success!==true){
+        alert('Supabase did not confirm the purchase. Please refresh and verify the purchase history before trying again.');
+        return;
+      }
+      closeModal();
+      await loadCloudClasses();
+      await loadCloudMarketplace();
+      showTab('purchases');
+      alert(result.reward_name+': '+result.student_count+' student'+(result.student_count===1?'':'s')+' purchased successfully. '+result.points_spent_per_student+' points deducted per student.');
+    }catch(err){
+      alert('The purchase response could not be confirmed: '+(err?.message||String(err))+'. Retry with the same selection to safely check the original request.');
+    }finally{
+      if(saveButton)saveButton.disabled=false;
+    }
   },'Buy');
 }
 function selectPurchaseAll(flag){document.querySelectorAll('.purchase-check').forEach(c=>c.checked=flag)}
