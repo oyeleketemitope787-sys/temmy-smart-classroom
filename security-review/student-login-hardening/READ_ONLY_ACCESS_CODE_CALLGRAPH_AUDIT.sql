@@ -13,6 +13,7 @@ WITH candidates AS (
     p.provolatile AS volatility_code,
     p.proconfig AS function_settings,
     p.proacl AS function_acl,
+    p.proowner AS function_owner,
     p.prosrc AS function_source,
     p.proargnames AS argument_names,
     pg_get_function_result(p.oid) AS result_type
@@ -38,7 +39,7 @@ expanded_grants AS (
     a.is_grantable
   FROM candidates c
   LEFT JOIN LATERAL aclexplode(
-    COALESCE(c.function_acl, acldefault('f', c.oid::regrole::oid))
+    COALESCE(c.function_acl, acldefault('f', c.function_owner))
   ) a ON TRUE
 )
 SELECT
@@ -75,7 +76,8 @@ GROUP BY
   c.volatility_code,
   c.security_definer,
   c.function_settings,
-  c.function_source
+  c.function_source,
+  c.function_owner
 ORDER BY c.schema_name, c.function_name, c.identity_arguments;
 
 -- Important review notes:
