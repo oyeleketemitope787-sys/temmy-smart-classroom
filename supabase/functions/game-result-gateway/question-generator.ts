@@ -253,12 +253,19 @@ function greatestNumber(questionIndex: number, random: RandomSource): GeneratedQ
   );
 }
 
+function cryptoRandom(): number {
+  const words = new Uint32Array(1);
+  crypto.getRandomValues(words);
+  return words[0] / 0x100000000;
+}
+
 /**
- * Generates 15 fresh questions. Inject random in tests; production should
- * supply a Web Crypto-backed random source rather than Math.random.
+ * Generates 15 fresh questions. Tests may inject deterministic randomness;
+ * production uses Web Crypto so a new attempt does not reuse a predictable
+ * sequence from Math.random.
  */
 export function generateNumberChallengeQuestions(
-  random: RandomSource = Math.random,
+  random: RandomSource = cryptoRandom,
 ): GeneratedQuestion[] {
   return [
     comparison(0, random),
