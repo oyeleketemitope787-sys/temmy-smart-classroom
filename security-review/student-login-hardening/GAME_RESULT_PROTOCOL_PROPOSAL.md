@@ -104,8 +104,8 @@ A different game that is genuinely scored out of 20 without score bonuses regist
 The historical 24-point transaction is not automatically an invalid reward merely because the source displayed 24/15; the current browser scoring algorithm can generate bonus totals greater than 15. However, its historical submission/write path remains unverified, and the recorded denominator 15 is inconsistent with the current bonus rule. Preserve the transaction history while tracing the caller and legacy function version. Do not delete, reduce, or otherwise adjust that record without a separate evidence-based, owner-approved correction.
 
 The central scoring module now contains:
-- scoring-contract.ts: server-owned game catalogue, game-specific maximum, exact-score reward result, and Number Challenge v1 bonus calculation.
-- scoring-contract_test.ts: tests for exact score reward, 16/20 behavior, unknown games, invalid values, out-of-range scores, streaks, and the 41-point perfect-run maximum.
+- scoring-contract.ts: server-owned game catalogue, game-specific maximum, exact-score reward result, Number Challenge v1 bonus calculation, and central score-display values.
+- scoring-contract_test.ts: tests for exact score reward, 16/20 behavior, unknown games, invalid values, out-of-range scores, streaks, the 41-point perfect-run maximum, and display labels.
 
 The scoring helper is a pure review module only; the gateway does not yet call the database and still returns HTTP 503 for every valid request.
 
