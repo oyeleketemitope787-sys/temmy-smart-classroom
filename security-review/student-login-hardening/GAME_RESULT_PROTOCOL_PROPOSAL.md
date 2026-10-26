@@ -8,7 +8,7 @@
 
 The inspected game source embeds all 15 prompts, answer options, correct-answer strings, and a local score counter in browser JavaScript. It reads a session token from the URL but does not contain a visible call that submits a score. A final request containing `score`, `max_score`, or the entire answer list would still let the browser dictate the claimed result.
 
-The new request validator therefore uses a step-based contract. The gateway remains fail-closed and never calls Supabase in this proposal.
+The request validator therefore uses a step-based contract. The Edge Function has a staged RPC path that remains disabled unless both server-side feature flags are explicitly set; neither flag is configured and the function is not deployed.
 
 ## Proposed request contract
 
@@ -60,7 +60,7 @@ Randomized prompts are not a guarantee that a human personally played the game. 
 
 ## Proposed data model
 
-See `GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` for a non-executable DDL draft.
+See `GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` for the non-executable catalogue/attempt schema draft and `GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt` for the non-executable atomic RPC draft.
 
 - `student_game_attempts`: one attempt per existing game session; stores sequence state, completion status, and verified correct-answer count.
 - `student_game_attempt_questions`: per-attempt prompt, options, correct choice index, submitted choice, and server-computed correctness.
@@ -107,7 +107,7 @@ The central scoring module now contains:
 - scoring-contract.ts: server-owned game catalogue, game-specific maximum, exact-score reward result, Number Challenge v1 bonus calculation, and central score-display values.
 - scoring-contract_test.ts: tests for exact score reward, 16/20 behavior, unknown games, invalid values, out-of-range scores, streaks, the 41-point perfect-run maximum, and display labels.
 
-The scoring helper is a pure review module only; the gateway does not yet call the database and still returns HTTP 503 for every valid request.
+The score helper and central response contract are in the review branch. The Edge Function includes a staged RPC path but defaults to HTTP 503 without a database call unless both server-side feature flags are explicitly enabled. They have not been configured and the function is not deployed.
 
 ## Caller and permission migration gates
 
