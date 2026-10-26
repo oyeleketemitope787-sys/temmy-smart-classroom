@@ -157,6 +157,7 @@ Deno.serve(async (req: Request) => {
   } else {
     rpcResult = await supabase.rpc("record_game_attempt_answer", {
       p_session_token: checked.request.session_token,
+      p_game_id: checked.request.game_id,
       p_question_index: checked.request.question_index,
       p_choice_index: checked.request.choice_index,
     });
