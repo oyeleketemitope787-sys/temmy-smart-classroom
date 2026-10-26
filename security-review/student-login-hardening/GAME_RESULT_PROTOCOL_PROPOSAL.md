@@ -70,13 +70,44 @@ See `GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` for a non-executable DDL draft
 
 The SQL file is deliberately placed under `security-review`, outside any migration directory. It is not intended to be executed as-is.
 
-## Scoring rule — product decision still required
+## Central scoring contract — owner-approved rule
 
-The visible game presents 15 questions but local JavaScript adds streak bonuses and a final-question bonus, then displays the result as `/15 points`. This is inconsistent.
+The owner has clarified the product rule: **record the actual verified score and reward that score as points. The maximum is game-specific, not globally fixed at 15.** Central scoring is responsible for presenting the score and correct maximum consistently across the platform.
 
-**Recommended rule for approval:** official score and classroom points equal the number of correct answers out of 15. Streaks and celebration bonuses may remain visual-only. This recommendation has not been approved in this review.
+### Contract
 
-Until the owner explicitly approves the rule, the proposal must not insert a point transaction or mark an attempt as successfully awarded. Once approved, the final answer, session consumption, result row, and one `point_transactions` insert must happen atomically, with the score constrained by server-controlled catalogue rules. A replay must never create a second point transaction.
+- The browser sends only a session token, registered game ID, and one answer per request. It never supplies the official score, maximum, reward points, student/teacher identity, or whether an answer is correct.
+- The trusted server verifies the submitted answer against the protected attempt answer key and applies the scoring rule registered for that game.
+- The server returns and records the exact verified score and that game's configured maximum.
+- **Awarded points equal the exact verified score. Do not silently clamp a valid score.**
+- The maximum is loaded from the server-controlled scoring catalogue and cannot be selected by the caller.
+- If a score is above the game's configured maximum, reject the result and do not award points. Do not rewrite it to the maximum.
+- Each registered game must have an immutable/versioned scoring rule. A game out of 20 with no bonuses has maximum 20; a verified 16/20 is recorded as 16/20 and awards 16 points.
+- Bonus points are part of the actual score when the game's registered rule awards them. In that case, the configured maximum and displayed denominator must include the maximum achievable bonus. No screen should display 24/15 when the scoring rule permits a score of 24.
+
+### Current Number Challenge scoring rule
+
+The source currently awards one base point for each correct answer, an additional point when the correct-answer streak is at least three, another additional point when the streak is at least five, and two additional points for a correct final question. Its maximum all-correct score is:
+
+- 15 base points
+- 13 streak bonuses for questions 3–15
+- 11 further streak bonuses for questions 5–15
+- 2 final-question bonus points
+- **Maximum: 41 points**
+
+The review branch's central scoring catalogue therefore registers this version as max_score 41, rule_version number-challenge-streak-v1. A verified 24-point result under this exact rule is recorded as 24 points and displayed as 24/41, not capped to 15 or mislabeled 24/15. If the game design later changes its bonus rules, the catalogue version and maximum must be updated and tested together.
+
+A different game that is genuinely scored out of 20 without score bonuses registers max_score 20. Its maximum must not be inherited from Number Challenge.
+
+### What this means for the historical transaction
+
+The historical 24-point transaction is not automatically an invalid reward merely because the source displayed 24/15; the current browser scoring algorithm can generate bonus totals greater than 15. However, its historical submission/write path remains unverified, and the recorded denominator 15 is inconsistent with the current bonus rule. Preserve the transaction history while tracing the caller and legacy function version. Do not delete, reduce, or otherwise adjust that record without a separate evidence-based, owner-approved correction.
+
+The central scoring module now contains:
+- scoring-contract.ts: server-owned game catalogue, game-specific maximum, exact-score reward result, and Number Challenge v1 bonus calculation.
+- scoring-contract_test.ts: tests for exact score reward, 16/20 behavior, unknown games, invalid values, out-of-range scores, streaks, and the 41-point perfect-run maximum.
+
+The scoring helper is a pure review module only; the gateway does not yet call the database and still returns HTTP 503 for every valid request.
 
 ## Caller and permission migration gates
 
