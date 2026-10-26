@@ -12,6 +12,7 @@
 - `supabase/functions/game-result-gateway/question-generator.ts` — fresh 15-question number-challenge generator; correct choice index is for protected server state and must not be returned to the browser.
 - `supabase/functions/game-result-gateway/question-generator_test.ts` — generator shape and semantic-answer tests across deterministic test seeds.
 - `supabase/functions/game-result-gateway/scoring-contract.ts` — central per-game scoring catalogue, variable maximum, exact score-to-points rule, and Number Challenge bonus calculation.
+- `supabase/functions/game-result-gateway/scoring-contract_test.ts` — tests exact score-to-points, variable maximums, invalid/out-of-range scores, and bonus scoring.
 - `supabase/functions/game-result-gateway/scoring-contract_test.ts` — central scoring tests, including a registered test case out of 20.
 - `security-review/student-login-hardening/GAME_RESULT_PROTOCOL_PROPOSAL.md` — proposed step-based API and migration gates.
 - `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable DDL draft outside the Supabase migrations directory.
@@ -58,9 +59,9 @@ The central scoring module is present in scoring-contract.ts with rule version n
 
 ## Tests and validation status
 
-Validation and generator source files were confirmed against the reviewed branch revisions and type-checked with TypeScript. A local Node harness exercised 15 request-validation cases; all passed. A separate local harness exercised 10,000 deterministic generator seeds (150,000 generated questions), checking question order, distinct options, index bounds, ordering/comparison/inequality semantics, closest-number correctness, between-number bounds, place-value reasoning, and greatest-number correctness; all passed.
+The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch now also includes 12 request-validation cases and nine central scoring cases, including a 16/20 reward and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
 
-The checked-in `Deno.test` files contain ten request-validation cases and three generator tests. **The Deno test runner itself has not been executed** because the Deno runtime is unavailable in this environment. The local harness is meaningful logic validation, but it does not substitute for a Deno run or isolated end-to-end database tests.
+The checked-in Deno test files currently contain 12 request-validation cases, three generator tests, and nine scoring tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
 
 ## Current decision
 
