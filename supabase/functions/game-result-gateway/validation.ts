@@ -1,13 +1,15 @@
 /**
- * Pure request validation for the review-only, step-based game-result protocol.
+ * Pure request validation for the review-only, central game scoring protocol.
  *
- * This validates the request shape only. A session token must still be checked
- * against stored session and attempt state, and the server must calculate
- * correctness. Never accept a score, maximum, student, teacher, or correctness
- * value from the browser.
+ * This validates request shape only. Session state and answers must still be
+ * verified by trusted server code. Never accept score, max_score, student,
+ * teacher, points, or correctness values from the browser.
  */
-const GAME_ID = "grade3-temmy-number-challenge";
-const QUESTION_COUNT = 15;
+import {
+  GAME_SCORING_CATALOGUE,
+  type GameScoringRule,
+} from "./scoring-contract.ts";
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -40,28 +42,42 @@ function hasExactKeys(value: Record<string, unknown>, allowed: string[]) {
     allowed.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
 
-function validSessionAndGame(value: Record<string, unknown>): boolean {
-  return typeof value.session_token === "string" &&
-    UUID_PATTERN.test(value.session_token) &&
-    value.game_id === GAME_ID;
+function validSessionAndRule(
+  value: Record<string, unknown>,
+  catalogue: Readonly<Record<string, GameScoringRule>>,
+): GameScoringRule | null {
+  if (typeof value.session_token !== "string" ||
+      !UUID_PATTERN.test(value.session_token) ||
+      typeof value.game_id !== "string") {
+    return null;
+  }
+  return catalogue[value.game_id] ?? null;
 }
 
+/**
+ * Optional catalogue injection exists only to test games with other maxima.
+ * Production callers should use the server-owned default catalogue; never
+ * build this catalogue from request data or browser-provided configuration.
+ */
 export function validateResultRequest(
   value: unknown,
+  catalogue: Readonly<Record<string, GameScoringRule>> = GAME_SCORING_CATALOGUE,
 ): ResultRequestValidation {
   if (!isRecord(value)) return { ok: false };
 
   if (value.action === "start_attempt") {
-    if (!hasExactKeys(value, ["action", "session_token", "game_id"]) ||
-        !validSessionAndGame(value)) {
+    if (!hasExactKeys(value, ["action", "session_token", "game_id"])) {
       return { ok: false };
     }
+    const rule = validSessionAndRule(value, catalogue);
+    if (!rule) return { ok: false };
+
     return {
       ok: true,
       request: {
         action: "start_attempt",
         session_token: value.session_token as string,
-        game_id: GAME_ID,
+        game_id: rule.gameId,
       },
     };
   }
@@ -73,15 +89,18 @@ export function validateResultRequest(
       "game_id",
       "question_index",
       "choice_index",
-    ]) || !validSessionAndGame(value)) {
+    ])) {
       return { ok: false };
     }
+
+    const rule = validSessionAndRule(value, catalogue);
+    if (!rule) return { ok: false };
 
     const questionIndex = value.question_index;
     const choiceIndex = value.choice_index;
     if (!Number.isInteger(questionIndex) ||
         (questionIndex as number) < 0 ||
-        (questionIndex as number) >= QUESTION_COUNT ||
+        (questionIndex as number) >= rule.questionCount ||
         !Number.isInteger(choiceIndex) ||
         (choiceIndex as number) < 0 ||
         (choiceIndex as number) > 3) {
@@ -93,7 +112,7 @@ export function validateResultRequest(
       request: {
         action: "submit_answer",
         session_token: value.session_token as string,
-        game_id: GAME_ID,
+        game_id: rule.gameId,
         question_index: questionIndex as number,
         choice_index: choiceIndex as number,
       },
