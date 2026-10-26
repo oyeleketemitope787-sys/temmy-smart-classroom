@@ -8,11 +8,23 @@
 --   * public.point_transactions.id is UUID primary key.
 --   * point_transactions.points is integer and source/action_type/reason fields
 --     accept the planned values.
---   * game ID and approved scoring policy have been explicitly signed off.
+--   * each game ID is backed by a server-controlled scoring catalogue including
+--     question_count, actual max_score, scoring-rule version, and reward rule.
 --
 -- This draft does NOT modify any existing function grants. In particular, it
 -- does not revoke EXECUTE on public.record_student_game_result. That must be a
 -- coordinated caller migration, based on verified deployed-client coverage.
+--
+-- Central scoring contract (confirmed product rule for this design):
+--   * Store score and max_score for every game result.
+--   * Award point_transactions.points = the exact server-verified score.
+--   * max_score comes from that game's approved rule, not a browser parameter
+--     and not a single global value.
+--   * Never clamp an invalid result; reject it and investigate.
+--   * For Number Challenge v1, the local scoring algorithm's maximum is 41
+--     because streak and final-question bonuses contribute to the score.
+--   * A 20-point game with no bonuses registers max_score=20; a verified 16/20
+--     result awards 16 points.
 --
 -- Proposed new tables (do not uncomment/apply until reviewed):
 
@@ -25,42 +37,56 @@ CREATE TABLE public.student_game_attempts (
         REFERENCES public.student_game_sessions(id)
         ON DELETE CASCADE,
 
-    game_id text NOT NULL
-        CHECK (game_id = 'grade3-temmy-number-challenge'),
+    -- The trusted server validates game_id against its approved scoring catalogue.
+    game_id text NOT NULL,
 
     status text NOT NULL DEFAULT 'in_progress'
         CHECK (status IN ('in_progress', 'completed')),
 
-    question_count smallint NOT NULL DEFAULT 15
-        CHECK (question_count = 15),
+    -- Each game carries its own configured question count and actual max score.
+    question_count smallint NOT NULL
+        CHECK (question_count BETWEEN 1 AND 200),
+
+    max_score integer NOT NULL
+        CHECK (max_score BETWEEN 1 AND 10000),
 
     next_question_index smallint NOT NULL DEFAULT 0
-        CHECK (next_question_index BETWEEN 0 AND 15),
+        CHECK (next_question_index BETWEEN 0 AND question_count),
 
     correct_count smallint NOT NULL DEFAULT 0
-        CHECK (correct_count BETWEEN 0 AND 15),
+        CHECK (correct_count BETWEEN 0 AND question_count),
+
+    -- The server-calculated running score can include the game's approved
+    -- weighting/bonus rules; max_score must include all legitimate bonuses.
+    verified_score integer NOT NULL DEFAULT 0
+        CHECK (verified_score BETWEEN 0 AND max_score),
+
+    current_streak smallint NOT NULL DEFAULT 0
+        CHECK (current_streak BETWEEN 0 AND question_count),
 
     started_at timestamptz NOT NULL DEFAULT now(),
     completed_at timestamptz,
 
-    -- These remain NULL until the official scoring rule is approved and a
-    -- reviewed atomic finalization routine inserts the point transaction.
+    -- Final reward must equal the verified score. The configured maximum is
+    -- game-specific; never use a single global 15-point clamp.
     points_awarded integer
-        CHECK (points_awarded IS NULL OR points_awarded BETWEEN 0 AND 15),
+        CHECK (points_awarded IS NULL OR points_awarded BETWEEN 0 AND max_score),
     point_transaction_id uuid UNIQUE
         REFERENCES public.point_transactions(id),
-    score_rule_version text,
+    score_rule_version text NOT NULL,
 
     CHECK (correct_count <= next_question_index),
+    CHECK (current_streak <= next_question_index),
     CHECK (
-      (status = 'in_progress' AND completed_at IS NULL)
+      (status = 'in_progress'
+        AND completed_at IS NULL
+        AND points_awarded IS NULL
+        AND point_transaction_id IS NULL)
       OR
-      (status = 'completed' AND completed_at IS NOT NULL)
-    ),
-    CHECK (
-      (point_transaction_id IS NULL AND points_awarded IS NULL)
-      OR
-      (point_transaction_id IS NOT NULL AND points_awarded IS NOT NULL)
+      (status = 'completed'
+        AND completed_at IS NOT NULL
+        AND points_awarded = verified_score
+        AND point_transaction_id IS NOT NULL)
     )
 );
 
@@ -70,7 +96,7 @@ CREATE TABLE public.student_game_attempt_questions (
         ON DELETE CASCADE,
 
     question_index smallint NOT NULL
-        CHECK (question_index BETWEEN 0 AND 14),
+        CHECK (question_index BETWEEN 0 AND 199),
 
     prompt text NOT NULL
         CHECK (length(prompt) BETWEEN 1 AND 1000),
@@ -125,30 +151,38 @@ COMMENT ON TABLE public.student_game_attempt_questions IS
 -- Required function contract; these routines are NOT included or enabled by
 -- this schema-only draft:
 --
--- A) public.begin_number_challenge_attempt(p_session_token uuid, p_questions jsonb)
---    * Executable by service_role only after explicit ACL review.
---    * Validate the session token, expected game ID, expiration, used_at,
+-- A) public.begin_game_attempt(p_session_token uuid)
+--    * Executable by the intended backend role only after explicit ACL review.
+--    * Validate the session token, approved game ID, expiration, used_at,
 --      active class and active student.
---    * Create exactly one attempt for the session. Generate 15 questions on
---      the trusted server; store all answer keys privately.
+--    * Read the game's question_count, max_score and score_rule_version from
+--      the trusted central scoring catalogue.
+--    * Generate the appropriate game-specific questions on the trusted server;
+--      store answer keys privately and keep the generated version with attempt.
 --    * Repeated start calls must resume the same attempt, not replace its key.
 --    * Return current prompt/options/hint only; never return correct index.
 --
--- B) public.record_number_challenge_answer(
+-- B) public.record_game_attempt_answer(
 --       p_session_token uuid, p_question_index smallint, p_choice_index smallint
 --    )
---    * Executable by service_role only after explicit ACL review.
+--    * Executable by the intended backend role only after explicit ACL review.
 --    * Lock session and attempt rows FOR UPDATE.
 --    * Validate expiration, unused session, approved game ID, active student
 --      and class, expected next question and option bounds.
---    * Derive correctness from the stored correct_choice_index; never accept
---      is_correct/score/max_score from the browser.
+--    * Derive correctness from the stored correct choice; never accept
+--      is_correct, score, max_score, points_awarded, or game_name from browser.
 --    * Make same-answer retries idempotent; reject changed duplicate answers.
---    * Record answer and update count/index atomically. On final answer, mark
---      the attempt completed and consume the session in the same transaction.
---    * Do not insert points until the official score rule is approved. After
---      approval, create the single point_transactions row inside that same
---      completion transaction and record its ID in point_transaction_id.
+--    * Record answer and update count/streak/verified score atomically.
+--    * On final answer, store exact verified_score and game-specific max_score,
+--      mark attempt completed, consume session, and create exactly one
+--      point_transactions row with points = verified_score. Store the same
+--      score/max in the central game-result record/response. All actions must
+--      commit or roll back together; never clamp a valid score silently.
+--    * A game allowing bonuses must configure max_score to include all bonuses.
+--      For Number Challenge v1 that is 41 (15 base + 13 streak bonuses +
+--      11 further streak bonuses + 2 final-question bonus). A game out of 20
+--      with no bonuses has max_score 20 and a verified score of 16 awards 16.
+--
 --
 -- C) Explicitly revoke default PUBLIC/anon/authenticated EXECUTE and grant only
 --    the intended backend role on every new routine. Verify with
