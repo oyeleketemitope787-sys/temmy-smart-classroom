@@ -29,6 +29,37 @@
 -- Proposed new tables (do not uncomment/apply until reviewed):
 
 /*
+CREATE TABLE public.game_scoring_catalogue (
+    game_id text NOT NULL,
+    rule_version text NOT NULL,
+    display_name text NOT NULL
+        CHECK (length(trim(display_name)) BETWEEN 1 AND 120),
+    question_count smallint NOT NULL
+        CHECK (question_count BETWEEN 1 AND 200),
+    max_score integer NOT NULL
+        CHECK (max_score BETWEEN 1 AND 10000),
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (game_id, rule_version)
+);
+
+CREATE UNIQUE INDEX game_scoring_catalogue_one_active_rule_idx
+    ON public.game_scoring_catalogue(game_id)
+    WHERE active = true;
+
+-- Current Number Challenge v1. The 41-point maximum includes its existing
+-- base, streak, and final-answer bonuses. This is a proposed registry row;
+-- verify current rules/version before any future migration.
+INSERT INTO public.game_scoring_catalogue
+    (game_id, rule_version, display_name, question_count, max_score, active)
+VALUES
+    ('grade3-temmy-number-challenge',
+     'number-challenge-streak-v1',
+     'Temmy Number Challenge',
+     15,
+     41,
+     true);
+
 CREATE TABLE public.student_game_attempts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -74,6 +105,10 @@ CREATE TABLE public.student_game_attempts (
     point_transaction_id uuid UNIQUE
         REFERENCES public.point_transactions(id),
     score_rule_version text NOT NULL,
+
+    CONSTRAINT student_game_attempts_game_rule_fk
+        FOREIGN KEY (game_id, score_rule_version)
+        REFERENCES public.game_scoring_catalogue(game_id, rule_version),
 
     CHECK (correct_count <= next_question_index),
     CHECK (current_streak <= next_question_index),
@@ -132,16 +167,21 @@ CREATE TABLE public.student_game_attempt_questions (
 CREATE INDEX student_game_attempts_status_started_idx
     ON public.student_game_attempts(status, started_at);
 
+ALTER TABLE public.game_scoring_catalogue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_game_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_game_attempt_questions ENABLE ROW LEVEL SECURITY;
 
 -- No browser/client role may read the stored correct choice or mutate attempts.
 -- Access must be through narrowly scoped, reviewed SECURITY DEFINER routines.
+REVOKE ALL ON TABLE public.game_scoring_catalogue
+    FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.student_game_attempts
     FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.student_game_attempt_questions
     FROM PUBLIC, anon, authenticated;
 
+COMMENT ON TABLE public.game_scoring_catalogue IS
+    'Versioned server-controlled game scoring registry; no direct browser-role access.';
 COMMENT ON TABLE public.student_game_attempts IS
     'Server-managed one-time game attempt state; no direct browser-role access.';
 COMMENT ON TABLE public.student_game_attempt_questions IS
