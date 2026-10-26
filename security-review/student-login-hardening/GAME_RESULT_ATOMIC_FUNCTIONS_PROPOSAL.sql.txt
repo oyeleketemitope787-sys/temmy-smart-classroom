@@ -165,8 +165,11 @@ BEGIN
     END IF;
 
     IF p_questions IS NULL
-       OR pg_catalog.jsonb_typeof(p_questions) IS DISTINCT FROM 'array'
-       OR pg_catalog.jsonb_array_length(p_questions) <> v_rule.question_count THEN
+       OR pg_catalog.jsonb_typeof(p_questions) IS DISTINCT FROM 'array' THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+    END IF;
+
+    IF pg_catalog.jsonb_array_length(p_questions) <> v_rule.question_count THEN
         RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
     END IF;
 
@@ -178,8 +181,11 @@ BEGIN
         FROM pg_catalog.jsonb_array_elements(p_questions) WITH ORDINALITY AS x(value, ordinality)
         ORDER BY x.ordinality
     LOOP
-        IF pg_catalog.jsonb_typeof(v_item) IS DISTINCT FROM 'object'
-           OR pg_catalog.jsonb_object_length(v_item) <> 5
+        IF pg_catalog.jsonb_typeof(v_item) IS DISTINCT FROM 'object' THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+        END IF;
+
+        IF pg_catalog.jsonb_object_length(v_item) <> 5
            OR NOT (v_item ? 'question_index')
            OR NOT (v_item ? 'prompt')
            OR NOT (v_item ? 'options')
@@ -212,6 +218,14 @@ BEGIN
         END IF;
 
         IF pg_catalog.jsonb_array_length(v_options) <> 4 THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+        END IF;
+
+        IF EXISTS (
+            SELECT 1
+            FROM pg_catalog.jsonb_array_elements(v_options) AS opt(value)
+            WHERE pg_catalog.jsonb_typeof(opt.value) IS DISTINCT FROM 'string'
+        ) THEN
             RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
         END IF;
 
