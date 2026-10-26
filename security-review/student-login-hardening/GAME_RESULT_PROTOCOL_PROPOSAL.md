@@ -124,6 +124,6 @@ The score helper and central response contract are in the review branch. The Edg
 - Request validation: implemented on the review branch for `start_attempt` and `submit_answer`.
 - Fresh question generator: implemented on the review branch.
 - Generator structural tests: added, not yet executed in a Deno runtime.
-- Gateway: intentionally returns HTTP 503 for valid requests and performs no database calls.
+- Gateway: default-disabled behind two server-side feature flags; with either flag unset, returns HTTP 503 without a database call. The staged RPC path has not been deployed or invoked.
 - Database schema/functions, client migration, RPC permission changes, point awarding, and deployment: not implemented.
 - Release decision: **NO-GO**.
