@@ -13,6 +13,8 @@
  * have been migrated. CORS is not authentication.
  */
 
+import { validateResultRequest } from "./validation.ts";
+
 const ALLOWED_ORIGINS = new Set([
   "https://games.stgloriousschool.org",
   "https://classroom.stgloriousschool.org",
@@ -20,8 +22,6 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 const MAX_BODY_BYTES = 16 * 1024;
-import { validateResultRequest } from "./validation.ts";
-
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
 
