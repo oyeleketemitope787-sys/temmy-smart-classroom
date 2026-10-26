@@ -1,4 +1,5 @@
 import { validateResultRequest } from "./validation.ts";
+import type { GameScoringRule } from "./scoring-contract.ts";
 
 const token = "00000000-0000-4000-8000-000000000001";
 const gameId = "grade3-temmy-number-challenge";
@@ -136,4 +137,53 @@ Deno.test("rejects unknown actions and unexpected nested fields", () => {
   });
   assert(!action.ok, "the deprecated bulk-result action must be rejected");
   assert(!nested.ok, "unexpected fields must be rejected");
+});
+
+
+Deno.test("supports a separately registered 20-question game", () => {
+  const catalogue: Readonly<Record<string, GameScoringRule>> = {
+    "test-game-out-of-20": {
+      gameId: "test-game-out-of-20",
+      displayName: "Test Game (20 points)",
+      questionCount: 20,
+      maxScore: 20,
+      ruleVersion: "test-v1",
+      rewardPointsEqualScore: true,
+    },
+  };
+  const start = validateResultRequest({
+    action: "start_attempt",
+    session_token: token,
+    game_id: "test-game-out-of-20",
+  }, catalogue);
+  const lastAnswer = validateResultRequest({
+    action: "submit_answer",
+    session_token: token,
+    game_id: "test-game-out-of-20",
+    question_index: 19,
+    choice_index: 3,
+  }, catalogue);
+  assert(start.ok, "the registered 20-question game should be accepted");
+  assert(lastAnswer.ok, "question index 19 should be valid for a 20-question game");
+});
+
+Deno.test("rejects question indexes beyond that game's configured count", () => {
+  const catalogue: Readonly<Record<string, GameScoringRule>> = {
+    "test-game-out-of-20": {
+      gameId: "test-game-out-of-20",
+      displayName: "Test Game (20 points)",
+      questionCount: 20,
+      maxScore: 20,
+      ruleVersion: "test-v1",
+      rewardPointsEqualScore: true,
+    },
+  };
+  const result = validateResultRequest({
+    action: "submit_answer",
+    session_token: token,
+    game_id: "test-game-out-of-20",
+    question_index: 20,
+    choice_index: 0,
+  }, catalogue);
+  assert(!result.ok, "question index 20 should be invalid for a 20-question game");
 });
