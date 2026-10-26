@@ -16,6 +16,7 @@
 - `security-review/student-login-hardening/GAME_RESULT_PROTOCOL_PROPOSAL.md` — proposed step-based API and migration gates.
 - `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable schema/catalogue draft outside the Supabase migrations directory.
 - `security-review/student-login-hardening/GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt` — non-executable draft for atomic begin/answer/award functions.
+- `security-review/student-login-hardening/CENTRAL_SCORING_INTEGRATION_PROPOSAL.md` — response contract and central display examples.
 - `security-review/student-login-hardening/GAME_RESULT_GATEWAY_PROPOSAL.md` — this review record.
 
 ## Request contract
