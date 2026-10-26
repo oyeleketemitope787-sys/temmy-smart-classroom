@@ -22,6 +22,34 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 const MAX_BODY_BYTES = 16 * 1024;
+
+const corsHeaders = (origin: string | null) => {
+  const permitted = origin !== null && ALLOWED_ORIGINS.has(origin);
+  return {
+    Vary: "Origin",
+    ...(permitted ? { "Access-Control-Allow-Origin": origin } : {}),
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers":
+      "authorization, apikey, content-type, x-client-info",
+    "Access-Control-Max-Age": "600",
+  };
+};
+
+function jsonResponse(
+  status: number,
+  body: Record<string, unknown>,
+  origin: string | null,
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders(origin),
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
 
