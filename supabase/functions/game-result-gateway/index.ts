@@ -20,125 +20,7 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 const MAX_BODY_BYTES = 16 * 1024;
-const GAME_ID = "grade3-temmy-number-challenge";
-const QUESTION_COUNT = 15;
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-type AnswerSubmission = {
-  question_index: number;
-  choice_index: number;
-};
-
-type SubmitResultRequest = {
-  action: "submit_result";
-  session_token: string;
-  game_id: string;
-  answers: AnswerSubmission[];
-};
-
-const corsHeaders = (origin: string | null) => {
-  const permitted = origin !== null && ALLOWED_ORIGINS.has(origin);
-  return {
-    Vary: "Origin",
-    ...(permitted ? { "Access-Control-Allow-Origin": origin } : {}),
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers":
-      "authorization, apikey, content-type, x-client-info",
-    "Access-Control-Max-Age": "600",
-  };
-};
-
-function jsonResponse(
-  status: number,
-  body: Record<string, unknown>,
-  origin: string | null,
-): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...corsHeaders(origin),
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function hasExactKeys(value: Record<string, unknown>, allowed: string[]) {
-  return Object.keys(value).every((key) => allowed.includes(key)) &&
-    allowed.every((key) => Object.prototype.hasOwnProperty.call(value, key));
-}
-
-/**
- * The browser must not send score, max_score, student_id, teacher_id, or
- * game_name. Those values must be derived/validated on a trusted server.
- *
- * The submitted answers are still untrusted claims. This validator is only
- * request-shape validation; it is NOT proof that the student played the game.
- */
-function validateRequest(
-  value: unknown,
-): { ok: true; request: SubmitResultRequest } | { ok: false } {
-  if (!isRecord(value)) return { ok: false };
-  if (!hasExactKeys(value, ["action", "session_token", "game_id", "answers"])) {
-    return { ok: false };
-  }
-
-  if (value.action !== "submit_result") return { ok: false };
-  if (typeof value.session_token !== "string" ||
-      !UUID_PATTERN.test(value.session_token)) {
-    return { ok: false };
-  }
-  if (value.game_id !== GAME_ID) return { ok: false };
-  if (!Array.isArray(value.answers) || value.answers.length > QUESTION_COUNT) {
-    return { ok: false };
-  }
-
-  const seenQuestions = new Set<number>();
-  const answers: AnswerSubmission[] = [];
-
-  for (const item of value.answers) {
-    if (!isRecord(item) ||
-        !hasExactKeys(item, ["question_index", "choice_index"])) {
-      return { ok: false };
-    }
-
-    const questionIndex = item.question_index;
-    const choiceIndex = item.choice_index;
-
-    if (!Number.isInteger(questionIndex) ||
-        (questionIndex as number) < 0 ||
-        (questionIndex as number) >= QUESTION_COUNT ||
-        !Number.isInteger(choiceIndex) ||
-        (choiceIndex as number) < 0 ||
-        (choiceIndex as number) > 3) {
-      return { ok: false };
-    }
-
-    if (seenQuestions.has(questionIndex as number)) return { ok: false };
-    seenQuestions.add(questionIndex as number);
-
-    answers.push({
-      question_index: questionIndex as number,
-      choice_index: choiceIndex as number,
-    });
-  }
-
-  return {
-    ok: true,
-    request: {
-      action: "submit_result",
-      session_token: value.session_token,
-      game_id: value.game_id,
-      answers,
-    },
-  };
-}
+import { validateResultRequest } from "./validation.ts";
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
@@ -182,7 +64,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(400, { error: "Invalid request." }, origin);
   }
 
-  const checked = validateRequest(parsed);
+  const checked = validateResultRequest(parsed);
   if (!checked.ok) {
     return jsonResponse(400, { error: "Invalid request." }, origin);
   }
