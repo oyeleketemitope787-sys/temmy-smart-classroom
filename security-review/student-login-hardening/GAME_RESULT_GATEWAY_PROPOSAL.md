@@ -1,57 +1,60 @@
 # Game Result Gateway Proposal
 
-**Status:** Review-only patch; intentionally fail-closed  
+**Status:** Review-only implementation scaffold; deliberately fail-closed  
 **Branch:** `security-review/student-login-hardening`  
-**Not deployed. No database objects, permissions, secrets, production code, or student records changed.**
+**Not deployed. No database DDL, permissions, secrets, production code, or student records changed.**
 
-## Patch added
+## Files added or updated
 
-- `supabase/functions/game-result-gateway/index.ts`
-- `supabase/functions/game-result-gateway/validation.ts`
-- `supabase/functions/game-result-gateway/validation_test.ts`
+- `supabase/functions/game-result-gateway/index.ts` — HTTP handler; valid requests deliberately receive HTTP 503 and no database call is made.
+- `supabase/functions/game-result-gateway/validation.ts` — strict request-shape validation for `start_attempt` and `submit_answer`.
+- `supabase/functions/game-result-gateway/validation_test.ts` — request-contract tests.
+- `supabase/functions/game-result-gateway/question-generator.ts` — fresh 15-question number-challenge generator; correct choice index is for protected server state and must not be returned to the browser.
+- `supabase/functions/game-result-gateway/question-generator_test.ts` — generator shape and semantic-answer tests across deterministic test seeds.
+- `security-review/student-login-hardening/GAME_RESULT_PROTOCOL_PROPOSAL.md` — proposed step-based API and migration gates.
+- `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable DDL draft outside the Supabase migrations directory.
+- `security-review/student-login-hardening/GAME_RESULT_GATEWAY_PROPOSAL.md` — this review record.
 
-The new handler validates method, content type, body size, origin allowlist, exact JSON keys, UUID-shaped session token, the currently intended game ID, and a bounded list of unique question/choice indexes. It refuses client-supplied `score`, `max_score`, `student_id`, `teacher_id`, or `game_name`.
+## Request contract
 
-For a structurally valid request it still returns HTTP 503. It intentionally has no Supabase client, secret, database write, or path to award points. Do not remove this fail-closed behavior as a routine follow-up or deploy this handler as a functioning scoring path.
+The request validator allows only:
+- `start_attempt`: `session_token` and the approved `game_id`.
+- `submit_answer`: those fields plus the current `question_index` and selected `choice_index`.
 
-## Why it is not enabled
+It rejects client-supplied score, maximum score, student/teacher identity, transaction label, answer-correctness claims, unsupported actions and extra fields. This is only request-shape validation; a valid request is not trusted until the server validates session and attempt state.
 
-The current game calculates its score inside browser JavaScript. Its inspected source reads a `session` query parameter but does not submit a result to the database. The Classroom code creates a session and constructs the URL, but no matching result-submission caller has been located.
+## Why awarding remains disabled
 
-A final array of answers submitted by the browser is still untrusted input. Even if an Edge Function calculates a score from those answers, a caller could fabricate the array without playing. The current session table and RPC do not provide an authoritative per-question attempt/progress record for this proposal to validate. Consequently, this patch provides input-contract validation only; it is not yet a trustworthy scoring implementation.
+The current public game source embeds fixed question prompts, choices, correct-answer strings and a local score counter. It reads a session token but does not visibly submit results. The Classroom source creates sessions and constructs game URLs, but the deployed result-submission caller is still unidentified.
 
-## Required design before enabling score awards
+The newly added generator makes fresh values and shuffles option order. The trusted caller would store the correct choice index in protected per-attempt state and return only prompt/options/hint to the browser. The current live game HTML has not been changed; a separate, reviewed client patch is still required.
 
-1. **Choose the official scoring rule.** The visible game has 15 questions but grants streak and final-question bonuses; its displayed `/15` denominator conflicts with the local score. Decide whether the official score is correct answers out of 15 and whether bonuses are display-only. This product decision has not been approved in this review.
-2. **Move trust server-side.** The browser must not choose the official score, maximum score, student identity, teacher identity, or transaction name. The server must use an approved game catalogue and derive student/game identity from a validated session.
-3. **Add an authoritative attempt protocol.** If game results are based on answers, create a server-validated, replay-resistant per-question protocol that records/validates question state and submissions. Merely receiving a complete answer array at the end is insufficient proof that the game was played. Any required schema changes must be proposed separately and approved before execution.
-4. **Make consumption and award atomic.** Session validation, score verification, one-time consumption, and point insertion must be a single atomic operation or an equally strong transactional workflow. Reject expired, consumed, wrong-game, invalid, duplicate, or out-of-range submissions without awarding points.
-5. **Migrate all callers first.** The existing `record_student_game_result` function has `SECURITY DEFINER` and current effective `anon EXECUTE = true`. Do not revoke direct execution until legitimate caller paths have been located, replaced, and validated together. The current deployed caller remains unidentified.
-6. **Close the direct insert gap carefully.** Authenticated users currently have direct INSERT permission on `point_transactions`, with an RLS check for teacher ownership and student/class membership, but the policy does not restrict `source` or `action_type`. The inspected Classroom code uses direct inserts for teacher point adjustments and activity scoring with `source = 'teacher'`. Review and preserve these workflows before proposing a narrower policy or server-only points writer.
-7. **Keep public game play independent.** A public/non-assigned game can remain playable but must not award points to a student account without a valid student-linked session.
+The handler deliberately uses no Supabase client, service-role key or database call. It returns HTTP 503 for structurally valid requests. Do not remove this fail-closed behavior until the attempt-state schema, atomic answer function, scoring policy, caller migration, ACL plan and isolated tests are complete.
 
-## Static review test plan
+## Scoring policy still requires approval
 
-These tests can be run against the handler's request validator in an isolated code test harness; they do not call Supabase:
+The visible game has 15 questions but adds streak and final-question bonuses, then displays the score as `/15 points`. This is inconsistent.
 
-| Case | Expected validation outcome |
-|---|---|
-| Wrong method | HTTP 405 |
-| Unsupported origin | HTTP 403 (when an Origin header is present) |
-| Wrong content type | HTTP 415 |
-| Oversized body | HTTP 413 |
-| Malformed JSON or extra key such as `score` / `max_score` | HTTP 400 |
-| Invalid token, game ID, question index, choice index, or duplicate question index | HTTP 400 |
-| Structurally valid request | HTTP 503, no database call and no point award |
+Recommended decision for owner approval: official score/points equal the number of correct answers out of 15; streak and celebration bonuses are visual-only. **This recommendation has not been approved.** The proposed schema leaves award fields null until the official rule is confirmed. Do not make an award based on an assumed rule.
 
-A valid request returning 503 is intentional and is the current safety invariant. Unit-level request tests do not substitute for an isolated end-to-end test once the full trusted protocol and database changes are separately approved. A Deno test file with request-shape cases has been added, but the tests have **not yet been executed** in this environment.
+## Database and authorization gates
 
-## Release blockers
+1. Apply no SQL. The schema draft is deliberately outside the migrations directory and uses a `.sql.txt` suffix.
+2. Future server functions must derive student, class and game identity from the stored session; validate session expiration, use state, active class/student, sequence order and answer bounds; store correctness based on the protected per-attempt answer key; and make answer submission, session consumption and final award atomic.
+3. A repeated identical answer may be idempotent; a conflicting duplicate, skipped question or replay must not earn additional credit.
+4. Current effective privileges show `anon EXECUTE = true` for `record_student_game_result`. Do not revoke that permission until legitimate deployed callers have been located and migrated together.
+5. Authenticated users currently have direct INSERT permission on `point_transactions` under an RLS check for teacher ownership and student/class membership. The inspected Classroom client uses direct inserts for teacher adjustments and activity scoring with `source = 'teacher'`. Narrowing this policy requires a separately reviewed migration that preserves those flows.
+6. Public/practice gameplay must remain available without a student-linked reward session and must never award student points by itself.
+7. The historical `24/15` point transaction remains unexplained. The current result function would cap `p_score=24, p_max_score=15` at 15, but this alone does not identify the historical write path.
 
-- Deployed result caller/source version not identified.
-- Historical `24/15` transaction is not explained; the current function would cap those exact arguments at 15.
-- Official game score/bonus rule is undecided.
-- Trusted server-side scoring and atomic attempt/session state do not yet exist in this patch.
-- Direct anonymous RPC execution and unrestricted source/action fields on authenticated point inserts need a coordinated migration plan.
+## Tests and validation status
 
-**Decision remains NO-GO for release.** This proposal is documentation and a fail-closed code scaffold only; no deployment or database change has been performed.
+Test files include:
+- Nine validation contract cases for valid start/answer requests and malformed, out-of-range, identity/score injection, unsupported-action and extra-field requests.
+- Three generator tests, including 200 deterministic runs checking 15 sequential questions, four distinct options, in-range correct-choice indexes, semantic answer validity, and variation across seeds.
+
+**Tests have been authored but not executed** because the Deno runtime is not available in this environment. No build or runtime success is claimed.
+
+## Current decision
+
+**NO-GO for release.** The gateway is not deployed and awards no points. The database schema and functions, game-client migration, point-award integration, ACL changes and production deployment are not implemented.
