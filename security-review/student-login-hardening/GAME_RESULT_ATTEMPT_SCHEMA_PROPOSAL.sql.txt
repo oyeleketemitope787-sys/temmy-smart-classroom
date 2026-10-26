@@ -1,0 +1,157 @@
+-- DESIGN DRAFT ONLY — DO NOT EXECUTE.
+-- File deliberately lives outside Supabase's migrations directory and uses
+-- the .sql.txt suffix. It is a schema proposal, not an approved migration.
+--
+-- Preconditions to verify immediately before any future migration:
+--   * public.student_game_sessions.id is UUID primary key.
+--   * public.student_game_sessions.session_token is UUID and unique.
+--   * public.point_transactions.id is UUID primary key.
+--   * point_transactions.points is integer and source/action_type/reason fields
+--     accept the planned values.
+--   * game ID and approved scoring policy have been explicitly signed off.
+--
+-- This draft does NOT modify any existing function grants. In particular, it
+-- does not revoke EXECUTE on public.record_student_game_result. That must be a
+-- coordinated caller migration, based on verified deployed-client coverage.
+--
+-- Proposed new tables (do not uncomment/apply until reviewed):
+
+/*
+CREATE TABLE public.student_game_attempts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- One scoring attempt per issued session token.
+    session_id uuid NOT NULL UNIQUE
+        REFERENCES public.student_game_sessions(id)
+        ON DELETE CASCADE,
+
+    game_id text NOT NULL
+        CHECK (game_id = 'grade3-temmy-number-challenge'),
+
+    status text NOT NULL DEFAULT 'in_progress'
+        CHECK (status IN ('in_progress', 'completed')),
+
+    question_count smallint NOT NULL DEFAULT 15
+        CHECK (question_count = 15),
+
+    next_question_index smallint NOT NULL DEFAULT 0
+        CHECK (next_question_index BETWEEN 0 AND 15),
+
+    correct_count smallint NOT NULL DEFAULT 0
+        CHECK (correct_count BETWEEN 0 AND 15),
+
+    started_at timestamptz NOT NULL DEFAULT now(),
+    completed_at timestamptz,
+
+    -- These remain NULL until the official scoring rule is approved and a
+    -- reviewed atomic finalization routine inserts the point transaction.
+    points_awarded integer
+        CHECK (points_awarded IS NULL OR points_awarded BETWEEN 0 AND 15),
+    point_transaction_id uuid UNIQUE
+        REFERENCES public.point_transactions(id),
+    score_rule_version text,
+
+    CHECK (correct_count <= next_question_index),
+    CHECK (
+      (status = 'in_progress' AND completed_at IS NULL)
+      OR
+      (status = 'completed' AND completed_at IS NOT NULL)
+    ),
+    CHECK (
+      (point_transaction_id IS NULL AND points_awarded IS NULL)
+      OR
+      (point_transaction_id IS NOT NULL AND points_awarded IS NOT NULL)
+    )
+);
+
+CREATE TABLE public.student_game_attempt_questions (
+    attempt_id uuid NOT NULL
+        REFERENCES public.student_game_attempts(id)
+        ON DELETE CASCADE,
+
+    question_index smallint NOT NULL
+        CHECK (question_index BETWEEN 0 AND 14),
+
+    prompt text NOT NULL
+        CHECK (length(prompt) BETWEEN 1 AND 1000),
+
+    options jsonb NOT NULL
+        CHECK (jsonb_typeof(options) = 'array'),
+
+    hint text
+        CHECK (hint IS NULL OR length(hint) <= 500),
+
+    -- Privileged server state only. Never include in a browser response.
+    correct_choice_index smallint NOT NULL
+        CHECK (correct_choice_index BETWEEN 0 AND 3),
+
+    submitted_choice_index smallint
+        CHECK (
+          submitted_choice_index IS NULL
+          OR submitted_choice_index BETWEEN 0 AND 3
+        ),
+
+    is_correct boolean,
+    answered_at timestamptz,
+
+    PRIMARY KEY (attempt_id, question_index),
+
+    CHECK (
+      (submitted_choice_index IS NULL AND is_correct IS NULL AND answered_at IS NULL)
+      OR
+      (submitted_choice_index IS NOT NULL AND is_correct IS NOT NULL AND answered_at IS NOT NULL)
+    )
+);
+
+CREATE INDEX student_game_attempts_status_started_idx
+    ON public.student_game_attempts(status, started_at);
+
+ALTER TABLE public.student_game_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.student_game_attempt_questions ENABLE ROW LEVEL SECURITY;
+
+-- No browser/client role may read the stored correct choice or mutate attempts.
+-- Access must be through narrowly scoped, reviewed SECURITY DEFINER routines.
+REVOKE ALL ON TABLE public.student_game_attempts
+    FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.student_game_attempt_questions
+    FROM PUBLIC, anon, authenticated;
+
+COMMENT ON TABLE public.student_game_attempts IS
+    'Server-managed one-time game attempt state; no direct browser-role access.';
+COMMENT ON TABLE public.student_game_attempt_questions IS
+    'Server-managed per-attempt prompts and answer key; never expose correct_choice_index.';
+*/
+
+-- Required function contract; these routines are NOT included or enabled by
+-- this schema-only draft:
+--
+-- A) public.begin_number_challenge_attempt(p_session_token uuid, p_questions jsonb)
+--    * Executable by service_role only after explicit ACL review.
+--    * Validate the session token, expected game ID, expiration, used_at,
+--      active class and active student.
+--    * Create exactly one attempt for the session. Generate 15 questions on
+--      the trusted server; store all answer keys privately.
+--    * Repeated start calls must resume the same attempt, not replace its key.
+--    * Return current prompt/options/hint only; never return correct index.
+--
+-- B) public.record_number_challenge_answer(
+--       p_session_token uuid, p_question_index smallint, p_choice_index smallint
+--    )
+--    * Executable by service_role only after explicit ACL review.
+--    * Lock session and attempt rows FOR UPDATE.
+--    * Validate expiration, unused session, approved game ID, active student
+--      and class, expected next question and option bounds.
+--    * Derive correctness from the stored correct_choice_index; never accept
+--      is_correct/score/max_score from the browser.
+--    * Make same-answer retries idempotent; reject changed duplicate answers.
+--    * Record answer and update count/index atomically. On final answer, mark
+--      the attempt completed and consume the session in the same transaction.
+--    * Do not insert points until the official score rule is approved. After
+--      approval, create the single point_transactions row inside that same
+--      completion transaction and record its ID in point_transaction_id.
+--
+-- C) Explicitly revoke default PUBLIC/anon/authenticated EXECUTE and grant only
+--    the intended backend role on every new routine. Verify with
+--    has_function_privilege() after creation.
+--
+-- This is a proposal only. Do not run it on the shared TEST/PRODUCTION backend.
