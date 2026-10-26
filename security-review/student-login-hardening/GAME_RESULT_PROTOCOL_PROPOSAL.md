@@ -54,7 +54,7 @@ The trusted server retrieves the stored correct choice, calculates correctness, 
 
 The review branch now contains `question-generator.ts`. It creates 15 fresh comparison, ordering, nearest-number, inequality, between-number, greatest-number, and place-value reasoning questions. It returns a `correct_choice_index` for storage by the trusted caller. That key must never be sent to the browser.
 
-The generator uses Web Crypto through `crypto.getRandomValues` by default. Tests can inject deterministic randomness. The current public HTML remains unchanged; it still uses its original fixed question set. It must not be switched to this protocol until a separate, reviewed client patch is prepared in the game repository.
+The generator uses Web Crypto through `crypto.getRandomValues` by default. Tests can inject deterministic randomness. A local TypeScript/Node harness passed semantic checks across 10,000 deterministic seeds (150,000 generated questions); the checked-in Deno tests have not yet been run with Deno. The current public HTML remains unchanged; it still uses its original fixed question set. It must not be switched to this protocol until a separate, reviewed client patch is prepared in the game repository.
 
 Randomized prompts are not a guarantee that a human personally played the game. They make each attempt distinct and ensure that the **server** verifies answers instead of accepting a browser-calculated score. The protocol's purpose is to protect point-record integrity, not to claim perfect anti-cheating.
 
