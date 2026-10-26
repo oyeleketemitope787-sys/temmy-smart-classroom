@@ -188,11 +188,14 @@ COMMENT ON TABLE public.student_game_attempt_questions IS
     'Server-managed per-attempt prompts and answer key; never expose correct_choice_index.';
 */
 
--- Required function contract; these routines are NOT included or enabled by
--- this schema-only draft:
+-- Required function contract; the non-executable functions proposal lives in
+-- GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt. This schema-only draft does
+-- not create or enable these routines.
 --
--- A) public.begin_game_attempt(p_session_token uuid)
---    * Executable by the intended backend role only after explicit ACL review.
+-- A) public.begin_game_attempt(
+--       p_session_token uuid, p_game_id text, p_questions jsonb
+--    )
+--    * Executable by service_role only after explicit ACL review.
 --    * Validate the session token, approved game ID, expiration, used_at,
 --      active class and active student.
 --    * Read the game's question_count, max_score and score_rule_version from
@@ -203,9 +206,10 @@ COMMENT ON TABLE public.student_game_attempt_questions IS
 --    * Return current prompt/options/hint only; never return correct index.
 --
 -- B) public.record_game_attempt_answer(
---       p_session_token uuid, p_question_index smallint, p_choice_index smallint
+--       p_session_token uuid, p_game_id text,
+--       p_question_index smallint, p_choice_index smallint
 --    )
---    * Executable by the intended backend role only after explicit ACL review.
+--    * Executable by service_role only after explicit ACL review.
 --    * Lock session and attempt rows FOR UPDATE.
 --    * Validate expiration, unused session, approved game ID, active student
 --      and class, expected next question and option bounds.
