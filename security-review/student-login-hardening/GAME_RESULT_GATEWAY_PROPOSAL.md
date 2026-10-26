@@ -12,7 +12,7 @@
 - `supabase/functions/game-result-gateway/question-generator.ts` — fresh 15-question number-challenge generator; correct choice index is for protected server state and must not be returned to the browser.
 - `supabase/functions/game-result-gateway/question-generator_test.ts` — generator shape and semantic-answer tests across deterministic test seeds.
 - `supabase/functions/game-result-gateway/scoring-contract.ts` — central per-game scoring catalogue, variable maximum, exact score-to-points rule, and Number Challenge bonus calculation.
-- `supabase/functions/game-result-gateway/scoring-contract_test.ts` — tests exact score-to-points, variable maximums, invalid/out-of-range scores, and bonus scoring.
+- `supabase/functions/game-result-gateway/scoring-contract_test.ts` — tests exact score-to-points, variable maximums, invalid/out-of-range scores, bonus scoring, and central score display labels.
 - `supabase/functions/game-result-gateway/scoring-contract_test.ts` — central scoring tests, including a registered test case out of 20.
 - `security-review/student-login-hardening/GAME_RESULT_PROTOCOL_PROPOSAL.md` — proposed step-based API and migration gates.
 - `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable DDL draft outside the Supabase migrations directory.
@@ -45,7 +45,7 @@ The owner has approved the governing rule: **award the exact score verified by t
 - Unknown or unregistered games are rejected; there is no fallback maximum.
 - These rules do not authorize trusting a client-reported score. Correctness and score must be calculated from trusted server-side attempt state.
 
-The central scoring module is present in scoring-contract.ts with rule version number-challenge-streak-v1 for the current game and pure helper tests. The central scoring helper has not yet been connected to persisted attempt state or the database; the HTTP gateway remains fail-closed and returns 503 for valid requests.
+The central scoring module is present in scoring-contract.ts with rule version number-challenge-streak-v1 for the current game, exact score-to-points output, and a score display contract that returns labels such as 24/41 and 16/20. The central scoring helper has not yet been connected to persisted attempt state or the database; the HTTP gateway remains fail-closed and returns 503 for valid requests.
 
 ## Database and authorization gates
 
