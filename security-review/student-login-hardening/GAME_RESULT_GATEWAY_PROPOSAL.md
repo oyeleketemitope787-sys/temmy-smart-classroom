@@ -7,6 +7,8 @@
 ## Patch added
 
 - `supabase/functions/game-result-gateway/index.ts`
+- `supabase/functions/game-result-gateway/validation.ts`
+- `supabase/functions/game-result-gateway/validation_test.ts`
 
 The new handler validates method, content type, body size, origin allowlist, exact JSON keys, UUID-shaped session token, the currently intended game ID, and a bounded list of unique question/choice indexes. It refuses client-supplied `score`, `max_score`, `student_id`, `teacher_id`, or `game_name`.
 
@@ -42,7 +44,7 @@ These tests can be run against the handler's request validator in an isolated co
 | Invalid token, game ID, question index, choice index, or duplicate question index | HTTP 400 |
 | Structurally valid request | HTTP 503, no database call and no point award |
 
-A valid request returning 503 is intentional and is the current safety invariant. Unit-level request tests do not substitute for an isolated end-to-end test once the full trusted protocol and database changes are separately approved.
+A valid request returning 503 is intentional and is the current safety invariant. Unit-level request tests do not substitute for an isolated end-to-end test once the full trusted protocol and database changes are separately approved. A Deno test file with request-shape cases has been added, but the tests have **not yet been executed** in this environment.
 
 ## Release blockers
 
