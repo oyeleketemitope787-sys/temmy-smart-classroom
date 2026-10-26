@@ -11,6 +11,8 @@
 - `supabase/functions/game-result-gateway/validation_test.ts` — request-contract tests.
 - `supabase/functions/game-result-gateway/question-generator.ts` — fresh 15-question number-challenge generator; correct choice index is for protected server state and must not be returned to the browser.
 - `supabase/functions/game-result-gateway/question-generator_test.ts` — generator shape and semantic-answer tests across deterministic test seeds.
+- `supabase/functions/game-result-gateway/scoring-contract.ts` — central per-game scoring catalogue, variable maximum, exact score-to-points rule, and Number Challenge bonus calculation.
+- `supabase/functions/game-result-gateway/scoring-contract_test.ts` — central scoring tests, including a registered test case out of 20.
 - `security-review/student-login-hardening/GAME_RESULT_PROTOCOL_PROPOSAL.md` — proposed step-based API and migration gates.
 - `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable DDL draft outside the Supabase migrations directory.
 - `security-review/student-login-hardening/GAME_RESULT_GATEWAY_PROPOSAL.md` — this review record.
@@ -18,8 +20,8 @@
 ## Request contract
 
 The request validator allows only:
-- `start_attempt`: `session_token` and the approved `game_id`.
-- `submit_answer`: those fields plus the current `question_index` and selected `choice_index`.
+- `start_attempt`: `session_token` and a game ID present in the trusted central scoring catalogue.
+- `submit_answer`: those fields plus the current `question_index` and selected `choice_index`, bounded by that game's registered question count.
 
 It rejects client-supplied score, maximum score, student/teacher identity, transaction label, answer-correctness claims, unsupported actions and extra fields. This is only request-shape validation; a valid request is not trusted until the server validates session and attempt state.
 
@@ -31,11 +33,18 @@ The newly added generator makes fresh values and shuffles option order. The trus
 
 The handler deliberately uses no Supabase client, service-role key or database call. It returns HTTP 503 for structurally valid requests. Do not remove this fail-closed behavior until the attempt-state schema, atomic answer function, scoring policy, caller migration, ACL plan and isolated tests are complete.
 
-## Scoring policy still requires approval
+## Central scoring policy — owner-approved
 
-The visible game has 15 questions but adds streak and final-question bonuses, then displays the score as `/15 points`. This is inconsistent.
+The owner has approved the governing rule: **award the exact score verified by trusted server logic, with a game-specific maximum.** There is no universal 15-point cap and no silent clamping.
 
-Recommended decision for owner approval: official score/points equal the number of correct answers out of 15; streak and celebration bonuses are visual-only. **This recommendation has not been approved.** The proposed schema leaves award fields null until the official rule is confirmed. Do not make an award based on an assumed rule.
+- Game configuration on the trusted side defines the question count, scoring rule version, and actual maximum achievable score.
+- The central platform stores and displays both verified score and configured maximum. For a no-bonus game out of 20, 16 correct points are recorded as 16/20 and 16 points are awarded.
+- If a game's scoring formula includes bonus points, its configured maximum includes those points. The current Number Challenge bonus algorithm has a theoretical all-correct maximum of 41 (15 base + 13 streak bonuses + 11 further streak bonuses + 2 final bonus). Under this rule, a verified score of 24 is 24/41, awarded as 24 points, not clamped to 15 or displayed as 24/15.
+- A verified score outside the configured range is rejected with no award; never silently replace it with the maximum.
+- Unknown or unregistered games are rejected; there is no fallback maximum.
+- These rules do not authorize trusting a client-reported score. Correctness and score must be calculated from trusted server-side attempt state.
+
+The central scoring module is present in scoring-contract.ts with rule version number-challenge-streak-v1 for the current game and pure helper tests. The central scoring helper has not yet been connected to persisted attempt state or the database; the HTTP gateway remains fail-closed and returns 503 for valid requests.
 
 ## Database and authorization gates
 
@@ -45,7 +54,7 @@ Recommended decision for owner approval: official score/points equal the number 
 4. Current effective privileges show `anon EXECUTE = true` for `record_student_game_result`. Do not revoke that permission until legitimate deployed callers have been located and migrated together.
 5. Authenticated users currently have direct INSERT permission on `point_transactions` under an RLS check for teacher ownership and student/class membership. The inspected Classroom client uses direct inserts for teacher adjustments and activity scoring with `source = 'teacher'`. Narrowing this policy requires a separately reviewed migration that preserves those flows.
 6. Public/practice gameplay must remain available without a student-linked reward session and must never award student points by itself.
-7. The historical `24/15` point transaction remains unexplained. The current result function would cap `p_score=24, p_max_score=15` at 15, but this alone does not identify the historical write path.
+7. The historical `24/15` transaction's write path remains unexplained. The 24-point value itself is consistent with the current local bonus algorithm; the denominator `15` is inconsistent with its theoretical maximum of 41. The current database result function would cap arguments `24, 15` at 15, so it does not explain that stored value with those exact arguments.
 
 ## Tests and validation status
 
