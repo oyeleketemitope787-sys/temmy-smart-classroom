@@ -119,3 +119,28 @@ export function scoreNumberChallengeAnswer(args: {
 
   return { pointsDelta, nextStreak };
 }
+
+export type CentralScoreDisplay = {
+  score_label: string;
+  points_awarded: number;
+  points_awarded_label: string;
+  max_score: number;
+  score_rule_version: string;
+};
+
+/**
+ * Build the stable values that the central game platform should render.
+ * The UI must not hardcode "/15" or derive the denominator from question count.
+ */
+export function buildCentralScoreDisplay(
+  verified: VerifiedScoreResult,
+): CentralScoreDisplay {
+  return {
+    score_label: String(verified.score) + "/" + String(verified.max_score),
+    points_awarded: verified.points_awarded,
+    points_awarded_label: String(verified.points_awarded) +
+      (verified.points_awarded === 1 ? " point awarded" : " points awarded"),
+    max_score: verified.max_score,
+    score_rule_version: verified.score_rule_version,
+  };
+}
