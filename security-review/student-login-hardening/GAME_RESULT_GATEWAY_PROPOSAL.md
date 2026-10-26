@@ -1,12 +1,12 @@
 # Game Result Gateway Proposal
 
-**Status:** Review-only implementation scaffold; deliberately fail-closed  
+**Status:** Review-branch implementation proposal; default-disabled with two server-side feature flags  
 **Branch:** `security-review/student-login-hardening`  
 **Not deployed. No database DDL, permissions, secrets, production code, or student records changed.**
 
 ## Files added or updated
 
-- `supabase/functions/game-result-gateway/index.ts` — HTTP handler; valid requests deliberately receive HTTP 503 and no database call is made.
+- `supabase/functions/game-result-gateway/index.ts` — Edge Function handler. Unless BOTH `GAME_RESULT_GATEWAY_READY=true` and `GAME_RESULT_WRITE_ENABLED=true` are set in the server environment, requests fail with HTTP 503 and no database call is made. Neither flag has been configured and the function is not deployed.
 - `supabase/functions/game-result-gateway/validation.ts` — strict request-shape validation for `start_attempt` and `submit_answer`.
 - `supabase/functions/game-result-gateway/validation_test.ts` — request-contract tests.
 - `supabase/functions/game-result-gateway/question-generator.ts` — fresh 15-question number-challenge generator; correct choice index is for protected server state and must not be returned to the browser.
@@ -15,7 +15,8 @@
 - `supabase/functions/game-result-gateway/scoring-contract_test.ts` — tests exact score-to-points, variable maximums, invalid/out-of-range scores, bonus scoring, and central score display labels.
 - `supabase/functions/game-result-gateway/scoring-contract_test.ts` — central scoring tests, including a registered test case out of 20.
 - `security-review/student-login-hardening/GAME_RESULT_PROTOCOL_PROPOSAL.md` — proposed step-based API and migration gates.
-- `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable DDL draft outside the Supabase migrations directory.
+- `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable schema/catalogue draft outside the Supabase migrations directory.
+- `security-review/student-login-hardening/GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt` — non-executable draft for atomic begin/answer/award functions.
 - `security-review/student-login-hardening/GAME_RESULT_GATEWAY_PROPOSAL.md` — this review record.
 
 ## Request contract
@@ -32,7 +33,7 @@ The current public game source embeds fixed question prompts, choices, correct-a
 
 The newly added generator makes fresh values and shuffles option order. The trusted caller would store the correct choice index in protected per-attempt state and return only prompt/options/hint to the browser. The current live game HTML has not been changed; a separate, reviewed client patch is still required.
 
-The handler deliberately uses no Supabase client, service-role key or database call. It returns HTTP 503 for structurally valid requests. Do not remove this fail-closed behavior until the attempt-state schema, atomic answer function, scoring policy, caller migration, ACL plan and isolated tests are complete.
+The handler contains a staged Supabase RPC path, but it is disabled by default. It returns HTTP 503 without calling Supabase unless BOTH `GAME_RESULT_GATEWAY_READY=true` and `GAME_RESULT_WRITE_ENABLED=true` are set in the Edge Function's server environment. Neither flag has been configured, the handler is not deployed, and no RPC calls have been made. Do not set these flags until the proposed schema/functions are implemented in an isolated environment, tests pass, the game client is migrated, and the ACL rollout is separately reviewed.
 
 ## Central scoring policy — owner-approved
 
@@ -61,7 +62,7 @@ The central scoring module is present in scoring-contract.ts with rule version n
 
 The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch now also includes 12 request-validation cases and nine central scoring cases, including a 16/20 reward and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
 
-The checked-in Deno test files currently contain 12 request-validation cases, three generator tests, and nine scoring tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
+The checked-in Deno test files currently contain 12 request-validation cases, three generator tests, and ten scoring/display tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
 
 ## Current decision
 
