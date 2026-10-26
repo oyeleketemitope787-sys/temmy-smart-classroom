@@ -64,8 +64,9 @@ export type ScoreValidation =
 export function buildVerifiedScoreResult(
   gameId: string,
   verifiedScore: unknown,
+  catalogue: Readonly<Record<string, GameScoringRule>> = GAME_SCORING_CATALOGUE,
 ): ScoreValidation {
-  const rule = GAME_SCORING_CATALOGUE[gameId];
+  const rule = catalogue[gameId];
   if (!rule) return { ok: false, reason: "unknown_game" };
 
   if (typeof verifiedScore !== "number" ||
