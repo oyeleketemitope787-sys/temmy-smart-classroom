@@ -1,0 +1,602 @@
+-- DESIGN / REVIEW DRAFT ONLY — DO NOT EXECUTE.
+-- This file has a .sql.txt suffix and is outside supabase/migrations.
+-- All proposed executable SQL below is wrapped in a block comment.
+--
+-- Purpose: central, server-verified, one-answer-at-a-time scoring with an
+-- exact game-specific score/maximum and an atomic one-time points award.
+--
+-- Preconditions to recheck before any real migration:
+--   * student_game_sessions.id is UUID primary key; session_token UUID unique.
+--   * student_game_sessions has student_id, class_id, game_id, expires_at, used_at.
+--   * students has id, class_id, active.
+--   * classes has id, teacher_id, active.
+--   * point_transactions has id, student_id, teacher_id, points, action_name,
+--     action_type, reason, source, created_at.
+--   * the schema proposal tables match these function definitions exactly.
+--
+-- The Edge Function must use server-only credentials and call these functions.
+-- The browser must never be granted EXECUTE on these routines. Do not revoke
+-- existing record_student_game_result privileges as part of this draft.
+--
+-- The approved scoring rule:
+--   * points_awarded = exact verified score.
+--   * max_score is game-specific and read from the versioned catalogue.
+--   * Number Challenge v1 max_score = 41 because bonus points are part of score.
+--   * A no-bonus game out of 20 uses max_score=20; 16 earns 16 points.
+--   * invalid/out-of-range scores are rejected, never silently clamped.
+
+/*
+CREATE OR REPLACE FUNCTION public.begin_game_attempt(
+    p_session_token uuid,
+    p_game_id text,
+    p_questions jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+    v_session record;
+    v_attempt record;
+    v_rule record;
+    v_question record;
+    v_item jsonb;
+    v_options jsonb;
+    v_question_index integer;
+    v_correct_index integer;
+    v_expected_index integer := 0;
+    v_distinct_options integer;
+    v_attempt_id uuid;
+    v_prompt text;
+    v_hint text;
+BEGIN
+    IF p_session_token IS NULL OR p_game_id IS NULL THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_request');
+    END IF;
+
+    SELECT
+        sgs.id AS session_id,
+        sgs.student_id,
+        sgs.class_id,
+        sgs.game_id,
+        sgs.expires_at,
+        sgs.used_at,
+        c.teacher_id,
+        c.active AS class_active,
+        st.active AS student_active,
+        st.class_id AS student_class_id
+    INTO v_session
+    FROM public.student_game_sessions AS sgs
+    JOIN public.classes AS c ON c.id = sgs.class_id
+    JOIN public.students AS st ON st.id = sgs.student_id
+    WHERE sgs.session_token = p_session_token
+    FOR UPDATE OF sgs;
+
+    IF NOT FOUND
+       OR v_session.game_id IS DISTINCT FROM p_game_id
+       OR v_session.student_class_id IS DISTINCT FROM v_session.class_id THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
+    END IF;
+
+    SELECT a.*
+    INTO v_attempt
+    FROM public.student_game_attempts AS a
+    WHERE a.session_id = v_session.session_id
+    FOR UPDATE;
+
+    IF FOUND THEN
+        IF v_attempt.game_id IS DISTINCT FROM p_game_id THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
+        END IF;
+
+        IF v_attempt.status = 'completed' THEN
+            RETURN pg_catalog.jsonb_build_object(
+                'ok', true,
+                'status', 'completed',
+                'game_id', v_attempt.game_id,
+                'score', v_attempt.verified_score,
+                'max_score', v_attempt.max_score,
+                'points_awarded', v_attempt.points_awarded,
+                'score_rule_version', v_attempt.score_rule_version
+            );
+        END IF;
+
+        IF v_session.used_at IS NOT NULL
+           OR v_session.expires_at <= pg_catalog.now()
+           OR v_session.class_active IS DISTINCT FROM true
+           OR v_session.student_active IS DISTINCT FROM true THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
+        END IF;
+
+        SELECT q.*
+        INTO v_question
+        FROM public.student_game_attempt_questions AS q
+        WHERE q.attempt_id = v_attempt.id
+          AND q.question_index = v_attempt.next_question_index;
+
+        IF NOT FOUND THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'attempt_state_invalid');
+        END IF;
+
+        RETURN pg_catalog.jsonb_build_object(
+            'ok', true,
+            'status', 'in_progress',
+            'game_id', v_attempt.game_id,
+            'question_count', v_attempt.question_count,
+            'score', v_attempt.verified_score,
+            'max_score', v_attempt.max_score,
+            'question', pg_catalog.jsonb_build_object(
+                'question_index', v_question.question_index,
+                'prompt', v_question.prompt,
+                'options', v_question.options,
+                'hint', v_question.hint
+            )
+        );
+    END IF;
+
+    IF v_session.used_at IS NOT NULL
+       OR v_session.expires_at <= pg_catalog.now()
+       OR v_session.class_active IS DISTINCT FROM true
+       OR v_session.student_active IS DISTINCT FROM true THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
+    END IF;
+
+    SELECT r.*
+    INTO v_rule
+    FROM public.game_scoring_catalogue AS r
+    WHERE r.game_id = p_game_id
+      AND r.active = true
+    FOR SHARE;
+
+    IF NOT FOUND THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'game_not_registered');
+    END IF;
+
+    IF p_questions IS NULL
+       OR pg_catalog.jsonb_typeof(p_questions) IS DISTINCT FROM 'array'
+       OR pg_catalog.jsonb_array_length(p_questions) <> v_rule.question_count THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+    END IF;
+
+    -- Validate the complete trusted-server-generated question set before
+    -- inserting any attempt rows. The answer key is accepted only from this
+    -- service-role-only function, never from the browser request.
+    FOR v_item IN
+        SELECT x.value
+        FROM pg_catalog.jsonb_array_elements(p_questions) AS x(value)
+        ORDER BY (x.value ->> 'question_index')::integer
+    LOOP
+        IF pg_catalog.jsonb_typeof(v_item) IS DISTINCT FROM 'object'
+           OR pg_catalog.jsonb_object_length(v_item) <> 5
+           OR NOT (v_item ? 'question_index')
+           OR NOT (v_item ? 'prompt')
+           OR NOT (v_item ? 'options')
+           OR NOT (v_item ? 'hint')
+           OR NOT (v_item ? 'correct_choice_index') THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+        END IF;
+
+        IF pg_catalog.jsonb_typeof(v_item -> 'question_index') IS DISTINCT FROM 'number'
+           OR (v_item ->> 'question_index') !~ '^(0|[1-9][0-9]*)$'
+           OR pg_catalog.jsonb_typeof(v_item -> 'correct_choice_index') IS DISTINCT FROM 'number'
+           OR (v_item ->> 'correct_choice_index') !~ '^(0|[1-9][0-9]*)$'
+           OR pg_catalog.jsonb_typeof(v_item -> 'prompt') IS DISTINCT FROM 'string'
+           OR pg_catalog.jsonb_typeof(v_item -> 'hint') NOT IN ('string', 'null') THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+        END IF;
+
+        v_question_index := (v_item ->> 'question_index')::integer;
+        v_correct_index := (v_item ->> 'correct_choice_index')::integer;
+        v_prompt := v_item ->> 'prompt';
+        v_hint := v_item ->> 'hint';
+        v_options := v_item -> 'options';
+
+        IF v_question_index <> v_expected_index
+           OR v_correct_index NOT BETWEEN 0 AND 3
+           OR pg_catalog.length(pg_catalog.btrim(v_prompt)) NOT BETWEEN 1 AND 1000
+           OR pg_catalog.length(pg_catalog.coalesce(v_hint, '')) > 500
+           OR pg_catalog.jsonb_typeof(v_options) IS DISTINCT FROM 'array' THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+        END IF;
+
+        IF pg_catalog.jsonb_array_length(v_options) <> 4 THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+        END IF;
+
+        SELECT pg_catalog.count(DISTINCT opt.value)
+        INTO v_distinct_options
+        FROM pg_catalog.jsonb_array_elements_text(v_options) AS opt(value);
+
+        IF v_distinct_options <> 4 THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
+        END IF;
+
+        v_expected_index := v_expected_index + 1;
+    END LOOP;
+
+    INSERT INTO public.student_game_attempts (
+        session_id,
+        game_id,
+        status,
+        question_count,
+        max_score,
+        next_question_index,
+        correct_count,
+        verified_score,
+        current_streak,
+        started_at,
+        score_rule_version
+    )
+    VALUES (
+        v_session.session_id,
+        p_game_id,
+        'in_progress',
+        v_rule.question_count,
+        v_rule.max_score,
+        0,
+        0,
+        0,
+        0,
+        pg_catalog.now(),
+        v_rule.rule_version
+    )
+    RETURNING id INTO v_attempt_id;
+
+    FOR v_item IN
+        SELECT x.value
+        FROM pg_catalog.jsonb_array_elements(p_questions) AS x(value)
+        ORDER BY (x.value ->> 'question_index')::integer
+    LOOP
+        INSERT INTO public.student_game_attempt_questions (
+            attempt_id,
+            question_index,
+            prompt,
+            options,
+            hint,
+            correct_choice_index
+        )
+        VALUES (
+            v_attempt_id,
+            (v_item ->> 'question_index')::smallint,
+            v_item ->> 'prompt',
+            v_item -> 'options',
+            v_item ->> 'hint',
+            (v_item ->> 'correct_choice_index')::smallint
+        );
+    END LOOP;
+
+    SELECT q.*
+    INTO v_question
+    FROM public.student_game_attempt_questions AS q
+    WHERE q.attempt_id = v_attempt_id
+      AND q.question_index = 0;
+
+    RETURN pg_catalog.jsonb_build_object(
+        'ok', true,
+        'status', 'in_progress',
+        'game_id', p_game_id,
+        'question_count', v_rule.question_count,
+        'score', 0,
+        'max_score', v_rule.max_score,
+        'question', pg_catalog.jsonb_build_object(
+            'question_index', v_question.question_index,
+            'prompt', v_question.prompt,
+            'options', v_question.options,
+            'hint', v_question.hint
+        )
+    );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.record_game_attempt_answer(
+    p_session_token uuid,
+    p_question_index smallint,
+    p_choice_index smallint
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+    v_session record;
+    v_attempt record;
+    v_question record;
+    v_next_question record;
+    v_rule record;
+    v_is_correct boolean;
+    v_next_streak smallint;
+    v_next_index smallint;
+    v_next_correct_count smallint;
+    v_points_delta integer := 0;
+    v_new_score integer;
+    v_transaction_id uuid;
+    v_updated_session_id uuid;
+BEGIN
+    IF p_session_token IS NULL
+       OR p_question_index IS NULL
+       OR p_choice_index IS NULL
+       OR p_question_index < 0
+       OR p_choice_index NOT BETWEEN 0 AND 3 THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_answer');
+    END IF;
+
+    SELECT
+        sgs.id AS session_id,
+        sgs.student_id,
+        sgs.class_id,
+        sgs.game_id,
+        sgs.expires_at,
+        sgs.used_at,
+        c.teacher_id,
+        c.active AS class_active,
+        st.active AS student_active,
+        st.class_id AS student_class_id
+    INTO v_session
+    FROM public.student_game_sessions AS sgs
+    JOIN public.classes AS c ON c.id = sgs.class_id
+    JOIN public.students AS st ON st.id = sgs.student_id
+    WHERE sgs.session_token = p_session_token
+    FOR UPDATE OF sgs;
+
+    IF NOT FOUND
+       OR v_session.student_class_id IS DISTINCT FROM v_session.class_id THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
+    END IF;
+
+    SELECT a.*
+    INTO v_attempt
+    FROM public.student_game_attempts AS a
+    WHERE a.session_id = v_session.session_id
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_attempt.game_id IS DISTINCT FROM v_session.game_id THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_attempt');
+    END IF;
+
+    SELECT q.*
+    INTO v_question
+    FROM public.student_game_attempt_questions AS q
+    WHERE q.attempt_id = v_attempt.id
+      AND q.question_index = p_question_index
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question');
+    END IF;
+
+    -- Idempotent retry: the exact same answer returns stored state and cannot
+    -- increment score or create another point transaction.
+    IF v_question.submitted_choice_index IS NOT NULL THEN
+        IF v_question.submitted_choice_index <> p_choice_index THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'answer_conflict');
+        END IF;
+
+        IF v_attempt.status = 'completed' THEN
+            RETURN pg_catalog.jsonb_build_object(
+                'ok', true,
+                'status', 'completed',
+                'duplicate', true,
+                'game_id', v_attempt.game_id,
+                'score', v_attempt.verified_score,
+                'max_score', v_attempt.max_score,
+                'points_awarded', v_attempt.points_awarded,
+                'score_rule_version', v_attempt.score_rule_version
+            );
+        END IF;
+
+        SELECT q.*
+        INTO v_next_question
+        FROM public.student_game_attempt_questions AS q
+        WHERE q.attempt_id = v_attempt.id
+          AND q.question_index = v_attempt.next_question_index;
+
+        RETURN pg_catalog.jsonb_build_object(
+            'ok', true,
+            'status', 'in_progress',
+            'duplicate', true,
+            'game_id', v_attempt.game_id,
+            'question_count', v_attempt.question_count,
+            'score', v_attempt.verified_score,
+            'max_score', v_attempt.max_score,
+            'question', pg_catalog.jsonb_build_object(
+                'question_index', v_next_question.question_index,
+                'prompt', v_next_question.prompt,
+                'options', v_next_question.options,
+                'hint', v_next_question.hint
+            )
+        );
+    END IF;
+
+    IF v_attempt.status <> 'in_progress'
+       OR v_session.used_at IS NOT NULL
+       OR v_session.expires_at <= pg_catalog.now()
+       OR v_session.class_active IS DISTINCT FROM true
+       OR v_session.student_active IS DISTINCT FROM true THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
+    END IF;
+
+    IF p_question_index <> v_attempt.next_question_index THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'unexpected_question');
+    END IF;
+
+    SELECT r.*
+    INTO v_rule
+    FROM public.game_scoring_catalogue AS r
+    WHERE r.game_id = v_attempt.game_id
+      AND r.rule_version = v_attempt.score_rule_version;
+
+    IF NOT FOUND
+       OR v_rule.question_count <> v_attempt.question_count
+       OR v_rule.max_score <> v_attempt.max_score THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'scoring_rule_unavailable');
+    END IF;
+
+    v_is_correct := p_choice_index = v_question.correct_choice_index;
+    v_next_streak := CASE WHEN v_is_correct THEN v_attempt.current_streak + 1 ELSE 0 END;
+    v_next_correct_count := v_attempt.correct_count + CASE WHEN v_is_correct THEN 1 ELSE 0 END;
+
+    IF v_attempt.score_rule_version = 'number-challenge-streak-v1' THEN
+        IF v_is_correct THEN
+            v_points_delta := 1;
+            IF v_next_streak >= 3 THEN
+                v_points_delta := v_points_delta + 1;
+            END IF;
+            IF v_next_streak >= 5 THEN
+                v_points_delta := v_points_delta + 1;
+            END IF;
+            IF p_question_index = v_attempt.question_count - 1 THEN
+                v_points_delta := v_points_delta + 2;
+            END IF;
+        END IF;
+    ELSIF v_attempt.score_rule_version = 'one-point-per-correct-v1' THEN
+        IF v_is_correct THEN
+            v_points_delta := 1;
+        END IF;
+    ELSE
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'unsupported_scoring_rule');
+    END IF;
+
+    v_new_score := v_attempt.verified_score + v_points_delta;
+    v_next_index := v_attempt.next_question_index + 1;
+
+    IF v_new_score < 0 OR v_new_score > v_attempt.max_score
+       OR v_next_correct_count > v_attempt.question_count THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'scoring_rule_violation');
+    END IF;
+
+    UPDATE public.student_game_attempt_questions
+    SET submitted_choice_index = p_choice_index,
+        is_correct = v_is_correct,
+        answered_at = pg_catalog.now()
+    WHERE attempt_id = v_attempt.id
+      AND question_index = p_question_index
+      AND submitted_choice_index IS NULL;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Game answer state changed unexpectedly';
+    END IF;
+
+    IF v_next_index = v_attempt.question_count THEN
+        INSERT INTO public.point_transactions (
+            student_id,
+            teacher_id,
+            points,
+            action_name,
+            action_type,
+            reason,
+            source
+        )
+        VALUES (
+            v_session.student_id,
+            v_session.teacher_id,
+            v_new_score,
+            v_rule.display_name,
+            'activity_score',
+            'Game completed — ' || v_new_score || '/' || v_attempt.max_score,
+            'game'
+        )
+        RETURNING id INTO v_transaction_id;
+
+        UPDATE public.student_game_attempts
+        SET status = 'completed',
+            next_question_index = v_next_index,
+            correct_count = v_next_correct_count,
+            verified_score = v_new_score,
+            current_streak = v_next_streak,
+            completed_at = pg_catalog.now(),
+            points_awarded = v_new_score,
+            point_transaction_id = v_transaction_id
+        WHERE id = v_attempt.id
+          AND status = 'in_progress';
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Game attempt completion changed unexpectedly';
+        END IF;
+
+        UPDATE public.student_game_sessions
+        SET used_at = pg_catalog.now()
+        WHERE id = v_session.session_id
+          AND used_at IS NULL
+        RETURNING id INTO v_updated_session_id;
+
+        IF v_updated_session_id IS NULL THEN
+            RAISE EXCEPTION 'Game session consumption failed';
+        END IF;
+
+        RETURN pg_catalog.jsonb_build_object(
+            'ok', true,
+            'status', 'completed',
+            'game_id', v_attempt.game_id,
+            'score', v_new_score,
+            'max_score', v_attempt.max_score,
+            'points_awarded', v_new_score,
+            'score_rule_version', v_attempt.score_rule_version,
+            'correct_count', v_next_correct_count,
+            'question_count', v_attempt.question_count
+        );
+    END IF;
+
+    UPDATE public.student_game_attempts
+    SET next_question_index = v_next_index,
+        correct_count = v_next_correct_count,
+        verified_score = v_new_score,
+        current_streak = v_next_streak
+    WHERE id = v_attempt.id
+      AND status = 'in_progress';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Game attempt state changed unexpectedly';
+    END IF;
+
+    SELECT q.*
+    INTO v_next_question
+    FROM public.student_game_attempt_questions AS q
+    WHERE q.attempt_id = v_attempt.id
+      AND q.question_index = v_next_index;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Next game question is missing';
+    END IF;
+
+    RETURN pg_catalog.jsonb_build_object(
+        'ok', true,
+        'status', 'in_progress',
+        'game_id', v_attempt.game_id,
+        'question_count', v_attempt.question_count,
+        'answer_correct', v_is_correct,
+        'points_delta', v_points_delta,
+        'score', v_new_score,
+        'max_score', v_attempt.max_score,
+        'question', pg_catalog.jsonb_build_object(
+            'question_index', v_next_question.question_index,
+            'prompt', v_next_question.prompt,
+            'options', v_next_question.options,
+            'hint', v_next_question.hint
+        )
+    );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.begin_game_attempt(uuid, text, jsonb)
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.begin_game_attempt(uuid, text, jsonb)
+    TO service_role;
+
+REVOKE ALL ON FUNCTION public.record_game_attempt_answer(uuid, smallint, smallint)
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_game_attempt_answer(uuid, smallint, smallint)
+    TO service_role;
+*/
+
+-- Review checklist before converting this into a real migration:
+--   1. Validate every referenced column/table against current database metadata.
+--   2. Review whether SECURITY DEFINER owner, RLS, and grant strategy are correct.
+--   3. Verify that point_transactions supports the exact values and a zero-point
+--      transaction is acceptable for a completed run with no correct answers.
+--   4. Unit/integration test the SQL in an isolated Supabase project, including
+--      concurrent identical answer submissions and duplicate final submissions.
+--   5. Use one server-controlled scoring catalogue across question generator,
+--      SQL score function, result persistence, and central UI.
+--   6. Do not run on the shared TEST/PRODUCTION project as a test.
