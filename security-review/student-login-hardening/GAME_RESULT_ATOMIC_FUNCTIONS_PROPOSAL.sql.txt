@@ -153,6 +153,17 @@ BEGIN
         RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'game_not_registered');
     END IF;
 
+    IF (v_rule.rule_version = 'number-challenge-streak-v1'
+        AND (v_rule.question_count <> 15 OR v_rule.max_score <> 41))
+       OR (v_rule.rule_version = 'one-point-per-correct-v1'
+        AND v_rule.max_score <> v_rule.question_count)
+       OR v_rule.rule_version NOT IN (
+            'number-challenge-streak-v1',
+            'one-point-per-correct-v1'
+       ) THEN
+        RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'scoring_rule_misconfigured');
+    END IF;
+
     IF p_questions IS NULL
        OR pg_catalog.jsonb_typeof(p_questions) IS DISTINCT FROM 'array'
        OR pg_catalog.jsonb_array_length(p_questions) <> v_rule.question_count THEN
@@ -164,8 +175,8 @@ BEGIN
     -- service-role-only function, never from the browser request.
     FOR v_item IN
         SELECT x.value
-        FROM pg_catalog.jsonb_array_elements(p_questions) AS x(value)
-        ORDER BY (x.value ->> 'question_index')::integer
+        FROM pg_catalog.jsonb_array_elements(p_questions) WITH ORDINALITY AS x(value, ordinality)
+        ORDER BY x.ordinality
     LOOP
         IF pg_catalog.jsonb_typeof(v_item) IS DISTINCT FROM 'object'
            OR pg_catalog.jsonb_object_length(v_item) <> 5
@@ -195,7 +206,7 @@ BEGIN
         IF v_question_index <> v_expected_index
            OR v_correct_index NOT BETWEEN 0 AND 3
            OR pg_catalog.length(pg_catalog.btrim(v_prompt)) NOT BETWEEN 1 AND 1000
-           OR pg_catalog.length(pg_catalog.coalesce(v_hint, '')) > 500
+           OR pg_catalog.length(coalesce(v_hint, '')) > 500
            OR pg_catalog.jsonb_typeof(v_options) IS DISTINCT FROM 'array' THEN
             RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
         END IF;
@@ -245,8 +256,8 @@ BEGIN
 
     FOR v_item IN
         SELECT x.value
-        FROM pg_catalog.jsonb_array_elements(p_questions) AS x(value)
-        ORDER BY (x.value ->> 'question_index')::integer
+        FROM pg_catalog.jsonb_array_elements(p_questions) WITH ORDINALITY AS x(value, ordinality)
+        ORDER BY x.ordinality
     LOOP
         INSERT INTO public.student_game_attempt_questions (
             attempt_id,
@@ -386,11 +397,23 @@ BEGIN
             );
         END IF;
 
+        IF v_attempt.status <> 'in_progress'
+           OR v_session.used_at IS NOT NULL
+           OR v_session.expires_at <= pg_catalog.now()
+           OR v_session.class_active IS DISTINCT FROM true
+           OR v_session.student_active IS DISTINCT FROM true THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
+        END IF;
+
         SELECT q.*
         INTO v_next_question
         FROM public.student_game_attempt_questions AS q
         WHERE q.attempt_id = v_attempt.id
           AND q.question_index = v_attempt.next_question_index;
+
+        IF NOT FOUND THEN
+            RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'attempt_state_invalid');
+        END IF;
 
         RETURN pg_catalog.jsonb_build_object(
             'ok', true,
@@ -429,7 +452,15 @@ BEGIN
 
     IF NOT FOUND
        OR v_rule.question_count <> v_attempt.question_count
-       OR v_rule.max_score <> v_attempt.max_score THEN
+       OR v_rule.max_score <> v_attempt.max_score
+       OR (v_rule.rule_version = 'number-challenge-streak-v1'
+           AND (v_rule.question_count <> 15 OR v_rule.max_score <> 41))
+       OR (v_rule.rule_version = 'one-point-per-correct-v1'
+           AND v_rule.max_score <> v_rule.question_count)
+       OR v_rule.rule_version NOT IN (
+            'number-challenge-streak-v1',
+            'one-point-per-correct-v1'
+       ) THEN
         RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'scoring_rule_unavailable');
     END IF;
 
