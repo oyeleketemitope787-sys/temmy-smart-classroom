@@ -1,4 +1,5 @@
 import {
+  buildCentralScoreDisplay,
   buildVerifiedScoreResult,
   GAME_SCORING_CATALOGUE,
   scoreNumberChallengeAnswer,
@@ -128,4 +129,29 @@ Deno.test("rejects invalid question and streak state", () => {
   }
   assert(rejectedQuestion, "question index 15 must be rejected");
   assert(rejectedStreak, "streak cannot exceed the preceding question count");
+});
+
+
+Deno.test("central display uses the stored game-specific maximum", () => {
+  const currentGame = buildVerifiedScoreResult("grade3-temmy-number-challenge", 24);
+  assert(currentGame.ok, "24 should be valid under Number Challenge's 41-point rule");
+  const currentDisplay = buildCentralScoreDisplay(currentGame.result);
+  assert(currentDisplay.score_label === "24/41", "central UI should not display 24/15");
+  assert(currentDisplay.points_awarded_label === "24 points awarded", "award label should show exact points");
+
+  const testCatalogue: Readonly<Record<string, GameScoringRule>> = {
+    "test-game-out-of-20": {
+      gameId: "test-game-out-of-20",
+      displayName: "Test Game (20 points)",
+      questionCount: 20,
+      maxScore: 20,
+      ruleVersion: "test-v1",
+      rewardPointsEqualScore: true,
+    },
+  };
+  const outOf20 = buildVerifiedScoreResult("test-game-out-of-20", 16, testCatalogue);
+  assert(outOf20.ok, "16/20 should be valid");
+  const outOf20Display = buildCentralScoreDisplay(outOf20.result);
+  assert(outOf20Display.score_label === "16/20", "central UI should display 16/20");
+  assert(outOf20Display.points_awarded_label === "16 points awarded", "16 points should be awarded");
 });
