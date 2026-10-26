@@ -302,6 +302,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.record_game_attempt_answer(
     p_session_token uuid,
+    p_game_id text,
     p_question_index smallint,
     p_choice_index smallint
 )
@@ -326,6 +327,7 @@ DECLARE
     v_updated_session_id uuid;
 BEGIN
     IF p_session_token IS NULL
+       OR p_game_id IS NULL
        OR p_question_index IS NULL
        OR p_choice_index IS NULL
        OR p_question_index < 0
@@ -352,6 +354,7 @@ BEGIN
     FOR UPDATE OF sgs;
 
     IF NOT FOUND
+       OR v_session.game_id IS DISTINCT FROM p_game_id
        OR v_session.student_class_id IS DISTINCT FROM v_session.class_id THEN
         RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
     END IF;
@@ -615,9 +618,9 @@ REVOKE ALL ON FUNCTION public.begin_game_attempt(uuid, text, jsonb)
 GRANT EXECUTE ON FUNCTION public.begin_game_attempt(uuid, text, jsonb)
     TO service_role;
 
-REVOKE ALL ON FUNCTION public.record_game_attempt_answer(uuid, smallint, smallint)
+REVOKE ALL ON FUNCTION public.record_game_attempt_answer(uuid, text, smallint, smallint)
     FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.record_game_attempt_answer(uuid, smallint, smallint)
+GRANT EXECUTE ON FUNCTION public.record_game_attempt_answer(uuid, text, smallint, smallint)
     TO service_role;
 */
 
