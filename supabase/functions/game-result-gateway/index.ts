@@ -4,8 +4,8 @@
  * Status: NOT DEPLOYED; NOT READY TO AWARD POINTS.
  *
  * This endpoint validates the request contract, but intentionally does not
- * contact Supabase or write points. The currently inspected game sends only
- * a local score (and its source contains no result-submission call), while
+ * contact Supabase or write points. The currently inspected game calculates
+ * a local score but does not visibly submit a result, while
  * the existing database RPC trusts client-provided score/max-score fields.
  *
  * Do not enable scoring here until an authoritative verification protocol is
