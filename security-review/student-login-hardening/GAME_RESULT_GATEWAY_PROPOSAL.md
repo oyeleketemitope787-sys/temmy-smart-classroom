@@ -49,11 +49,9 @@ Recommended decision for owner approval: official score/points equal the number 
 
 ## Tests and validation status
 
-Test files include:
-- Nine validation contract cases for valid start/answer requests and malformed, out-of-range, identity/score injection, unsupported-action and extra-field requests.
-- Three generator tests, including 200 deterministic runs checking 15 sequential questions, four distinct options, in-range correct-choice indexes, semantic answer validity, and variation across seeds.
+Validation and generator source files were confirmed against the reviewed branch revisions and type-checked with TypeScript. A local Node harness exercised 15 request-validation cases; all passed. A separate local harness exercised 10,000 deterministic generator seeds (150,000 generated questions), checking question order, distinct options, index bounds, ordering/comparison/inequality semantics, closest-number correctness, between-number bounds, place-value reasoning, and greatest-number correctness; all passed.
 
-**Tests have been authored but not executed** because the Deno runtime is not available in this environment. No build or runtime success is claimed.
+The checked-in `Deno.test` files contain ten request-validation cases and three generator tests. **The Deno test runner itself has not been executed** because the Deno runtime is unavailable in this environment. The local harness is meaningful logic validation, but it does not substitute for a Deno run or isolated end-to-end database tests.
 
 ## Current decision
 
