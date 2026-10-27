@@ -54,6 +54,9 @@ function validSessionAndRule(
       typeof value.game_id !== "string") {
     return null;
   }
+  if (!Object.prototype.hasOwnProperty.call(catalogue, value.game_id)) {
+    return null;
+  }
   return catalogue[value.game_id] ?? null;
 }
 
