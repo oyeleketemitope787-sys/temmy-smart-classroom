@@ -49,6 +49,7 @@ Deno.test("rejects client-supplied student identity", () => {
     action: "start_attempt",
     session_token: token,
     game_id: gameId,
+    mode: "practice",
     student_id: token,
   });
   assert(!result.ok, "student identity must come from the stored session");
@@ -169,6 +170,7 @@ Deno.test("supports a separately registered 20-question game", () => {
     action: "start_attempt",
     session_token: token,
     game_id: "test-game-out-of-20",
+    mode: "challenge",
   }, catalogue);
   const lastAnswer = validateResultRequest({
     action: "submit_answer",
