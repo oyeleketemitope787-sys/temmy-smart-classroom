@@ -66,12 +66,12 @@ The example game ID above is only illustrative; it has not been added to the rea
 ## Proposed end-to-end flow
 
 1. The Classroom issues a short-lived session token bound to a student, class, and registered game.
-2. The new Game Platform starts an attempt through the Edge Function, passing the session token and game ID.
+2. The new Game Platform starts an attempt through the Edge Function, passing the session token, registered game ID, and selected mode (`practice`, `challenge`, or `class`). The server stores the mode so it cannot be changed during a retry.
 3. The Edge Function validates the request and generates questions on the trusted server. The correct-choice index is never sent to the browser.
 4. A server-only database function verifies the session, stores the attempt and answer key, and returns only the question prompt, choices, and hint.
 5. The client submits one selected choice at a time. The database function locks the session/attempt, calculates correctness from the stored answer key, and updates the score/streak atomically.
-6. The final answer consumes the session and inserts exactly one points transaction in the same database transaction as the completed attempt record.
-7. The central UI receives the committed score, game-specific maximum, points awarded, and scoring-rule version and displays them without hardcoded denominators.
+6. The final answer consumes the session and inserts exactly one points transaction in the same database transaction as the completed attempt record. In challenge mode, reaching zero lives after an incorrect answer finalizes early with the actual verified score earned to that point.
+7. The central UI receives the committed score, game-specific maximum, points awarded, scoring-rule version, and progress counts (`questions_answered`, `question_count`, `correct_count`) and displays them without hardcoded denominators or falsely showing a full set of answered questions for an early-ended challenge.
 
 Identical retries can return the stored result but must not increment points or create another transaction. A conflicting duplicate answer, skipped question, expired session, reused session, or mismatched game is rejected.
 
