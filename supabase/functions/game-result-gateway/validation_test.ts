@@ -13,6 +13,7 @@ Deno.test("accepts a valid start-attempt request", () => {
     action: "start_attempt",
     session_token: token,
     game_id: gameId,
+    mode: "practice",
   });
   assert(result.ok, "expected a valid start request");
   assert(result.request.action === "start_attempt", "expected start action");
@@ -65,11 +66,22 @@ Deno.test("rejects client-supplied correctness claims", () => {
   assert(!result.ok, "correctness must be calculated on the trusted side");
 });
 
+Deno.test("rejects an unsupported game mode", () => {
+  const result = validateResultRequest({
+    action: "start_attempt",
+    session_token: token,
+    game_id: gameId,
+    mode: "speed-hack",
+  });
+  assert(!result.ok, "unsupported modes must be rejected");
+});
+
 Deno.test("rejects an unsupported game ID", () => {
   const result = validateResultRequest({
     action: "start_attempt",
     session_token: token,
     game_id: "unapproved-game",
+    mode: "practice",
   });
   assert(!result.ok, "expected an unknown game to be rejected");
 });
@@ -79,6 +91,7 @@ Deno.test("rejects an invalid session token", () => {
     action: "start_attempt",
     session_token: "not-a-uuid",
     game_id: gameId,
+    mode: "practice",
   });
   assert(!result.ok, "expected malformed token to be rejected");
 });
@@ -126,6 +139,7 @@ Deno.test("rejects unknown actions and unexpected nested fields", () => {
     action: "submit_result",
     session_token: token,
     game_id: gameId,
+    mode: "practice",
   });
   const nested = validateResultRequest({
     action: "submit_answer",
