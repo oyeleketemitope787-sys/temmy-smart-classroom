@@ -11,7 +11,7 @@
 - `supabase/functions/game-result-gateway/validation_test.ts` — request-contract tests.
 - `supabase/functions/game-result-gateway/question-generator.ts` — fresh 15-question number-challenge generator; correct choice index is for protected server state and must not be returned to the browser.
 - `supabase/functions/game-result-gateway/question-generator_test.ts` — generator shape and semantic-answer tests across deterministic test seeds.
-- `supabase/functions/game-result-gateway/scoring-contract.ts` — central per-game scoring catalogue, variable maximum, exact score-to-points rule, and Number Challenge bonus calculation.
+- `supabase/functions/game-result-gateway/scoring-contract.ts` — central per-game scoring catalogue, variable maximum, exact score-to-points rule, Number Challenge bonus calculation, and full attempt-response validation before scores reach the UI.
 - `supabase/functions/game-result-gateway/scoring-contract_test.ts` — tests exact score-to-points, variable maximums, invalid/out-of-range scores, bonus scoring, and central score display labels.
 - `security-review/student-login-hardening/GAME_RESULT_PROTOCOL_PROPOSAL.md` — proposed step-based API and migration gates.
 - `security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt` — non-executable schema/catalogue draft outside the Supabase migrations directory.
@@ -60,9 +60,9 @@ The central scoring module is present in scoring-contract.ts with rule version n
 
 ## Tests and validation status
 
-The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch includes 14 request-validation cases and 11 central scoring/display cases, including mode validation, prototype-property game IDs, a 16/20 reward, and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
+The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch includes 15 request-validation cases, 16 central scoring/response-validation cases, and three question-generator test groups, including all supported modes, prototype-property game IDs, exact-score rewards, a 16/20 game, early challenge completion, inconsistent completion rejection, answer-key leakage rejection, and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
 
-The checked-in Deno test files currently contain 15 request-validation cases, three generator tests, and 11 scoring/display tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
+The checked-in Deno test files currently contain 15 request-validation cases, three generator tests, and 16 scoring/display/attempt-response tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
 
 ## Current decision
 
