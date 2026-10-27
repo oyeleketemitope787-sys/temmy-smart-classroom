@@ -92,6 +92,7 @@ Identical retries can return the stored result but must not increment points or 
 - The current live game client has not been migrated to start attempts and submit one answer at a time.
 - The existing record_student_game_result RPC still has anonymous EXECUTE permission. Do not revoke it until every real caller has been identified and migrated. Do not mistake this proposal for a closed bypass.
 - Authenticated direct inserts into point_transactions remain in place for teacher awards and activity scoring. Any narrowing requires a separate coordinated review that preserves those workflows.
+- Endpoint rate limiting/abuse controls are not implemented in this review scaffold. Design them without trusting unverified client-supplied source headers, and verify them in isolation before enabling the public endpoint.
 - No isolated Supabase database is currently available. Do not test attack, replay, concurrency, or lockout cases against the shared TEST/PRODUCTION project.
 - The checked-in Deno tests have not been run with Deno. No Deno runtime success is claimed.
 - The historical 24-point transaction's write path is still unknown. The 24-point value may fit the current bonus rule, but its recorded 24/15 denominator is inconsistent. Preserve the history; do not adjust it without separate evidence and approval.
