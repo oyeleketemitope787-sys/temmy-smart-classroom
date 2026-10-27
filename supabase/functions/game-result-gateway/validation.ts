@@ -45,6 +45,11 @@ function hasExactKeys(value: Record<string, unknown>, allowed: string[]) {
     allowed.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
 
+function isGameMode(value: unknown): value is GameMode {
+  return typeof value === "string" &&
+    (GAME_MODES as readonly string[]).includes(value);
+}
+
 function validSessionAndRule(
   value: Record<string, unknown>,
   catalogue: Readonly<Record<string, GameScoringRule>>,
@@ -76,9 +81,7 @@ export function validateResultRequest(
       return { ok: false };
     }
     const rule = validSessionAndRule(value, catalogue);
-    if (!rule ||
-        typeof value.mode !== "string" ||
-        !(GAME_MODES as readonly string[]).includes(value.mode)) {
+    if (!rule || !isGameMode(value.mode)) {
       return { ok: false };
     }
 
