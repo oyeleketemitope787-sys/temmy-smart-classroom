@@ -1,0 +1,40 @@
+name: Game Result Review Tests
+
+on:
+  push:
+    branches:
+      - security-review/student-login-hardening
+    paths:
+      - "supabase/functions/game-result-gateway/**"
+      - ".github/workflows/game-result-review-tests.yml"
+  pull_request:
+    branches:
+      - security-review/student-login-hardening
+    paths:
+      - "supabase/functions/game-result-gateway/**"
+      - ".github/workflows/game-result-review-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Type-check and run game scoring unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out review branch
+        uses: actions/checkout@v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check and test request validation
+        run: deno test --deny-net supabase/functions/game-result-gateway/validation_test.ts
+
+      - name: Type-check and test question generation
+        run: deno test --deny-net supabase/functions/game-result-gateway/question-generator_test.ts
+
+      - name: Type-check and test scoring and central result display
+        run: deno test --deny-net supabase/functions/game-result-gateway/scoring-contract_test.ts
