@@ -24,6 +24,8 @@
 --   * Number Challenge v1 max_score = 41 because bonus points are part of score.
 --   * A no-bonus game out of 20 uses max_score=20; 16 earns 16 points.
 --   * invalid/out-of-range scores are rejected, never silently clamped.
+--   * The selected mode is persisted in attempt state. Challenge mode ends
+--     after the third incorrect answer; its exact score-to-date is awarded.
 
 /*
 CREATE OR REPLACE FUNCTION public.begin_game_attempt(
@@ -695,7 +697,8 @@ GRANT EXECUTE ON FUNCTION public.record_game_attempt_answer(uuid, text, smallint
 --   3. Verify that point_transactions supports the exact values and a zero-point
 --      transaction is acceptable for a completed run with no correct answers.
 --   4. Unit/integration test the SQL in an isolated Supabase project, including
---      concurrent identical answer submissions and duplicate final submissions.
+--      concurrent identical answers, duplicate final submissions, third-life
+--      challenge completion, and exactly-one transaction on early completion.
 --   5. Use one server-controlled scoring catalogue across question generator,
 --      SQL score function, result persistence, and central UI.
 --   6. Do not run on the shared TEST/PRODUCTION project as a test.
