@@ -126,7 +126,7 @@ The score helper and central response contract are in the review branch. The Edg
 
 - Request validation: implemented on the review branch for `start_attempt` and `submit_answer`.
 - Fresh question generator: implemented on the review branch.
-- Request-validation, generator, and central scoring/display tests: passed in GitHub Actions on review-branch commit `136f6ae105a4231d0dc79b8d` (https://github.com/oyeleketemitope787-sys/temmy-smart-classroom/actions/runs/40518746857).
+- Request-validation, generator, and central scoring/display tests: passed in GitHub Actions on review-branch commit `136f6ae105a4231d0dc79b1a3b7f8b7dc9cf4423` (https://github.com/oyeleketemitope787-sys/temmy-smart-classroom/actions/runs/40518746857).
 - Gateway: default-disabled behind two server-side feature flags; with either flag unset, returns HTTP 503 without a database call. The staged RPC path has not been deployed or invoked.
 - Database schema/functions, client migration, RPC permission changes, point awarding, and deployment: not implemented.
 - Release decision: **NO-GO**.
