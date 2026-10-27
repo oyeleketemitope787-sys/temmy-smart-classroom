@@ -22,8 +22,8 @@
 ## Request contract
 
 The request validator allows only:
-- `start_attempt`: `session_token` and a game ID present in the trusted central scoring catalogue.
-- `submit_answer`: those fields plus the current `question_index` and selected `choice_index`, bounded by that game's registered question count.
+- `start_attempt`: `session_token`, a registered game ID, and `mode` set to `practice`, `challenge`, or `class`.
+- `submit_answer`: session token, registered game ID, current `question_index`, and selected `choice_index`, bounded by that game's registered question count.
 
 It rejects client-supplied score, maximum score, student/teacher identity, transaction label, answer-correctness claims, unsupported actions and extra fields. This is only request-shape validation; a valid request is not trusted until the server validates session and attempt state.
 
@@ -46,7 +46,7 @@ The owner has approved the governing rule: **award the exact score verified by t
 - Unknown or unregistered games are rejected; there is no fallback maximum.
 - These rules do not authorize trusting a client-reported score. Correctness and score must be calculated from trusted server-side attempt state.
 
-The central scoring module is present in scoring-contract.ts with rule version number-challenge-streak-v1 for the current game, exact score-to-points output, and a score display contract that returns labels such as 24/41 and 16/20. The central scoring helper has not yet been connected to persisted attempt state or the database; the HTTP gateway remains fail-closed and returns 503 for valid requests.
+The central scoring module is present in scoring-contract.ts with rule version number-challenge-streak-v1 for the current game, exact score-to-points output, and a score display contract that returns labels such as 24/41 and 16/20. The staged handler calls the central score-result/display helper to check the committed result, but per-answer bonus logic is mirrored in the SQL draft and TypeScript reference helper. Those rules need explicit parity tests before release. The HTTP gateway remains disabled by default and returns 503 without database calls while either feature flag is unset.
 
 ## Database and authorization gates
 
@@ -55,12 +55,12 @@ The central scoring module is present in scoring-contract.ts with rule version n
 3. A repeated identical answer may be idempotent; a conflicting duplicate, skipped question or replay must not earn additional credit.
 4. Current effective privileges show `anon EXECUTE = true` for `record_student_game_result`. Do not revoke that permission until legitimate deployed callers have been located and migrated together.
 5. Authenticated users currently have direct INSERT permission on `point_transactions` under an RLS check for teacher ownership and student/class membership. The inspected Classroom client uses direct inserts for teacher adjustments and activity scoring with `source = 'teacher'`. Narrowing this policy requires a separately reviewed migration that preserves those flows.
-6. Public/practice gameplay must remain available without a student-linked reward session and must never award student points by itself.
+6. Public/practice gameplay must remain available without a student-linked reward session and must never award student points by itself. The current Number Challenge modes are preserved in the proposed protocol: practice/class modes run through the configured question count, while challenge mode completes early after three incorrect answers. The exact verified score earned so far is still awarded on an early completion.
 7. The historical `24/15` transaction's write path remains unexplained. The 24-point value itself is consistent with the current local bonus algorithm; the denominator `15` is inconsistent with its theoretical maximum of 41. The current database result function would cap arguments `24, 15` at 15, so it does not explain that stored value with those exact arguments.
 
 ## Tests and validation status
 
-The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch now also includes 12 request-validation cases and ten central scoring/display cases, including a 16/20 reward and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
+The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch includes 14 request-validation cases and 11 central scoring/display cases, including mode validation, prototype-property game IDs, a 16/20 reward, and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
 
 The checked-in Deno test files currently contain 14 request-validation cases, three generator tests, and 11 scoring/display tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
 
