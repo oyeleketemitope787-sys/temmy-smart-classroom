@@ -66,6 +66,9 @@ export function buildVerifiedScoreResult(
   verifiedScore: unknown,
   catalogue: Readonly<Record<string, GameScoringRule>> = GAME_SCORING_CATALOGUE,
 ): ScoreValidation {
+  if (!Object.prototype.hasOwnProperty.call(catalogue, gameId)) {
+    return { ok: false, reason: "unknown_game" };
+  }
   const rule = catalogue[gameId];
   if (!rule) return { ok: false, reason: "unknown_game" };
 
