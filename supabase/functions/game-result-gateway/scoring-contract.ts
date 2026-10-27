@@ -41,6 +41,154 @@ export const GAME_SCORING_CATALOGUE: Readonly<Record<string, GameScoringRule>> =
     }),
   });
 
+export const GAME_MODES = ["practice", "challenge", "class"] as const;
+export type GameMode = typeof GAME_MODES[number];
+
+export type ValidatedAttemptResponse = {
+  status: "in_progress" | "completed";
+  mode: GameMode;
+  score: number;
+  maxScore: number;
+  questionsAnswered: number;
+  questionCount: number;
+  correctCount: number;
+  livesRemaining: number;
+  rule: GameScoringRule;
+};
+
+export type AttemptResponseValidation =
+  | { ok: true; result: ValidatedAttemptResponse }
+  | {
+    ok: false;
+    reason:
+      | "unknown_game"
+      | "invalid_response"
+      | "catalogue_mismatch"
+      | "invalid_progress"
+      | "invalid_question"
+      | "invalid_completion";
+  };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasExactKeys(value: Record<string, unknown>, allowed: string[]): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key)) &&
+    allowed.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+
+/**
+ * Validate the complete database response before returning it to a game client.
+ * In-progress responses must contain exactly one public question and no answer
+ * key; completed responses must show an exact score-to-points match.
+ */
+export function validateCentralAttemptResponse(
+  gameId: string,
+  value: unknown,
+  requestedMode?: GameMode,
+  catalogue: Readonly<Record<string, GameScoringRule>> = GAME_SCORING_CATALOGUE,
+): AttemptResponseValidation {
+  if (!Object.prototype.hasOwnProperty.call(catalogue, gameId)) {
+    return { ok: false, reason: "unknown_game" };
+  }
+  const rule = catalogue[gameId];
+  if (!rule || !isRecord(value)) {
+    return { ok: false, reason: "invalid_response" };
+  }
+
+  const mode = value.mode;
+  if (typeof mode !== "string" ||
+      !(GAME_MODES as readonly string[]).includes(mode)) {
+    return { ok: false, reason: "invalid_response" };
+  }
+  if (requestedMode !== undefined && mode !== requestedMode) {
+    return { ok: false, reason: "catalogue_mismatch" };
+  }
+
+  if (value.game_id !== rule.gameId ||
+      value.max_score !== rule.maxScore ||
+      value.question_count !== rule.questionCount ||
+      value.score_rule_version !== rule.ruleVersion) {
+    return { ok: false, reason: "catalogue_mismatch" };
+  }
+
+  const status = value.status;
+  if (status !== "in_progress" && status !== "completed") {
+    return { ok: false, reason: "invalid_response" };
+  }
+
+  const score = value.score;
+  const questionsAnswered = value.questions_answered;
+  const questionCount = value.question_count;
+  const correctCount = value.correct_count;
+  const livesRemaining = value.lives_remaining;
+
+  if (!Number.isSafeInteger(score) ||
+      (score as number) < 0 ||
+      (score as number) > rule.maxScore ||
+      !Number.isSafeInteger(questionsAnswered) ||
+      (questionsAnswered as number) < 0 ||
+      (questionsAnswered as number) > rule.questionCount ||
+      !Number.isSafeInteger(correctCount) ||
+      (correctCount as number) < 0 ||
+      (correctCount as number) > (questionsAnswered as number) ||
+      !Number.isSafeInteger(livesRemaining) ||
+      (livesRemaining as number) < 0 ||
+      (livesRemaining as number) > 3) {
+    return { ok: false, reason: "invalid_progress" };
+  }
+
+  if ((mode !== "challenge" && (livesRemaining as number) !== 3) ||
+      (status === "in_progress" &&
+        ((questionsAnswered as number) >= rule.questionCount ||
+         (mode === "challenge" && (livesRemaining as number) === 0))) {
+    return { ok: false, reason: "invalid_progress" };
+  }
+
+  if (status === "completed") {
+    if (value.points_awarded !== score || questionsAnswered === 0) {
+      return { ok: false, reason: "invalid_completion" };
+    }
+  } else {
+    if (Object.prototype.hasOwnProperty.call(value, "points_awarded") &&
+        value.points_awarded !== null) {
+      return { ok: false, reason: "invalid_completion" };
+    }
+
+    const question = value.question;
+    if (!isRecord(question) ||
+        !hasExactKeys(question, ["question_index", "prompt", "options", "hint"]) ||
+        question.question_index !== questionsAnswered ||
+        typeof question.prompt !== "string" ||
+        question.prompt.trim().length < 1 ||
+        question.prompt.length > 1000 ||
+        !Array.isArray(question.options) ||
+        question.options.length !== 4 ||
+        question.options.some((option) => typeof option !== "string") ||
+        new Set(question.options).size !== 4 ||
+        !(question.hint === null ||
+          (typeof question.hint === "string" && question.hint.length <= 500))) {
+      return { ok: false, reason: "invalid_question" };
+    }
+  }
+
+  return {
+    ok: true,
+    result: {
+      status,
+      mode: mode as GameMode,
+      score: score as number,
+      maxScore: rule.maxScore,
+      questionsAnswered: questionsAnswered as number,
+      questionCount: rule.questionCount,
+      correctCount: correctCount as number,
+      livesRemaining: livesRemaining as number,
+      rule,
+    },
+  };
+}
+
 export type VerifiedScoreResult = {
   game_id: string;
   score: number;
