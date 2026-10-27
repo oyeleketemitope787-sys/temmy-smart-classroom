@@ -142,6 +142,7 @@ BEGIN
             'lives_remaining', v_attempt.lives_remaining,
             'score', v_attempt.verified_score,
             'max_score', v_attempt.max_score,
+            'score_rule_version', v_attempt.score_rule_version,
             'question', pg_catalog.jsonb_build_object(
                 'question_index', v_question.question_index,
                 'prompt', v_question.prompt,
@@ -328,6 +329,7 @@ BEGIN
         'lives_remaining', 3,
         'score', 0,
         'max_score', v_rule.max_score,
+        'score_rule_version', v_rule.rule_version,
         'question', pg_catalog.jsonb_build_object(
             'question_index', v_question.question_index,
             'prompt', v_question.prompt,
@@ -475,6 +477,7 @@ BEGIN
             'lives_remaining', v_attempt.lives_remaining,
             'score', v_attempt.verified_score,
             'max_score', v_attempt.max_score,
+            'score_rule_version', v_attempt.score_rule_version,
             'question', pg_catalog.jsonb_build_object(
                 'question_index', v_next_question.question_index,
                 'prompt', v_next_question.prompt,
@@ -670,6 +673,7 @@ BEGIN
         'points_delta', v_points_delta,
         'score', v_new_score,
         'max_score', v_attempt.max_score,
+        'score_rule_version', v_attempt.score_rule_version,
         'question', pg_catalog.jsonb_build_object(
             'question_index', v_next_question.question_index,
             'prompt', v_next_question.prompt,
