@@ -33,7 +33,7 @@ The current public game source embeds fixed question prompts, choices, correct-a
 
 The newly added generator makes fresh values and shuffles option order. The trusted caller would store the correct choice index in protected per-attempt state and return only prompt/options/hint to the browser. The current live game HTML has not been changed; a separate, reviewed client patch is still required.
 
-The handler contains a staged Supabase RPC path, but it is disabled by default. It returns HTTP 503 without calling Supabase unless BOTH `GAME_RESULT_GATEWAY_READY=true` and `GAME_RESULT_WRITE_ENABLED=true` are set in the Edge Function's server environment. Neither flag has been configured, the handler is not deployed, and no RPC calls have been made. Do not set these flags until the proposed schema/functions are implemented in an isolated environment, tests pass, the game client is migrated, and the ACL rollout is separately reviewed.
+The handler contains a staged Supabase RPC path, but it is disabled by default. It returns HTTP 503 without calling Supabase unless BOTH `GAME_RESULT_GATEWAY_READY=true` and `GAME_RESULT_WRITE_ENABLED=true` are set in the Edge Function's server environment. Neither flag has been configured, the handler is not deployed, and no RPC calls have been made. Rate limiting and other endpoint abuse controls are not implemented. Do not set these flags until the proposed schema/functions are implemented in an isolated environment, tests pass, rate limiting is designed and verified, the game client is migrated, and the ACL rollout is separately reviewed.
 
 ## Central scoring policy — owner-approved
 
