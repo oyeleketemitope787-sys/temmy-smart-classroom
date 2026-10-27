@@ -23,16 +23,26 @@ The current JavaScript adds one base point per correct answer, one extra point w
 {
   "status": "completed",
   "game_id": "grade3-temmy-number-challenge",
+  "mode": "class",
   "score": 24,
   "max_score": 41,
   "points_awarded": 24,
   "score_rule_version": "number-challenge-streak-v1",
+  "questions_answered": 15,
+  "question_count": 15,
+  "correct_count": 12,
+  "lives_remaining": 3,
   "score_display": {
     "score_label": "24/41",
     "points_awarded": 24,
     "points_awarded_label": "24 points awarded",
     "max_score": 41,
-    "score_rule_version": "number-challenge-streak-v1"
+    "score_rule_version": "number-challenge-streak-v1",
+    "mode": "class",
+    "questions_answered": 15,
+    "question_count": 15,
+    "correct_count": 12,
+    "lives_remaining": 3
   }
 }
 ~~~
@@ -47,16 +57,26 @@ This is an example contract, not yet a registered production game.
 {
   "status": "completed",
   "game_id": "example-game-out-of-20",
+  "mode": "class",
   "score": 16,
   "max_score": 20,
   "points_awarded": 16,
   "score_rule_version": "one-point-per-correct-v1",
+  "questions_answered": 20,
+  "question_count": 20,
+  "correct_count": 16,
+  "lives_remaining": 3,
   "score_display": {
     "score_label": "16/20",
     "points_awarded": 16,
     "points_awarded_label": "16 points awarded",
     "max_score": 20,
-    "score_rule_version": "one-point-per-correct-v1"
+    "score_rule_version": "one-point-per-correct-v1",
+    "mode": "class",
+    "questions_answered": 20,
+    "question_count": 20,
+    "correct_count": 16,
+    "lives_remaining": 3
   }
 }
 ~~~
