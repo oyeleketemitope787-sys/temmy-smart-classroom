@@ -50,6 +50,7 @@ DECLARE
     v_correct_index integer;
     v_expected_index integer := 0;
     v_distinct_options integer;
+    v_object_key_count integer;
     v_attempt_id uuid;
     v_prompt text;
     v_hint text;
@@ -202,7 +203,11 @@ BEGIN
             RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_question_set');
         END IF;
 
-        IF pg_catalog.jsonb_object_length(v_item) <> 5
+        SELECT pg_catalog.count(*)
+        INTO v_object_key_count
+        FROM pg_catalog.jsonb_object_keys(v_item) AS k(key);
+
+        IF v_object_key_count <> 5
            OR NOT (v_item ? 'question_index')
            OR NOT (v_item ? 'prompt')
            OR NOT (v_item ? 'options')
