@@ -202,7 +202,14 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse(200, {
       ...result,
-      score_display: buildCentralScoreDisplay(verified.result),
+      score_display: {
+        ...buildCentralScoreDisplay(verified.result),
+        mode: validated.mode,
+        questions_answered: validated.questionsAnswered,
+        question_count: validated.questionCount,
+        correct_count: validated.correctCount,
+        lives_remaining: validated.livesRemaining,
+      },
     }, origin);
   }
 
