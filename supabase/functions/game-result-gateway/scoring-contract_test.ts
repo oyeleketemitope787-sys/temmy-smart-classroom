@@ -65,6 +65,13 @@ Deno.test("rejects unregistered games without a fallback maximum", () => {
   );
 });
 
+Deno.test("rejects inherited object property names as game IDs", () => {
+  for (const candidate of ["__proto__", "constructor", "toString"]) {
+    const result = buildVerifiedScoreResult(candidate, 1);
+    assert(!result.ok, "non-catalogue property name must be rejected: " + candidate);
+  }
+});
+
 Deno.test("scores a perfect Number Challenge run at 41 points", () => {
   let streak = 0;
   let total = 0;
