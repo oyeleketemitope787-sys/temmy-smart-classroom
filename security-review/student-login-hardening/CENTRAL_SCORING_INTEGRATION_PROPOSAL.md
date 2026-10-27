@@ -114,7 +114,7 @@ Identical retries can return the stored result but must not increment points or 
 - Authenticated direct inserts into point_transactions remain in place for teacher awards and activity scoring. Any narrowing requires a separate coordinated review that preserves those workflows.
 - Endpoint rate limiting/abuse controls are not implemented in this review scaffold. Design them without trusting unverified client-supplied source headers, and verify them in isolation before enabling the public endpoint.
 - No isolated Supabase database is currently available. Do not test attack, replay, concurrency, or lockout cases against the shared TEST/PRODUCTION project.
-- The checked-in Deno tests have not been run with Deno. No Deno runtime success is claimed.
+- GitHub Actions successfully ran `deno check` on the gateway handler and all three Deno unit-test suites on commit `136f6ae105a4231d0dc79b8d` (https://github.com/oyeleketemitope787-sys/temmy-smart-classroom/actions/runs/40518746857). The database SQL drafts still have not been executed or integration-tested.
 - The historical 24-point transaction's write path is still unknown. The 24-point value may fit the current bonus rule, but its recorded 24/15 denominator is inconsistent. Preserve the history; do not adjust it without separate evidence and approval.
 
 **Release decision remains NO-GO** until the schema/functions, all game/client callers, test results, effective permissions, and central display behavior are verified together.
