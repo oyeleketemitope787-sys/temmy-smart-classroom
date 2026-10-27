@@ -13,10 +13,13 @@ import {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export type GameMode = "practice" | "challenge" | "class";
+
 export type StartAttemptRequest = {
   action: "start_attempt";
   session_token: string;
   game_id: string;
+  mode: GameMode;
 };
 
 export type SubmitAnswerRequest = {
@@ -66,11 +69,16 @@ export function validateResultRequest(
   if (!isRecord(value)) return { ok: false };
 
   if (value.action === "start_attempt") {
-    if (!hasExactKeys(value, ["action", "session_token", "game_id"])) {
+    if (!hasExactKeys(value, ["action", "session_token", "game_id", "mode"])) {
       return { ok: false };
     }
     const rule = validSessionAndRule(value, catalogue);
-    if (!rule) return { ok: false };
+    if (!rule ||
+        (value.mode !== "practice" &&
+         value.mode !== "challenge" &&
+         value.mode !== "class")) {
+      return { ok: false };
+    }
 
     return {
       ok: true,
@@ -78,6 +86,7 @@ export function validateResultRequest(
         action: "start_attempt",
         session_token: value.session_token as string,
         game_id: rule.gameId,
+        mode: value.mode,
       },
     };
   }
