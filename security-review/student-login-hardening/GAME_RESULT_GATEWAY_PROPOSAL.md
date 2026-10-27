@@ -7,7 +7,7 @@
 ## Files added or updated
 
 - `supabase/functions/game-result-gateway/index.ts` — Edge Function handler. Unless BOTH `GAME_RESULT_GATEWAY_READY=true` and `GAME_RESULT_WRITE_ENABLED=true` are set in the server environment, requests fail with HTTP 503 and no database call is made. Neither flag has been configured and the function is not deployed.
-- `supabase/functions/game-result-gateway/validation.ts` — strict request-shape validation for `start_attempt` and `submit_answer`.
+- `supabase/functions/game-result-gateway/validation.ts` — strict request-shape validation for `start_attempt` (including the selected mode) and `submit_answer`.
 - `supabase/functions/game-result-gateway/validation_test.ts` — request-contract tests.
 - `supabase/functions/game-result-gateway/question-generator.ts` — fresh 15-question number-challenge generator; correct choice index is for protected server state and must not be returned to the browser.
 - `supabase/functions/game-result-gateway/question-generator_test.ts` — generator shape and semantic-answer tests across deterministic test seeds.
@@ -62,7 +62,7 @@ The central scoring module is present in scoring-contract.ts with rule version n
 
 The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch now also includes 12 request-validation cases and ten central scoring/display cases, including a 16/20 reward and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
 
-The checked-in Deno test files currently contain 12 request-validation cases, three generator tests, and ten scoring/display tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
+The checked-in Deno test files currently contain 14 request-validation cases, three generator tests, and 11 scoring/display tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
 
 ## Current decision
 
