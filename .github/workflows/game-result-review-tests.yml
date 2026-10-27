@@ -30,6 +30,9 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Type-check gateway handler
+        run: deno check supabase/functions/game-result-gateway/index.ts
+
       - name: Type-check and test request validation
         run: deno test --deny-net supabase/functions/game-result-gateway/validation_test.ts
 
