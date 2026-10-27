@@ -6,14 +6,14 @@
  * teacher, points, or correctness values from the browser.
  */
 import {
+  GAME_MODES,
   GAME_SCORING_CATALOGUE,
+  type GameMode,
   type GameScoringRule,
 } from "./scoring-contract.ts";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export type GameMode = "practice" | "challenge" | "class";
 
 export type StartAttemptRequest = {
   action: "start_attempt";
@@ -77,9 +77,8 @@ export function validateResultRequest(
     }
     const rule = validSessionAndRule(value, catalogue);
     if (!rule ||
-        (value.mode !== "practice" &&
-         value.mode !== "challenge" &&
-         value.mode !== "class")) {
+        typeof value.mode !== "string" ||
+        !(GAME_MODES as readonly string[]).includes(value.mode)) {
       return { ok: false };
     }
 
