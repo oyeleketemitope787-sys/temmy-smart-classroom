@@ -19,6 +19,22 @@ Deno.test("accepts a valid start-attempt request", () => {
   assert(result.request.action === "start_attempt", "expected start action");
 });
 
+Deno.test("accepts all documented Number Challenge modes", () => {
+  for (const mode of ["practice", "challenge", "class"] as const) {
+    const result = validateResultRequest({
+      action: "start_attempt",
+      session_token: token,
+      game_id: gameId,
+      mode,
+    });
+    assert(result.ok, "expected mode to be accepted: " + mode);
+    if (result.ok) {
+      assert(result.request.action === "start_attempt", "expected start action");
+      assert(result.request.mode === mode, "selected mode should be preserved");
+    }
+  }
+});
+
 Deno.test("accepts one valid answer submission", () => {
   const result = validateResultRequest({
     action: "submit_answer",
