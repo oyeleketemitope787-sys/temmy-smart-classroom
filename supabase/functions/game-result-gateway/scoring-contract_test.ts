@@ -3,12 +3,152 @@ import {
   buildVerifiedScoreResult,
   GAME_SCORING_CATALOGUE,
   scoreNumberChallengeAnswer,
+  validateCentralAttemptResponse,
   type GameScoringRule,
 } from "./scoring-contract.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
+
+Deno.test("accepts a normal in-progress attempt response and central display fields", () => {
+  const checked = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    {
+      ok: true,
+      status: "in_progress",
+      game_id: "grade3-temmy-number-challenge",
+      mode: "practice",
+      question_count: 15,
+      questions_answered: 2,
+      correct_count: 1,
+      lives_remaining: 3,
+      score: 1,
+      max_score: 41,
+      score_rule_version: "number-challenge-streak-v1",
+      question: {
+        question_index: 2,
+        prompt: "123 ___ 321",
+        options: ["<", ">", "=", "+"],
+        hint: "Compare hundreds first.",
+      },
+    },
+    "practice",
+  );
+  assert(checked.ok, "expected a valid in-progress response");
+  if (checked.ok) {
+    assert(checked.result.score === 1, "running score should be preserved");
+    assert(checked.result.maxScore === 41, "registered maximum should be preserved");
+    assert(checked.result.questionsAnswered === 2, "progress count should be preserved");
+  }
+});
+
+Deno.test("accepts early challenge completion when all three lives are used", () => {
+  const checked = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    {
+      ok: true,
+      status: "completed",
+      game_id: "grade3-temmy-number-challenge",
+      mode: "challenge",
+      question_count: 15,
+      questions_answered: 5,
+      correct_count: 3,
+      lives_remaining: 0,
+      score: 4,
+      max_score: 41,
+      points_awarded: 4,
+      score_rule_version: "number-challenge-streak-v1",
+    },
+  );
+  assert(checked.ok, "a challenge may complete before all questions after three lives are lost");
+  if (checked.ok) {
+    assert(checked.result.questionsAnswered === 5, "do not pretend all 15 questions were answered");
+    assert(checked.result.score === 4, "the verified score earned so far should be preserved");
+  }
+});
+
+Deno.test("rejects early completion that has not reached zero lives", () => {
+  const checked = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    {
+      ok: true,
+      status: "completed",
+      game_id: "grade3-temmy-number-challenge",
+      mode: "challenge",
+      question_count: 15,
+      questions_answered: 5,
+      correct_count: 3,
+      lives_remaining: 2,
+      score: 4,
+      max_score: 41,
+      points_awarded: 4,
+      score_rule_version: "number-challenge-streak-v1",
+    },
+  );
+  assert(!checked.ok, "early challenge completion requires zero remaining lives");
+});
+
+Deno.test("rejects result catalogue mismatch and answer-key leakage", () => {
+  const base = {
+    ok: true,
+    status: "in_progress",
+    game_id: "grade3-temmy-number-challenge",
+    mode: "class",
+    question_count: 15,
+    questions_answered: 0,
+    correct_count: 0,
+    lives_remaining: 3,
+    score: 0,
+    max_score: 41,
+    score_rule_version: "number-challenge-streak-v1",
+    question: {
+      question_index: 0,
+      prompt: "100 ___ 200",
+      options: ["<", ">", "=", "+"],
+      hint: "Compare the values.",
+    },
+  };
+  const wrongMaximum = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    { ...base, max_score: 15 },
+    "class",
+  );
+  const wrongVersion = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    { ...base, score_rule_version: "old-rule" },
+    "class",
+  );
+  const leakedKey = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    { ...base, question: { ...base.question, correct_choice_index: 1 } },
+    "class",
+  );
+  assert(!wrongMaximum.ok, "wrong maximum must be rejected");
+  assert(!wrongVersion.ok, "wrong rule version must be rejected");
+  assert(!leakedKey.ok, "the response must not expose the answer key");
+});
+
+Deno.test("completed awards must exactly match the verified score", () => {
+  const checked = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    {
+      ok: true,
+      status: "completed",
+      game_id: "grade3-temmy-number-challenge",
+      mode: "practice",
+      question_count: 15,
+      questions_answered: 15,
+      correct_count: 11,
+      lives_remaining: 3,
+      score: 14,
+      max_score: 41,
+      points_awarded: 13,
+      score_rule_version: "number-challenge-streak-v1",
+    },
+  );
+  assert(!checked.ok, "points awarded must equal the actual verified score");
+});
 
 Deno.test("awards the verified score without clamping", () => {
   const result = buildVerifiedScoreResult("grade3-temmy-number-challenge", 24);
