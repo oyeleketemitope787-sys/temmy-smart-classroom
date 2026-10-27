@@ -361,6 +361,8 @@ DECLARE
     v_new_score integer;
     v_transaction_id uuid;
     v_updated_session_id uuid;
+    v_next_lives smallint;
+    v_should_complete boolean;
 BEGIN
     IF p_session_token IS NULL
        OR p_game_id IS NULL
@@ -429,6 +431,11 @@ BEGIN
                 'status', 'completed',
                 'duplicate', true,
                 'game_id', v_attempt.game_id,
+                'mode', v_attempt.mode,
+                'question_count', v_attempt.question_count,
+                'questions_answered', v_attempt.next_question_index,
+                'correct_count', v_attempt.correct_count,
+                'lives_remaining', v_attempt.lives_remaining,
                 'score', v_attempt.verified_score,
                 'max_score', v_attempt.max_score,
                 'points_awarded', v_attempt.points_awarded,
@@ -459,7 +466,11 @@ BEGIN
             'status', 'in_progress',
             'duplicate', true,
             'game_id', v_attempt.game_id,
+            'mode', v_attempt.mode,
             'question_count', v_attempt.question_count,
+            'questions_answered', v_attempt.next_question_index,
+            'correct_count', v_attempt.correct_count,
+            'lives_remaining', v_attempt.lives_remaining,
             'score', v_attempt.verified_score,
             'max_score', v_attempt.max_score,
             'question', pg_catalog.jsonb_build_object(
@@ -530,6 +541,15 @@ BEGIN
 
     v_new_score := v_attempt.verified_score + v_points_delta;
     v_next_index := v_attempt.next_question_index + 1;
+    v_next_lives := v_attempt.lives_remaining;
+
+    IF v_attempt.mode = 'challenge' AND NOT v_is_correct THEN
+        v_next_lives := pg_catalog.greatest(0, v_attempt.lives_remaining - 1);
+    END IF;
+
+    v_should_complete :=
+        v_next_index = v_attempt.question_count
+        OR (v_attempt.mode = 'challenge' AND v_next_lives = 0);
 
     IF v_new_score < 0 OR v_new_score > v_attempt.max_score
        OR v_next_correct_count > v_attempt.question_count THEN
@@ -548,7 +568,7 @@ BEGIN
         RAISE EXCEPTION 'Game answer state changed unexpectedly';
     END IF;
 
-    IF v_next_index = v_attempt.question_count THEN
+    IF v_should_complete THEN
         INSERT INTO public.point_transactions (
             student_id,
             teacher_id,
@@ -575,6 +595,7 @@ BEGIN
             correct_count = v_next_correct_count,
             verified_score = v_new_score,
             current_streak = v_next_streak,
+            lives_remaining = v_next_lives,
             completed_at = pg_catalog.now(),
             points_awarded = v_new_score,
             point_transaction_id = v_transaction_id
@@ -599,12 +620,15 @@ BEGIN
             'ok', true,
             'status', 'completed',
             'game_id', v_attempt.game_id,
+            'mode', v_attempt.mode,
             'score', v_new_score,
             'max_score', v_attempt.max_score,
             'points_awarded', v_new_score,
             'score_rule_version', v_attempt.score_rule_version,
             'correct_count', v_next_correct_count,
-            'question_count', v_attempt.question_count
+            'question_count', v_attempt.question_count,
+            'questions_answered', v_next_index,
+            'lives_remaining', v_next_lives
         );
     END IF;
 
@@ -612,7 +636,8 @@ BEGIN
     SET next_question_index = v_next_index,
         correct_count = v_next_correct_count,
         verified_score = v_new_score,
-        current_streak = v_next_streak
+        current_streak = v_next_streak,
+        lives_remaining = v_next_lives
     WHERE id = v_attempt.id
       AND status = 'in_progress';
 
@@ -634,7 +659,11 @@ BEGIN
         'ok', true,
         'status', 'in_progress',
         'game_id', v_attempt.game_id,
+        'mode', v_attempt.mode,
         'question_count', v_attempt.question_count,
+        'questions_answered', v_next_index,
+        'correct_count', v_next_correct_count,
+        'lives_remaining', v_next_lives,
         'answer_correct', v_is_correct,
         'points_delta', v_points_delta,
         'score', v_new_score,
@@ -649,9 +678,9 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.begin_game_attempt(uuid, text, jsonb)
+REVOKE ALL ON FUNCTION public.begin_game_attempt(uuid, text, text, jsonb)
     FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.begin_game_attempt(uuid, text, jsonb)
+GRANT EXECUTE ON FUNCTION public.begin_game_attempt(uuid, text, text, jsonb)
     TO service_role;
 
 REVOKE ALL ON FUNCTION public.record_game_attempt_answer(uuid, text, smallint, smallint)
