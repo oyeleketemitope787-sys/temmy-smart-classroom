@@ -87,6 +87,18 @@ Deno.test("rejects an unsupported game ID", () => {
   assert(!result.ok, "expected an unknown game to be rejected");
 });
 
+Deno.test("rejects inherited object property names as game IDs", () => {
+  for (const candidate of ["__proto__", "constructor", "toString"]) {
+    const result = validateResultRequest({
+      action: "start_attempt",
+      session_token: token,
+      game_id: candidate,
+      mode: "practice",
+    });
+    assert(!result.ok, "non-catalogue property name must not be accepted: " + candidate);
+  }
+});
+
 Deno.test("rejects an invalid session token", () => {
   const result = validateResultRequest({
     action: "start_attempt",
