@@ -121,6 +121,11 @@ CREATE TABLE public.student_game_attempts (
     CHECK (correct_count <= next_question_index),
     CHECK (current_streak <= next_question_index),
     CHECK (
+      status <> 'in_progress'
+      OR mode <> 'challenge'
+      OR lives_remaining > 0
+    ),
+    CHECK (
       (status = 'in_progress'
         AND completed_at IS NULL
         AND points_awarded IS NULL
@@ -202,9 +207,11 @@ COMMENT ON TABLE public.student_game_attempt_questions IS
 -- not create or enable these routines.
 --
 -- A) public.begin_game_attempt(
---       p_session_token uuid, p_game_id text, p_questions jsonb
+--       p_session_token uuid, p_game_id text, p_mode text, p_questions jsonb
 --    )
 --    * Executable by service_role only after explicit ACL review.
+--    * Validate mode against practice/challenge/class; bind it to the attempt
+--      so a retry cannot change modes mid-game.
 --    * Validate the session token, approved game ID, expiration, used_at,
 --      active class and active student.
 --    * Read the game's question_count, max_score and score_rule_version from
@@ -226,7 +233,10 @@ COMMENT ON TABLE public.student_game_attempt_questions IS
 --      is_correct, score, max_score, points_awarded, or game_name from browser.
 --    * Make same-answer retries idempotent; reject changed duplicate answers.
 --    * Record answer and update count/streak/verified score atomically.
---    * On final answer, store exact verified_score and game-specific max_score,
+--    * In challenge mode, reduce lives only on incorrect answers; when lives
+--      reach zero, finalize early and award the exact score earned so far.
+--      Practice/class modes continue until the final question.
+--    * On final/early-completion answer, store exact verified_score and game-specific max_score,
 --      mark attempt completed, consume session, and create exactly one
 --      point_transactions row with points = verified_score. Store the same
 --      score/max in the central game-result record/response. All actions must
