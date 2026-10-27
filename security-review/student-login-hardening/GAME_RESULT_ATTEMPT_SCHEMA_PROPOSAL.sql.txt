@@ -120,6 +120,7 @@ CREATE TABLE public.student_game_attempts (
       OR
       (status = 'completed'
         AND completed_at IS NOT NULL
+        AND points_awarded IS NOT NULL
         AND points_awarded = verified_score
         AND point_transaction_id IS NOT NULL)
     )
