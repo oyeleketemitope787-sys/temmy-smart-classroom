@@ -18,11 +18,12 @@ The request validator therefore uses a step-based contract. The Edge Function ha
 {
   "action": "start_attempt",
   "session_token": "<UUID bearer token>",
-  "game_id": "grade3-temmy-number-challenge"
+  "game_id": "grade3-temmy-number-challenge",
+  "mode": "practice"
 }
 ```
 
-The server must validate that the token maps to a session which is unexpired, unused, associated with the approved game, and still linked to an active student in an active class. It then creates or resumes exactly one attempt for that session and generates a fresh question set.
+The server must validate that the token maps to a session which is unexpired, unused, associated with the approved game, and still linked to an active student in an active class. The requested mode must be one of `practice`, `challenge`, or `class`, and a retry cannot change the mode of an existing attempt. It then creates or resumes exactly one attempt for that session and generates a fresh question set.
 
 The browser receives only the current question's index, prompt, four options, hint, and total question count. It must not receive `correct_choice_index`, score totals, student IDs, or the stored answer key.
 
@@ -48,6 +49,8 @@ The trusted server retrieves the stored correct choice, calculates correctness, 
 - Sending a different answer for an already answered question is rejected.
 - Only the expected current question may be answered.
 - The last accepted answer completes the attempt and consumes the session in the same transaction as final result handling.
+- In `challenge` mode, each incorrect answer consumes one of three lives; the third incorrect answer completes the attempt immediately, records the score earned so far, and consumes the session in the same transaction. Practice and class modes continue through the configured question count.
+- The final result includes `questions_answered`, `question_count`, `correct_count`, and `lives_remaining`, so the UI need not pretend an early-ended attempt answered all questions.
 - Concurrent requests must lock the session/attempt state, so two requests cannot both earn credit for the same question.
 
 ## Server-side question generation
