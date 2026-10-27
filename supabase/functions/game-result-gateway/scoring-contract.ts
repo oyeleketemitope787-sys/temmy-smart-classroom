@@ -142,7 +142,7 @@ export function validateCentralAttemptResponse(
   if ((mode !== "challenge" && (livesRemaining as number) !== 3) ||
       (status === "in_progress" &&
         ((questionsAnswered as number) >= rule.questionCount ||
-         (mode === "challenge" && (livesRemaining as number) === 0))) {
+         (mode === "challenge" && (livesRemaining as number) === 0)))) {
     return { ok: false, reason: "invalid_progress" };
   }
 
