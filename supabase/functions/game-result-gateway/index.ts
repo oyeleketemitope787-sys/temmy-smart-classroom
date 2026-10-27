@@ -25,6 +25,7 @@ const ALLOWED_ORIGINS = new Set([
   "https://oyeleketemitope787-sys.github.io",
 ]);
 const MAX_BODY_BYTES = 16 * 1024;
+const SUPPORTED_MODES = new Set(["practice", "challenge", "class"]);
 
 const corsHeaders = (origin: string | null) => {
   const permitted = origin !== null && ALLOWED_ORIGINS.has(origin);
@@ -171,9 +172,30 @@ Deno.serve(async (req: Request) => {
 
   const result = rpcResult.data;
   const rule = GAME_SCORING_CATALOGUE[checked.request.game_id];
+  const mode = result.mode;
+  const questionsAnswered = result.questions_answered;
+  const correctCount = result.correct_count;
+  const livesRemaining = result.lives_remaining;
+
   if (!rule ||
       result.game_id !== rule.gameId ||
       result.max_score !== rule.maxScore ||
+      result.score_rule_version !== rule.ruleVersion ||
+      typeof mode !== "string" ||
+      !SUPPORTED_MODES.has(mode) ||
+      (checked.request.action === "start_attempt" && mode !== checked.request.mode) ||
+      result.question_count !== rule.questionCount ||
+      !Number.isSafeInteger(questionsAnswered) ||
+      (questionsAnswered as number) < 0 ||
+      (questionsAnswered as number) > rule.questionCount ||
+      !Number.isSafeInteger(correctCount) ||
+      (correctCount as number) < 0 ||
+      (correctCount as number) > (questionsAnswered as number) ||
+      !Number.isSafeInteger(livesRemaining) ||
+      (livesRemaining as number) < 0 ||
+      (livesRemaining as number) > 3 ||
+      (mode !== "challenge" && (livesRemaining as number) !== 3) ||
+      (result.status === "in_progress" && mode === "challenge" && (livesRemaining as number) === 0) ||
       !Number.isSafeInteger(result.score) ||
       (result.score as number) < 0 ||
       (result.score as number) > rule.maxScore) {
