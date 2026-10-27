@@ -554,7 +554,11 @@ BEGIN
     v_next_lives := v_attempt.lives_remaining;
 
     IF v_attempt.mode = 'challenge' AND NOT v_is_correct THEN
-        v_next_lives := pg_catalog.greatest(0, v_attempt.lives_remaining - 1);
+        v_next_lives := CASE
+            WHEN v_attempt.lives_remaining > 0
+                THEN v_attempt.lives_remaining - 1
+            ELSE 0
+        END;
     END IF;
 
     v_should_complete :=
