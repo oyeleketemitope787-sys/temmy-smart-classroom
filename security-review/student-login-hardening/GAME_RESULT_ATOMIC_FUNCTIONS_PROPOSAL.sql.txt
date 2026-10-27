@@ -29,6 +29,7 @@
 CREATE OR REPLACE FUNCTION public.begin_game_attempt(
     p_session_token uuid,
     p_game_id text,
+    p_mode text,
     p_questions jsonb
 )
 RETURNS jsonb
@@ -51,7 +52,10 @@ DECLARE
     v_prompt text;
     v_hint text;
 BEGIN
-    IF p_session_token IS NULL OR p_game_id IS NULL THEN
+    IF p_session_token IS NULL
+       OR p_game_id IS NULL
+       OR p_mode IS NULL
+       OR p_mode NOT IN ('practice', 'challenge', 'class') THEN
         RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_request');
     END IF;
 
@@ -86,7 +90,8 @@ BEGIN
     FOR UPDATE;
 
     IF FOUND THEN
-        IF v_attempt.game_id IS DISTINCT FROM p_game_id THEN
+        IF v_attempt.game_id IS DISTINCT FROM p_game_id
+           OR v_attempt.mode IS DISTINCT FROM p_mode THEN
             RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_session');
         END IF;
 
@@ -95,6 +100,11 @@ BEGIN
                 'ok', true,
                 'status', 'completed',
                 'game_id', v_attempt.game_id,
+                'mode', v_attempt.mode,
+                'question_count', v_attempt.question_count,
+                'questions_answered', v_attempt.next_question_index,
+                'correct_count', v_attempt.correct_count,
+                'lives_remaining', v_attempt.lives_remaining,
                 'score', v_attempt.verified_score,
                 'max_score', v_attempt.max_score,
                 'points_awarded', v_attempt.points_awarded,
@@ -123,7 +133,11 @@ BEGIN
             'ok', true,
             'status', 'in_progress',
             'game_id', v_attempt.game_id,
+            'mode', v_attempt.mode,
             'question_count', v_attempt.question_count,
+            'questions_answered', v_attempt.next_question_index,
+            'correct_count', v_attempt.correct_count,
+            'lives_remaining', v_attempt.lives_remaining,
             'score', v_attempt.verified_score,
             'max_score', v_attempt.max_score,
             'question', pg_catalog.jsonb_build_object(
@@ -244,6 +258,8 @@ BEGIN
         session_id,
         game_id,
         status,
+        mode,
+        lives_remaining,
         question_count,
         max_score,
         next_question_index,
@@ -257,6 +273,8 @@ BEGIN
         v_session.session_id,
         p_game_id,
         'in_progress',
+        p_mode,
+        3,
         v_rule.question_count,
         v_rule.max_score,
         0,
@@ -301,7 +319,11 @@ BEGIN
         'ok', true,
         'status', 'in_progress',
         'game_id', p_game_id,
+        'mode', p_mode,
         'question_count', v_rule.question_count,
+        'questions_answered', 0,
+        'correct_count', 0,
+        'lives_remaining', 3,
         'score', 0,
         'max_score', v_rule.max_score,
         'question', pg_catalog.jsonb_build_object(
