@@ -147,7 +147,11 @@ export function validateCentralAttemptResponse(
   }
 
   if (status === "completed") {
-    if (value.points_awarded !== score || questionsAnswered === 0) {
+    const finishedAllQuestions = questionsAnswered === rule.questionCount;
+    const challengeRanOutOfLives = mode === "challenge" && livesRemaining === 0;
+    if (value.points_awarded !== score ||
+        questionsAnswered === 0 ||
+        (!finishedAllQuestions && !challengeRanOutOfLives)) {
       return { ok: false, reason: "invalid_completion" };
     }
   } else {
