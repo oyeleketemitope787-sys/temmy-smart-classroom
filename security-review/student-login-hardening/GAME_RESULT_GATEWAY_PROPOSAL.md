@@ -60,9 +60,9 @@ The central scoring module is present in scoring-contract.ts with rule version n
 
 ## Tests and validation status
 
-The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The current branch includes 15 request-validation cases, 16 central scoring/response-validation cases, and three question-generator test groups, including all supported modes, prototype-property game IDs, exact-score rewards, a 16/20 game, early challenge completion, inconsistent completion rejection, answer-key leakage rejection, and the Number Challenge 41-point maximum. These newly added scoring and validation tests have not been executed in this environment.
+The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The review branch CI workflow passed at commit `136f6ae105a4231d0dc79b8d` (run: https://github.com/oyeleketemitope787-sys/temmy-smart-classroom/actions/runs/40518746857). It passed `deno check` on the gateway handler and all three Deno suites: 15 request-validation cases, 16 central scoring/response-validation cases, and three question-generator test groups. Coverage includes all supported modes, prototype-property game IDs, exact-score rewards, a 16/20 game, early challenge completion, inconsistent completion rejection, answer-key leakage rejection, and the Number Challenge 41-point maximum.
 
-The checked-in Deno test files currently contain 15 request-validation cases, three generator tests, and 16 scoring/display/attempt-response tests. **The Deno test runner has not been executed** because Deno is not installed in this environment. No compile or runtime success is claimed for the latest scoring-contract changes, and there are no isolated database end-to-end test results yet.
+The checked-in Deno test files contain 15 request-validation cases, three generator tests, and 16 scoring/display/attempt-response tests. Gateway type checking and those test suites passed in GitHub Actions on commit `136f6ae105a4231d0dc79b8d`. The SQL drafts have not been executed or integration-tested; there is no isolated database end-to-end test result.
 
 ## Current decision
 
