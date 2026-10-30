@@ -61,3 +61,16 @@ Do not implement the live client switch until all of these are available:
 ## Current decision
 
 **NO-GO for release.** The backend handler is review-only and default-disabled; the SQL files remain non-executable drafts; the public game client is unchanged. Do not configure the feature flags or deploy until the complete isolated integration test passes.
+
+
+## Latest source/branch verification — 2026-10-30
+
+Read-only inspection of `oyeleketemitope787-sys/temmy-smart-games` confirmed that the current `main` version of `games/temmy-number-challenge.html` still:
+- reads the optional `session` URL parameter into a local object but does not use it to call the gateway or a result RPC;
+- keeps the 15 questions and correct answers in browser JavaScript;
+- calculates base points, streak bonuses, final-question bonus, lives, and the final score locally;
+- displays the final score with a hardcoded `/15 points` denominator, even though the local bonus algorithm can exceed 15.
+
+The game repository's default branch is `main`. Existing branches include `classroom-integration`, but that branch was not assumed to be safe or related to this scoring migration. A dedicated branch named `integration/central-scoring-number-challenge-review` was requested from `main`; GitHub returned HTTP 403 (`Resource not accessible by integration`). No branch was created and no file was changed in the game repository. Do not fall back to editing `main` or an unrelated branch.
+
+**Next safe action:** prepare and test the client migration as a review patch/diff in the Classroom review repository until a dedicated game-repository branch can be created by an authorized GitHub workflow/user. Keep the public no-session practice path independent from reward submission. The central gateway contract must be reconciled with the game UI before any client patch is proposed for application.
