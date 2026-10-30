@@ -55,8 +55,8 @@ jobs:
         shell: bash
         run: |
           awk 'BEGIN { inside=0 } substr($0,1,2)=="/*" { inside=1; next } inside && substr($0,1,2)=="*/" { exit } inside { print }'
-            security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt \\
-            > /tmp/attempt-schema.sql
+            security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt > /tmp/attempt-schema.sql
+
           test -s /tmp/attempt-schema.sql
           psql -v ON_ERROR_STOP=1 -f /tmp/attempt-schema.sql
 
@@ -64,8 +64,8 @@ jobs:
         shell: bash
         run: |
           awk 'BEGIN { inside=0 } substr($0,1,2)=="/*" { inside=1; next } inside && substr($0,1,2)=="*/" { exit } inside { print }'
-            security-review/student-login-hardening/GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt \\
-            > /tmp/atomic-functions.sql
+            security-review/student-login-hardening/GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt > /tmp/atomic-functions.sql
+
           test -s /tmp/atomic-functions.sql
           psql -v ON_ERROR_STOP=1 -f /tmp/atomic-functions.sql
 
