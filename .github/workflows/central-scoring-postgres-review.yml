@@ -75,6 +75,9 @@ jobs:
       - name: Run security and edge-case integration assertions
         run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_EDGE_CASE_TESTS.sql
 
+      - name: Verify scoring RPC and answer-key permissions
+        run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_ACL_TESTS.sql
+
       - name: Prepare concurrent final-answer attempt
         run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_CONCURRENCY_SETUP.sql
 
