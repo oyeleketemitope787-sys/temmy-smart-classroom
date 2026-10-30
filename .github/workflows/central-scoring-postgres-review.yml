@@ -54,8 +54,8 @@ jobs:
       - name: Apply proposed attempt schema in disposable database
         shell: bash
         run: |
-          awk 'BEGIN { inside=0 } /^\/\*/ { inside=1; next } inside && /^\*\// { exit } inside { print }' \
-            security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt \
+          awk 'BEGIN { inside=0 } /^\\/\\*/ { inside=1; next } inside && /^\\*\\// { exit } inside { print }' \\
+            security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt \\
             > /tmp/attempt-schema.sql
           test -s /tmp/attempt-schema.sql
           psql -v ON_ERROR_STOP=1 -f /tmp/attempt-schema.sql
@@ -63,8 +63,8 @@ jobs:
       - name: Apply proposed atomic functions in disposable database
         shell: bash
         run: |
-          awk 'BEGIN { inside=0 } /^\/\*/ { inside=1; next } inside && /^\*\// { exit } inside { print }' \
-            security-review/student-login-hardening/GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt \
+          awk 'BEGIN { inside=0 } /^\\/\\*/ { inside=1; next } inside && /^\\*\\// { exit } inside { print }' \\
+            security-review/student-login-hardening/GAME_RESULT_ATOMIC_FUNCTIONS_PROPOSAL.sql.txt \\
             > /tmp/atomic-functions.sql
           test -s /tmp/atomic-functions.sql
           psql -v ON_ERROR_STOP=1 -f /tmp/atomic-functions.sql
@@ -74,3 +74,23 @@ jobs:
 
       - name: Run security and edge-case integration assertions
         run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_EDGE_CASE_TESTS.sql
+
+      - name: Prepare concurrent final-answer attempt
+        run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_CONCURRENCY_SETUP.sql
+
+      - name: Submit the same final answer concurrently
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL="SELECT public.record_game_attempt_answer('10000000-0000-0000-0000-000000000021','ci-one-point-game',19::smallint,0::smallint);"
+          psql -v ON_ERROR_STOP=1 -Atc "$SQL" > /tmp/concurrent-answer-a.log &
+          pid_a=$!
+          psql -v ON_ERROR_STOP=1 -Atc "$SQL" > /tmp/concurrent-answer-b.log &
+          pid_b=$!
+          wait "$pid_a"
+          wait "$pid_b"
+          cat /tmp/concurrent-answer-a.log
+          cat /tmp/concurrent-answer-b.log
+
+      - name: Verify concurrent submission awarded exactly once
+        run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_CONCURRENCY_VERIFY.sql
