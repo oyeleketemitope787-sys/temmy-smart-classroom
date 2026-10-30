@@ -135,7 +135,10 @@ CREATE TABLE public.student_game_attempts (
         AND completed_at IS NOT NULL
         AND points_awarded IS NOT NULL
         AND points_awarded = verified_score
-        AND point_transaction_id IS NOT NULL)
+        AND (
+          (points_awarded = 0 AND point_transaction_id IS NULL)
+          OR (points_awarded > 0 AND point_transaction_id IS NOT NULL)
+        ))
     )
 );
 
@@ -238,9 +241,12 @@ COMMENT ON TABLE public.student_game_attempt_questions IS
 --      Practice/class modes continue until the final question.
 --    * On final/early-completion answer, store exact verified_score and game-specific max_score,
 --      mark attempt completed, consume session, and create exactly one
---      point_transactions row with points = verified_score. Store the same
---      score/max in the central game-result record/response. All actions must
---      commit or roll back together; never clamp a valid score silently.
+--      point_transactions row with points = verified_score only when the
+--      verified score is greater than zero. For a zero-score completion,
+--      persist the completed attempt with points_awarded=0 and a NULL
+--      point_transaction_id; do not create a zero-point ledger row. Store the
+--      same score/max in the central game-result record/response. All actions
+--      must commit or roll back together; never clamp a valid score silently.
 --    * A game allowing bonuses must configure max_score to include all bonuses.
 --      For Number Challenge v1 that is 41 (15 base + 13 streak bonuses +
 --      11 further streak bonuses + 2 final-question bonus). A game out of 20
