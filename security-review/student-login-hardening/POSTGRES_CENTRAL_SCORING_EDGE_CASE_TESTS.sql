@@ -8,7 +8,7 @@ DECLARE
   i integer;
   tx_count integer;
   zero_attempt_count integer;
-  zero_transaction_id uuid;
+  has_zero_transaction_id boolean;
   expired_token uuid := '10000000-0000-0000-0000-000000000011';
   used_token uuid := '10000000-0000-0000-0000-000000000012';
   order_token uuid := '10000000-0000-0000-0000-000000000013';
@@ -108,8 +108,8 @@ BEGIN
     RAISE EXCEPTION 'Zero-score completion must not create a reward transaction; got %',tx_count;
   END IF;
 
-  SELECT count(*), max(point_transaction_id)
-  INTO zero_attempt_count, zero_transaction_id
+  SELECT count(*), coalesce(bool_or(point_transaction_id IS NOT NULL), false)
+  INTO zero_attempt_count, has_zero_transaction_id
   FROM public.student_game_attempts
   WHERE session_id = (
     SELECT id FROM public.student_game_sessions WHERE session_token=challenge_token
@@ -117,9 +117,9 @@ BEGIN
     AND status='completed'
     AND verified_score=0
     AND points_awarded=0;
-  IF zero_attempt_count <> 1 OR zero_transaction_id IS NOT NULL THEN
-    RAISE EXCEPTION 'Zero-score completion must persist once without a transaction; attempts %, transaction %',
-      zero_attempt_count, zero_transaction_id;
+  IF zero_attempt_count <> 1 OR has_zero_transaction_id THEN
+    RAISE EXCEPTION 'Zero-score completion must persist once without a transaction; attempts %, has_transaction %',
+      zero_attempt_count, has_zero_transaction_id;
   END IF;
 
   RAISE NOTICE 'PASS: expired/used sessions rejected; out-of-order/conflicting answers rejected; zero-score challenge completion persists once with no reward transaction.';
