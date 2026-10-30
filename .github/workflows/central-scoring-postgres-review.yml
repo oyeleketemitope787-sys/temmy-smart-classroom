@@ -71,3 +71,6 @@ jobs:
 
       - name: Run score and idempotency integration assertions
         run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_SMOKE_TESTS.sql
+
+      - name: Run security and edge-case integration assertions
+        run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_EDGE_CASE_TESTS.sql
