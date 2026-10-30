@@ -79,19 +79,47 @@ jobs:
       - name: Prepare concurrent final-answer attempt
         run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_CONCURRENCY_SETUP.sql
 
-      - name: Submit the same final answer concurrently
+      - name: Submit the same final answer under forced row-lock contention
         shell: bash
         run: |
           set -euo pipefail
-          SQL="SELECT public.record_game_attempt_answer('10000000-0000-0000-0000-000000000021','ci-one-point-game',19::smallint,0::smallint);"
+          TOKEN="10000000-0000-0000-0000-000000000021"
+          SQL="SELECT public.record_game_attempt_answer('${TOKEN}','ci-one-point-game',19::smallint,0::smallint);"
+
+          # Hold the real session row lock so both answer requests must queue.
+          psql -v ON_ERROR_STOP=1 -Atc "BEGIN; SELECT 1 FROM public.student_game_sessions WHERE session_token='${TOKEN}' FOR UPDATE; SELECT pg_sleep(8); COMMIT;" > /tmp/session-lock-holder.log &
+          lock_pid=$!
+
+          # Do not launch either request until PostgreSQL confirms the lock is held.
+          ready=0
+          for attempt in $(seq 1 100); do
+            if grep -q '^1$' /tmp/session-lock-holder.log 2>/dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$lock_pid" 2>/dev/null; then
+              cat /tmp/session-lock-holder.log
+              echo "Session lock holder exited before acquiring the lock."
+              exit 1
+            fi
+            sleep 0.1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/session-lock-holder.log
+            echo "Timed out waiting for the session row lock."
+            exit 1
+          fi
+
+          # Both calls now contend for the same locked session and final answer.
           psql -v ON_ERROR_STOP=1 -Atc "$SQL" > /tmp/concurrent-answer-a.log &
           pid_a=$!
           psql -v ON_ERROR_STOP=1 -Atc "$SQL" > /tmp/concurrent-answer-b.log &
           pid_b=$!
+
           wait "$pid_a"
           wait "$pid_b"
+          wait "$lock_pid"
           cat /tmp/concurrent-answer-a.log
           cat /tmp/concurrent-answer-b.log
-
       - name: Verify concurrent submission awarded exactly once
         run: psql -v ON_ERROR_STOP=1 -f security-review/student-login-hardening/POSTGRES_CENTRAL_SCORING_CONCURRENCY_VERIFY.sql
