@@ -55,7 +55,7 @@ The central scoring module is present in scoring-contract.ts with rule version n
 3. A repeated identical answer may be idempotent; a conflicting duplicate, skipped question or replay must not earn additional credit.
 4. Current effective privileges show `anon EXECUTE = true` for `record_student_game_result`. Do not revoke that permission until legitimate deployed callers have been located and migrated together.
 5. Authenticated users currently have direct INSERT permission on `point_transactions` under an RLS check for teacher ownership and student/class membership. The inspected Classroom client uses direct inserts for teacher adjustments and activity scoring with `source = 'teacher'`. Narrowing this policy requires a separately reviewed migration that preserves those flows.
-6. Public/practice gameplay must remain available without a student-linked reward session and must never award student points by itself. The proposed protocol preserves the current Number Challenge modes: practice/class modes run through the configured question count, while challenge mode completes early after three incorrect answers. The exact verified score earned so far is still awarded on an early completion.
+6. Public/practice gameplay must remain available without a student-linked reward session and must never award student points by itself. The proposed protocol preserves the current Number Challenge modes: practice/class modes run through the configured question count, while challenge mode completes early after three incorrect answers. A positive verified score is awarded exactly once. A zero-score completed attempt is retained in attempt history but creates no point transaction.
 7. The historical `24/15` transaction's write path remains unexplained. The 24-point value itself is consistent with the current local bonus algorithm; the denominator `15` is inconsistent with its theoretical maximum of 41. The current database result function would cap arguments `24, 15` at 15, so it does not explain that stored value with those exact arguments.
 
 ## Tests and validation status
@@ -63,6 +63,10 @@ The central scoring module is present in scoring-contract.ts with rule version n
 The earlier generator branch was checked with a local harness across 10,000 deterministic seeds (150,000 generated questions). The review branch CI workflow passed at commit `136f6ae105a4231d0dc79b1a3b7f8b7dc9cf4423` (run: https://github.com/oyeleketemitope787-sys/temmy-smart-classroom/actions/runs/40518746857). It passed `deno check` on the gateway handler and all three Deno suites: 15 request-validation cases, 16 central scoring/response-validation cases, and three question-generator test groups. Coverage includes all supported modes, prototype-property game IDs, exact-score rewards, a 16/20 game, early challenge completion, inconsistent completion rejection, answer-key leakage rejection, and the Number Challenge 41-point maximum.
 
 The checked-in Deno test files contain 15 request-validation cases, three generator tests, and 16 scoring/display/attempt-response tests. Gateway type checking and those test suites passed in GitHub Actions on commit `136f6ae105a4231d0dc79b1a3b7f8b7dc9cf4423`. The SQL drafts have not been executed or integration-tested; there is no isolated database end-to-end test result.
+
+## Zero-score ledger policy — owner-approved
+
+A completed attempt with a verified score of zero is recorded in `student_game_attempts` with `points_awarded = 0` and `point_transaction_id = NULL`. It does not create a zero-point row in `point_transactions`. A positive verified score continues to create exactly one transaction for that exact score. The SQL schema/function drafts and disposable PostgreSQL edge-case test have been updated to express this policy. This decision does not change teacher adjustments or activity-scoring transactions.
 
 ## Current decision
 
