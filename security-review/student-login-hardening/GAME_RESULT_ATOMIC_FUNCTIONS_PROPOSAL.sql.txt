@@ -583,25 +583,30 @@ BEGIN
     END IF;
 
     IF v_should_complete THEN
-        INSERT INTO public.point_transactions (
-            student_id,
-            teacher_id,
-            points,
-            action_name,
-            action_type,
-            reason,
-            source
-        )
-        VALUES (
-            v_session.student_id,
-            v_session.teacher_id,
-            v_new_score,
-            v_rule.display_name,
-            'activity_score',
-            'Game completed — ' || v_new_score || '/' || v_attempt.max_score,
-            'game'
-        )
-        RETURNING id INTO v_transaction_id;
+        -- A completed zero-score run remains in attempt history, but does not
+        -- create a zero-point ledger transaction. Positive scores create one
+        -- reward row in this same atomic transaction.
+        IF v_new_score > 0 THEN
+            INSERT INTO public.point_transactions (
+                student_id,
+                teacher_id,
+                points,
+                action_name,
+                action_type,
+                reason,
+                source
+            )
+            VALUES (
+                v_session.student_id,
+                v_session.teacher_id,
+                v_new_score,
+                v_rule.display_name,
+                'activity_score',
+                'Game completed — ' || v_new_score || '/' || v_attempt.max_score,
+                'game'
+            )
+            RETURNING id INTO v_transaction_id;
+        END IF;
 
         UPDATE public.student_game_attempts
         SET status = 'completed',
@@ -707,8 +712,9 @@ GRANT EXECUTE ON FUNCTION public.record_game_attempt_answer(uuid, text, smallint
 -- Review checklist before converting this into a real migration:
 --   1. Validate every referenced column/table against current database metadata.
 --   2. Review whether SECURITY DEFINER owner, RLS, and grant strategy are correct.
---   3. Verify that point_transactions supports the exact values and a zero-point
---      transaction is acceptable for a completed run with no correct answers.
+--   3. Confirm the ledger policy: completed zero-score attempts persist with
+--      points_awarded=0 and no point_transactions row; positive scores create
+--      exactly one reward row.
 --   4. Unit/integration test the SQL in an isolated Supabase project, including
 --      concurrent identical answers, duplicate final submissions, third-life
 --      challenge completion, and exactly-one transaction on early completion.
