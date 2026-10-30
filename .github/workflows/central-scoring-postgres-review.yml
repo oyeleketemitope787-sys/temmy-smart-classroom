@@ -54,7 +54,7 @@ jobs:
       - name: Apply proposed attempt schema in disposable database
         shell: bash
         run: |
-          awk 'BEGIN { inside=0 } /^\\/\\*/ { inside=1; next } inside && /^\\*\\// { exit } inside { print }' \\
+          awk 'BEGIN { inside=0 } /^[[:space:]]*\/\* { inside=1; next } inside && /^[[:space:]]*\*\// { exit } inside { print }' \\
             security-review/student-login-hardening/GAME_RESULT_ATTEMPT_SCHEMA_PROPOSAL.sql.txt \\
             > /tmp/attempt-schema.sql
           test -s /tmp/attempt-schema.sql
