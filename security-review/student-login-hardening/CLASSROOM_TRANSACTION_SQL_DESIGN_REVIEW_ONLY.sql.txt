@@ -1,0 +1,306 @@
+/*
+CLASSROOM TRANSACTION SQL DESIGN — REVIEW ONLY
+Version: 1.0
+Related specification:
+  CLASSROOM_TRANSACTION_TEST_SPECIFICATION_V1.0.md
+
+STATUS: DESIGN DRAFT / NOT EXECUTABLE / NOT A SUPABASE MIGRATION.
+
+SAFETY:
+- Never run this file in Supabase SQL Editor or against any hosted project.
+- Do not copy into supabase/migrations.
+- Do not deploy functions or change grants from this document.
+- Existing production schema for marketplace_rewards, purchases, request/idempotency
+  records, and audit records has not been verified from repository evidence.
+- Existing student_activity_records and point_transactions definitions were
+  inspected previously, but exact current deployed metadata/callers still require
+  independent verification before any production implementation.
+- All table names/columns below are logical design references, not claims about
+  deployed schema.
+- The existing game-scoring fixture/workflow is separate and must remain unchanged.
+
+PURPOSE
+-------
+Move teacher point awards/deductions, reversals, activity score adjustments,
+and individual marketplace purchases behind narrow trusted transaction
+entrypoints. Browser roles must not be able to write the ledger or protected
+activity score columns directly.
+
+A. TRUST BOUNDARY AND ROLE MODEL
+-------------------------------
+1. Browser roles (anon/authenticated) are untrusted. They must not receive
+   direct INSERT on point_transactions or broad UPDATE on
+   student_activity_records.
+2. A server-side Temmy Gateway authenticates the teacher and derives the
+   teacher identity from a verified session. It passes the verified actor
+   identity only over a server-to-database credential boundary.
+3. A dedicated database role such as temmy_gateway may execute only the
+   approved transaction entrypoints. It must not be granted to anon or
+   authenticated, directly or through role membership.
+4. A separate non-login data-owner role should own SECURITY DEFINER
+   transaction functions and have only the table privileges needed by those
+   functions. Do not use a superuser as the function owner.
+5. Functions must set a fixed search_path (prefer pg_catalog plus explicitly
+   schema-qualified application objects), schema-qualify every table/function
+   reference, and avoid dynamic SQL unless strictly necessary.
+6. The database trusts the gateway role as the authenticated actor boundary.
+   A teacher ID parameter is safe only because the function is executable
+   exclusively by the trusted server role. Never expose that parameter through
+   a browser-callable RPC. Production identity propagation must be designed
+   and threat-modelled before implementation.
+7. Do not rely on a user-writable custom GUC as proof of actor identity.
+   Test-only actor injection must be performed by a privileged test harness
+   and must not be copied into production.
+
+B. LOGICAL DATA MODEL (PROPOSED, NOT VERIFIED)
+---------------------------------------------
+Existing logical records:
+- teacher_profiles
+- classes
+- students
+- point_transactions (append-only ledger)
+- class_activities
+- student_activity_records
+
+Additional logical records, subject to schema reconciliation:
+- transaction_requests:
+    request_id (unique idempotency key),
+    operation,
+    actor_teacher_id,
+    payload_hash,
+    status,
+    result_payload,
+    created_at,
+    completed_at
+  Purpose: bind a retry key to one actor, operation, and canonical request.
+  A repeated key with the same payload returns the saved result. A repeated
+  key with a different payload is rejected.
+- purchases:
+    purchase_id,
+    request_id,
+    student_id,
+    teacher_id,
+    reward_id,
+    reward_name_snapshot,
+    points_spent,
+    created_at
+  Purpose: preserve purchase history independently of later reward
+  deactivation/renaming. Exact deployed table/columns are unknown.
+- transaction_audit:
+    audit_id,
+    request_id,
+    actor_teacher_id,
+    operation,
+    target_student_id,
+    outcome,
+    safe_metadata,
+    created_at
+  Purpose: record committed successful operations and safe operational
+  metadata. Avoid raw access codes, session tokens, secrets, and unnecessary
+  personal data.
+- configuration source for maximum teacher award:
+    key/value or strongly typed configuration row, with change authority and
+    audit trail. The configured numeric maximum is intentionally unresolved.
+
+Do not add a unique constraint on (activity_id, student_id) in this design.
+Do not assume any proposed table or column exists in the hosted database.
+
+C. POINT LEDGER INVARIANTS
+--------------------------
+- point_transactions is append-only from application paths.
+- Positive points represent credits; negative points represent debits/reversals.
+  Confirm exact existing conventions and action_type/source values before
+  implementation.
+- Balance = sum of signed ledger points for the student, under the authoritative
+  ledger scope. Confirm whether the current scope is student-wide or
+  teacher/class-scoped before production implementation.
+- Never accept a client-calculated balance as authoritative.
+- No zero-value transaction is written for a no-op.
+- Reversal is a compensating entry linked to the original transaction; the
+  original row is never edited or deleted.
+- Enforce a unique reversal reference so one original transaction cannot be
+  reversed twice.
+
+D. IDEMPOTENCY PATTERN
+----------------------
+For every mutating operation:
+1. Validate request shape and canonicalize all business fields.
+2. Compute a payload hash on the trusted server or in a deterministic
+   database routine over canonical fields (not arbitrary JSON key order).
+3. Insert/claim transaction_requests using a unique request_id scoped to the
+   operation/actor. On conflict, lock/read the existing request.
+4. If payload hash or actor/operation differs, reject key reuse.
+5. If completed, return the stored result without repeating the mutation.
+6. If pending, use a defined in-progress/lease strategy; do not blindly run a
+   second mutation.
+7. Perform the business mutation and persist its final result in the same
+   database transaction.
+8. A timeout/unknown client outcome is resolved with the SAME request ID.
+
+The exact key scope, pending-state recovery, and payload canonicalization
+must be fixed in implementation review.
+
+E. OPERATION ALGORITHMS
+-----------------------
+
+E1. award_points(actor, student, amount, reason, request_id)
+- Require trusted actor and valid active class ownership.
+- Require amount to be a positive integer.
+- Read configured maximum from authoritative server-side configuration.
+- Reject amount above maximum; never silently truncate an award.
+- Claim idempotency key.
+- Insert one positive ledger row with server-derived teacher identity and
+  validated action/source classification.
+- Store result and success audit in the same transaction.
+- Return transaction ID, awarded amount, and resulting balance.
+
+E2. deduct_points(actor, student, requested_amount, reason, request_id)
+- Require positive integer requested_amount and valid ownership.
+- Claim idempotency key.
+- Serialize against other mutations for the same student's balance (e.g. lock
+  a stable student row before calculating ledger sum).
+- Compute authoritative balance while holding the lock.
+- actual_deduction = LEAST(requested_amount, GREATEST(balance, 0)).
+- If actual_deduction = 0, return zero_balance/no-op and write no ledger row.
+- Otherwise append a negative ledger entry for actual_deduction.
+- Store result and success audit atomically.
+- Concurrent deductions must not overdraw or over-deduct.
+
+E3. reverse_transaction(actor, original_transaction_id, request_id)
+- Require actor authorization for the original operation/student.
+- Claim idempotency key.
+- Lock original transaction and student's balance serialization row.
+- Reject if already reversed.
+- Calculate the full reversal amount required by the original transaction.
+- If the full reversal would make available balance negative, reject completely:
+  no partial reversal and no ledger entry.
+- Otherwise append one compensating entry linked to original transaction.
+- Enforce unique original_transaction_id in reversal records/ledger linkage.
+- Save result and success audit atomically.
+
+E4. score_activity(actor, record_id, new_score, notes, request_id)
+- Lock the activity record and validate teacher ownership, activity/class
+  relationship, student/class relationship, score bounds, and active state.
+- old_score = persisted teacher-assigned score.
+- delta = new_score - old_score.
+- For delta > 0, append +delta.
+- For delta < 0, serialize balance and deduct LEAST(ABS(delta), available_balance);
+  the activity record still stores new_score even if actual ledger deduction is
+  clamped. Return both assigned score and actual point adjustment.
+- For delta = 0, write no point transaction.
+- Update activity record and any corresponding ledger entry in one transaction.
+- Any failure must roll back both.
+- Preserve the existing duplicate activity submission behaviour until verified.
+  Do not add a unique(activity_id, student_id) constraint as part of this design.
+
+E5. purchase_reward_for_student(actor, student, reward, request_id)
+- Process one student per transaction/request. A multi-student UI may issue
+  separate per-student requests and aggregate independent outcomes.
+- Lock/validate reward and student/balance rows in a consistent lock order.
+- Verify reward belongs to actor and is active.
+- If stock is finite, require stock > 0 and decrement exactly once.
+  NULL stock means unlimited and is not decremented.
+- Serialize student's balance and require balance >= reward price.
+- If insufficient balance or out of stock, write no purchase, no debit, and
+  no stock decrement.
+- Append debit ledger entry, write purchase history snapshot, decrement finite
+  stock, and store idempotency result in one transaction.
+- Deactivation blocks new purchases but must not delete purchase history.
+- A retry with the same request key returns the original per-student result
+  without another debit, purchase row, or stock decrement.
+- Multi-student processing is independent: one student's failure does not roll
+  back another student's already committed purchase.
+
+F. LOCKING AND DEADLOCK CONTROL
+-------------------------------
+- Define one global lock order for operations touching multiple entities.
+- Suggested order: idempotency request row -> teacher-owned reward/activity
+  row where applicable -> student serialization row -> ledger/purchase/audit
+  writes. Validate and refine this order with actual FK/trigger behaviour.
+- All paths that mutate one student's balance must use the same serialization
+  mechanism; otherwise row locks on different request rows do not prevent
+  concurrent overspend.
+- Finite stock updates must be conditional/locked so stock cannot become
+  negative.
+- Add concurrent tests for two deductions, two undo attempts, two purchases
+  competing for one stock unit, and simultaneous purchase/deduction for one
+  student.
+- Retry deadlock/serialization failures only with the same idempotency key and
+  bounded retry policy.
+
+G. AUDIT AND ERROR SEMANTICS
+----------------------------
+- Successful mutation and success audit event commit together.
+- A rejected operation that rolls back cannot preserve an audit insert made
+  inside that same rolled-back transaction. If rejected-attempt audit is
+  required, implement a separate safe logging path with clear failure policy.
+- Store safe error codes and minimal metadata; do not expose SQL errors,
+  secrets, access codes, tokens, or internal table details to the browser.
+- A network timeout after commit is an unknown client outcome, not proof of
+  failure. Resolve through the same request ID.
+- Per-student marketplace outcomes must distinguish purchased, insufficient
+  balance, out of stock, reward unavailable, invalid student/ownership, and
+  idempotent replay.
+
+H. PRIVILEGE DESIGN TARGET (NOT GRANT STATEMENTS)
+-------------------------------------------------
+Target end state, subject to complete caller inventory:
+- anon: no execution of transaction entrypoints; no direct ledger writes.
+- authenticated browser role: no direct INSERT on point_transactions; no
+  UPDATE on protected student_activity_records columns; only safe reads and
+  narrowly scoped non-sensitive operations as required by verified callers.
+- temmy_gateway: EXECUTE only on approved transaction entrypoints; no broad
+  direct table grants if functions can safely encapsulate operations.
+- function owner: non-login, least-privilege owner with fixed search_path and
+  tightly scoped table rights.
+- service_role: do not assume or change privileges without verified effective
+  ACL/default privilege inventory and exact rollout plan.
+
+No REVOKE/GRANT statements are supplied here because the deployed caller
+inventory and effective privilege state are not complete. Do not infer safe
+permission changes from this design.
+
+I. REQUIRED DISPOSABLE TEST SUITE
+---------------------------------
+Build a separate classroom fixture and CI workflow; do not change the existing
+game scoring fixture/workflow. Include:
+- synthetic teacher/class/student and ledger data;
+- synthetic activities/activity records;
+- synthetic rewards/purchases;
+- idempotency and audit structures;
+- test-only roles and trusted actor harness;
+- authorization/ACL tests;
+- award cap, clamp, zero-balance, undo, score delta, stock, deactivation,
+  independent per-student purchase, idempotency, rollback, and concurrency
+  tests;
+- duplicate activity submission tests without a new uniqueness constraint;
+- no hosted credentials or network access to Supabase.
+
+J. OPEN DESIGN GATES BEFORE SQL BECOMES EXECUTABLE
+-------------------------------------------------
+1. Verify deployed marketplace_rewards/purchases schemas and purchase RPC.
+2. Verify current point ledger conventions, scope, constraints, triggers, and
+   all legitimate writers/callers.
+3. Verify activity scoring fields, bounds, duplicate submission semantics,
+   and deployed callers.
+4. Decide configured maximum award and who may change it.
+5. Finalize trusted Gateway-to-database actor identity and connection role.
+6. Finalize request idempotency schema, recovery semantics, and audit retention.
+7. Review exact lock order against actual schema and trigger behaviour.
+8. Build and pass isolated PostgreSQL tests.
+9. Obtain explicit approval for any exact production migration, function,
+   grant, deployment, or frontend change.
+
+Until all gates pass, status remains NO-GO for hosted SQL or deployment.
+*/
+
+-- The following are logical operation signatures only, not executable DDL:
+-- award_points(actor_teacher_id, student_id, positive_integer_amount,
+--              reason, request_id)
+-- deduct_points(actor_teacher_id, student_id, positive_integer_amount,
+--               reason, request_id)
+-- reverse_transaction(actor_teacher_id, original_transaction_id, request_id)
+-- score_activity(actor_teacher_id, activity_record_id, new_score,
+--                notes, request_id)
+-- purchase_reward_for_student(actor_teacher_id, student_id, reward_id,
+--                             request_id)
