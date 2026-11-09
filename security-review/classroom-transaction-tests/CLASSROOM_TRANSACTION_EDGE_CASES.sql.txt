@@ -1,0 +1,289 @@
+/*
+CLASSROOM TRANSACTION EDGE CASE TESTS — SYNTHETIC / DISPOSABLE ONLY
+STATUS: REVIEW DRAFT. NOT EXECUTED. Never run against Supabase, production,
+cloud-test, or any shared database.
+
+Prerequisites:
+- Fresh disposable database with fixture schema, synthetic seed, and Phase 1–3
+  function drafts installed.
+- The test role context, function ownership and EXECUTE grants independently
+  verified before running.
+- Run as disposable database administrator. All test mutations are rolled back.
+
+Important: current function drafts raise exceptions for expected business
+rejections. Each negative test catches the expected SQLSTATE in a sub-block.
+The failed function call's request claim and any in-transaction audit should
+roll back with that sub-block. Durable rejected-request idempotency is not
+tested or implemented by these drafts.
+*/
+
+BEGIN;
+
+-- 1. Insufficient balance: Student Two has 5 points; Limited Reward costs 10.
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.purchase_reward_for_student(
+      '10000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000002',
+      '70000000-0000-4000-8000-000000000001',
+      '81000000-0000-4000-8000-000000000001'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      IF SQLERRM <> 'insufficient_points' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN
+    RAISE EXCEPTION 'Expected insufficient_points rejection';
+  END IF;
+END
+$test$;
+
+-- 2. Out of stock: reward has finite stock exactly zero.
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.purchase_reward_for_student(
+      '10000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000001',
+      '70000000-0000-4000-8000-000000000003',
+      '81000000-0000-4000-8000-000000000002'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      IF SQLERRM <> 'reward_out_of_stock' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN RAISE EXCEPTION 'Expected reward_out_of_stock rejection'; END IF;
+END
+$test$;
+
+-- 3. Inactive reward must not be purchased even when stock and balance exist.
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.purchase_reward_for_student(
+      '10000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000001',
+      '70000000-0000-4000-8000-000000000004',
+      '81000000-0000-4000-8000-000000000003'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      IF SQLERRM <> 'reward_not_active' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN RAISE EXCEPTION 'Expected reward_not_active rejection'; END IF;
+END
+$test$;
+
+-- 4. Teacher A cannot buy Teacher B's reward for Teacher A's student.
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.purchase_reward_for_student(
+      '10000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000001',
+      '70000000-0000-4000-8000-000000000005',
+      '81000000-0000-4000-8000-000000000004'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '42501' THEN
+      IF SQLERRM <> 'reward_not_found_or_not_owned_by_teacher' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN RAISE EXCEPTION 'Expected reward ownership rejection'; END IF;
+END
+$test$;
+
+-- 5. Teacher A cannot transact against Teacher B's student.
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.purchase_reward_for_student(
+      '10000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000004',
+      '70000000-0000-4000-8000-000000000001',
+      '81000000-0000-4000-8000-000000000005'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '42501' THEN
+      IF SQLERRM <> 'student_not_found_or_not_owned_by_teacher' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN RAISE EXCEPTION 'Expected student ownership rejection'; END IF;
+END
+$test$;
+
+-- 6. Award above configured maximum (100) must reject, never truncate.
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.award_points(
+      '10000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000001',
+      101,
+      'Above-cap edge test',
+      '81000000-0000-4000-8000-000000000006'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      IF SQLERRM <> 'award_limit_exceeded' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN RAISE EXCEPTION 'Expected award_limit_exceeded rejection'; END IF;
+END
+$test$;
+
+-- 7. Zero-balance deduction is an approved no-op and must not create a
+-- zero-value ledger transaction. Use Student Three only after reducing their
+-- opening balance to zero within this disposable test transaction.
+RESET ROLE;
+UPDATE classroom_test.point_transactions
+   SET points = -50
+ WHERE id = '60000000-0000-4000-8000-000000000003';
+
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_result jsonb;
+BEGIN
+  v_result := classroom_test.deduct_points(
+    '10000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000003',
+    8,
+    'Zero balance no-op edge test',
+    '81000000-0000-4000-8000-000000000007'
+  );
+  IF v_result ->> 'status' <> 'zero_balance_noop'
+     OR (v_result ->> 'deducted')::integer <> 0
+     OR v_result ->> 'transaction_id' IS NOT NULL THEN
+    RAISE EXCEPTION 'Unexpected zero-balance deduction result: %', v_result;
+  END IF;
+END
+$test$;
+
+-- 8. Activity score below zero and above maximum must reject.
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.score_activity(
+      '10000000-0000-4000-8000-000000000001',
+      '50000000-0000-4000-8000-000000000001',
+      -1,
+      'Negative score edge test',
+      '81000000-0000-4000-8000-000000000008'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      IF SQLERRM <> 'score_out_of_activity_bounds' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN RAISE EXCEPTION 'Expected negative score rejection'; END IF;
+END
+$test$;
+
+DO $test$
+DECLARE v_expected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM classroom_test.score_activity(
+      '10000000-0000-4000-8000-000000000001',
+      '50000000-0000-4000-8000-000000000001',
+      21,
+      'Above maximum score edge test',
+      '81000000-0000-4000-8000-000000000009'
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      IF SQLERRM <> 'score_out_of_activity_bounds' THEN RAISE; END IF;
+      v_expected := true;
+  END;
+  IF NOT v_expected THEN RAISE EXCEPTION 'Expected above-maximum score rejection'; END IF;
+END
+$test$;
+
+RESET ROLE;
+
+-- Confirm rejected purchase requests created no purchase, debit or stock loss.
+DO $assertions$
+DECLARE
+  v_purchase_count integer;
+  v_debit_count integer;
+  v_stock integer;
+  v_zero_ledger_count integer;
+  v_noop_request_count integer;
+BEGIN
+  SELECT count(*)::integer INTO v_purchase_count
+    FROM classroom_test.purchases
+   WHERE request_id IN (
+     '81000000-0000-4000-8000-000000000001',
+     '81000000-0000-4000-8000-000000000002',
+     '81000000-0000-4000-8000-000000000003',
+     '81000000-0000-4000-8000-000000000004',
+     '81000000-0000-4000-8000-000000000005'
+   );
+  IF v_purchase_count <> 0 THEN
+    RAISE EXCEPTION 'Rejected purchase cases unexpectedly created % purchase rows', v_purchase_count;
+  END IF;
+
+  SELECT count(*)::integer INTO v_debit_count
+    FROM classroom_test.point_transactions
+   WHERE student_id IN (
+     '30000000-0000-4000-8000-000000000001',
+     '30000000-0000-4000-8000-000000000002',
+     '30000000-0000-4000-8000-000000000004'
+   )
+     AND action_type = 'marketplace_purchase';
+  IF v_debit_count <> 0 THEN
+    RAISE EXCEPTION 'Rejected purchase cases unexpectedly created % debits', v_debit_count;
+  END IF;
+
+  SELECT stock INTO v_stock
+    FROM classroom_test.marketplace_rewards
+   WHERE id = '70000000-0000-4000-8000-000000000003';
+  IF v_stock <> 0 THEN RAISE EXCEPTION 'Zero-stock reward unexpectedly changed'; END IF;
+
+  SELECT count(*)::integer INTO v_zero_ledger_count
+    FROM classroom_test.point_transactions
+   WHERE student_id = '30000000-0000-4000-8000-000000000003'
+     AND points = 0;
+  IF v_zero_ledger_count <> 0 THEN
+    RAISE EXCEPTION 'Zero-value ledger rows found: %', v_zero_ledger_count;
+  END IF;
+
+  SELECT count(*)::integer INTO v_noop_request_count
+    FROM classroom_test.transaction_requests
+   WHERE request_id = '81000000-0000-4000-8000-000000000007'
+     AND status = 'completed';
+  IF v_noop_request_count <> 1 THEN
+    RAISE EXCEPTION 'Expected completed idempotent zero-balance no-op request';
+  END IF;
+END
+$assertions$;
+
+ROLLBACK;
+
+/*
+EXPECTED RESULTS
+- Insufficient balance, zero stock, inactive reward, cross-teacher reward,
+  cross-teacher student, above-cap award and invalid activity scores reject.
+- Rejected purchase attempts create no purchase row, no marketplace debit and
+  no stock decrement.
+- Zero-balance deduction returns a completed no-op and creates no ledger row.
+- All test changes are rolled back.
+
+Not covered here: durable rejected-request idempotency, negative activity score
+clamping, undo-after-spend rejection, same-key/different-payload replay,
+inactive student/class, missing configuration, concurrent requests, ACLs,
+and failure injection. Add these to later suites after rejection semantics
+and test harness role behaviour are resolved.
+*/
