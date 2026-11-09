@@ -14,8 +14,8 @@ WARNING:
 - Every table/column is synthetic test design, not verified hosted schema.
 - No UNIQUE(activity_id, student_id) constraint is added.
 - No real student data, credentials, or hosted URLs are included.
-- Run with a dedicated disposable-database administrator. This script creates
-  cluster-wide PostgreSQL roles and therefore requires CREATEROLE/superuser.
+- Run as PostgreSQL superuser against a fresh disposable cluster/database.
+  This script creates cluster-wide roles and switches to the non-login owner.
   It refuses to reuse pre-existing test role names.
 */
 
