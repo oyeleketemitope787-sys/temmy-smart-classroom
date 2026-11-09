@@ -19,7 +19,7 @@ This document records architecture decisions only. It does not authorize applica
 4. System Administrators may change the system-wide maximum award configuration, subject to server-side authorization, validation, and audit requirements.
 5. System Administrator status does not grant permission to bypass the trusted transaction layer, ledger rules, student/class ownership checks, idempotency controls, or other transaction invariants.
 6. Appointment, removal, and every award-limit configuration change must be attributable to the responsible authorized actor and recorded in an audit trail.
-7. Strong authentication, including MFA where supported, is required for privileged administrator accounts and should be enforced before sensitive administrative actions.
+7. Strong authentication, including MFA where supported, is required for privileged administrator accounts. A fresh MFA/re-authentication challenge is required before changing the system-wide maximum award configuration, even if the administrator already has an active signed-in session.
 
 ## 3. Platform Owner responsibilities
 
@@ -32,7 +32,7 @@ The precise technical bootstrap and recovery mechanism for the initial Platform 
 ## 4. System Administrator scope
 
 A System Administrator may:
-- Change the single system-wide maximum award amount.
+- Change the single system-wide maximum award amount, after satisfying the fresh MFA/re-authentication requirement.
 - Review the relevant administrative configuration and audit history, subject to the eventual least-privilege design.
 
 A System Administrator may not:
@@ -42,7 +42,7 @@ A System Administrator may not:
 - Override class/student ownership checks, transaction idempotency, stock controls, reversal rules, or audit requirements.
 - Set a different award maximum for an individual teacher or student.
 
-The initial award maximum is **20 points per individual student award**. For an award action involving multiple selected students, the 20-point limit is evaluated separately for each student. An individual award request above 20 is rejected in full; it is not truncated or partially awarded. Only an authorized System Administrator may change the system-wide value.
+The initial award maximum is **20 points per individual student award**. For an award action involving multiple selected students, the 20-point limit is evaluated separately for each student. An individual award request above 20 is rejected in full; it is not truncated or partially awarded. Only an authorized System Administrator may change the system-wide value, and each such change requires a fresh MFA/re-authentication challenge.
 
 ## 5. Trusted role verification
 
@@ -60,7 +60,7 @@ The exact role storage, provisioning workflow, token/session handling, and autho
 
 At minimum, the audit design must capture:
 - Administrator appointment and removal: acting Platform Owner, affected account, action, and timestamp.
-- Award-limit change: acting administrator, previous value, new value, and timestamp.
+- Award-limit change: acting administrator, previous value, new value, timestamp, and confirmation that the fresh MFA/re-authentication challenge was satisfied.
 - Platform Owner recovery: recovery event, authorizing evidence/process reference, outcome, and timestamp, without storing recovery secrets or sensitive proof materials in ordinary application logs.
 - The outcome of each administrative action.
 
@@ -90,7 +90,7 @@ The following details are intentionally not decided by these approvals:
 - The detailed secure initial Platform Owner bootstrap procedure.
 - The exact offline ownership evidence, custodians, and recovery runbook.
 - Whether multiple Platform Owners or emergency/break-glass administrators are permitted.
-- The exact MFA/re-authentication challenge required for privileged changes and recovery.
+- The exact MFA provider and technical challenge/session freshness mechanism.
 - Audit schema, retention, access, and administrative review workflow.
 
 These must be resolved before implementation. Any proposed change to the approved authority boundaries or offline recovery model requires a separate decision.
@@ -101,7 +101,8 @@ Before production use, tests and operational review must demonstrate that:
 - A teacher cannot promote themselves or another user.
 - A browser-supplied role or actor ID cannot confer administrator privileges.
 - An unappointed account cannot change the system-wide award maximum.
-- An appointed administrator can change the maximum only through the trusted server-side path.
+- An appointed administrator cannot change the maximum without completing a fresh MFA/re-authentication challenge.
+- An expired, missing, or failed challenge blocks the configuration change.
 - Every appointment, removal, configuration change, and Platform Owner recovery event is attributable and audited.
 - Administrator privileges cannot bypass classroom transaction invariants.
 - Revoked administrator authority ceases to authorize subsequent privileged actions, including where sessions or tokens remain active.
