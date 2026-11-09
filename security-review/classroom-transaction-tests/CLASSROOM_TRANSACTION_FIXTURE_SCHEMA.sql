@@ -1,43 +1,63 @@
 /*
 CLASSROOM TRANSACTION TEST FIXTURE — SYNTHETIC / DISPOSABLE ONLY
-Version: 0.1 design draft
+Version: 0.2 role-isolated draft
+
 Related:
   security-review/student-login-hardening/CLASSROOM_TRANSACTION_TEST_SPECIFICATION_V1.0.md
   security-review/student-login-hardening/CLASSROOM_TRANSACTION_SQL_DESIGN_REVIEW_ONLY.sql.txt
+  security-review/classroom-transaction-tests/TRUSTED_ACTOR_IDENTITY_DESIGN.md
 
 WARNING:
-- This file is for a fresh, disposable PostgreSQL database used by local/CI tests.
-- NEVER execute against Supabase, production, cloud-test, or any shared database.
+- Fresh disposable PostgreSQL database only. Never run against Supabase,
+  production, cloud-test, or any shared database.
 - NOT a Supabase migration. Do not place under supabase/migrations.
-- Every table and column here is synthetic test design, not a verified copy of
-  the hosted Classroom schema.
-- It deliberately does not add UNIQUE(activity_id, student_id).
-- It does not contain real student data, secrets, API keys, or hosted URLs.
+- Every table/column is synthetic test design, not verified hosted schema.
+- No UNIQUE(activity_id, student_id) constraint is added.
+- No real student data, credentials, or hosted URLs are included.
+- Run with a dedicated disposable-database administrator. This script creates
+  cluster-wide PostgreSQL roles and therefore requires CREATEROLE/superuser.
+  It refuses to reuse pre-existing test role names.
 */
 
--- Test roles are intentionally isolated to this disposable database.
--- The CI job should create a fresh database for each run.
+-- Role names are deliberately namespaced to avoid collision with Supabase's
+-- standard anon/authenticated roles or other local projects.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-    CREATE ROLE anon NOLOGIN;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-    CREATE ROLE authenticated NOLOGIN;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'temmy_gateway') THEN
-    CREATE ROLE temmy_gateway NOLOGIN;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'temmy_data_owner') THEN
-    CREATE ROLE temmy_data_owner NOLOGIN;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname IN (
+    'temmy_ctest_anon',
+    'temmy_ctest_authenticated',
+    'temmy_ctest_gateway',
+    'temmy_ctest_data_owner'
+  )) THEN
+    RAISE EXCEPTION
+      'A temmy_ctest role already exists in this PostgreSQL cluster. Stop and use a fresh disposable cluster; do not reuse or alter existing roles.';
   END IF;
 END
 $$;
 
-CREATE SCHEMA classroom_test AUTHORIZATION temmy_data_owner;
-REVOKE ALL ON SCHEMA classroom_test FROM PUBLIC;
-GRANT USAGE ON SCHEMA classroom_test TO authenticated, temmy_gateway;
+CREATE ROLE temmy_ctest_anon
+  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT
+  NOREPLICATION NOBYPASSRLS;
+CREATE ROLE temmy_ctest_authenticated
+  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT
+  NOREPLICATION NOBYPASSRLS;
+CREATE ROLE temmy_ctest_gateway
+  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT
+  NOREPLICATION NOBYPASSRLS;
+CREATE ROLE temmy_ctest_data_owner
+  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT
+  NOREPLICATION NOBYPASSRLS;
 
+-- No membership is granted to either client role. In particular, neither
+-- client role can SET ROLE to temmy_ctest_gateway.
+CREATE SCHEMA classroom_test AUTHORIZATION temmy_ctest_data_owner;
+REVOKE ALL ON SCHEMA classroom_test FROM PUBLIC;
+GRANT USAGE ON SCHEMA classroom_test
+  TO temmy_ctest_authenticated, temmy_ctest_gateway;
+
+-- Create objects while acting as their non-login owner. The privileged
+-- disposable test runner must be allowed to SET ROLE to this role.
+SET ROLE temmy_ctest_data_owner;
 SET search_path = pg_catalog, classroom_test;
 
 CREATE TABLE classroom_test.teacher_profiles (
@@ -69,7 +89,7 @@ CREATE TABLE classroom_test.class_activities (
 );
 
 -- Intentionally no UNIQUE(activity_id, student_id):
--- duplicate submission semantics are unresolved and must be tested separately.
+-- duplicate submission semantics remain unresolved and must be tested.
 CREATE TABLE classroom_test.student_activity_records (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   activity_id uuid REFERENCES classroom_test.class_activities(id),
@@ -83,7 +103,6 @@ CREATE TABLE classroom_test.student_activity_records (
 );
 
 -- Signed ledger: positive credits, negative debits/reversals.
--- Reversal linkage is synthetic and enforces at most one reversal per original.
 CREATE TABLE classroom_test.point_transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id uuid NOT NULL REFERENCES classroom_test.students(id),
@@ -110,8 +129,7 @@ CREATE TABLE classroom_test.marketplace_rewards (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Purchase snapshots preserve historical names even if a reward is later
--- renamed/deactivated. Do not cascade-delete purchase history with rewards.
+-- Snapshot preserves purchase history after reward rename/deactivation.
 CREATE TABLE classroom_test.purchases (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id uuid NOT NULL UNIQUE,
@@ -123,8 +141,7 @@ CREATE TABLE classroom_test.purchases (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- One request row per idempotency key. The function layer binds key to
--- actor + operation + canonical payload hash.
+-- A request key is bound by the function layer to actor, operation and payload.
 CREATE TABLE classroom_test.transaction_requests (
   request_id uuid PRIMARY KEY,
   actor_teacher_id uuid NOT NULL REFERENCES classroom_test.teacher_profiles(id),
@@ -147,38 +164,28 @@ CREATE TABLE classroom_test.transaction_audit (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Server-side configurable award limit. The fixture seeds a test value only;
--- production value/authority remain undecided.
 CREATE TABLE classroom_test.transaction_config (
   config_key text PRIMARY KEY,
   integer_value integer NOT NULL CHECK (integer_value > 0),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Test-only cap value; not a production recommendation.
 INSERT INTO classroom_test.transaction_config(config_key, integer_value)
 VALUES ('maximum_teacher_award', 100);
 
--- Data owner owns the synthetic tables. No browser role receives direct write
--- privileges here. Function grants are intentionally deferred to the separate
--- transaction-function design and ACL tests.
-ALTER TABLE classroom_test.teacher_profiles OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.classes OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.students OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.class_activities OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.student_activity_records OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.point_transactions OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.marketplace_rewards OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.purchases OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.transaction_requests OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.transaction_audit OWNER TO temmy_data_owner;
-ALTER TABLE classroom_test.transaction_config OWNER TO temmy_data_owner;
+RESET ROLE;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA classroom_test FROM PUBLIC, anon, authenticated;
+-- No direct client writes. Table ownership remains temmy_ctest_data_owner.
+REVOKE ALL ON ALL TABLES IN SCHEMA classroom_test
+  FROM PUBLIC, temmy_ctest_anon, temmy_ctest_authenticated,
+       temmy_ctest_gateway;
+
 GRANT SELECT ON classroom_test.teacher_profiles,
                 classroom_test.classes,
                 classroom_test.students
-TO authenticated;
+TO temmy_ctest_authenticated;
 
--- Do not grant temmy_gateway direct table access yet. The function design must
--- decide whether SECURITY DEFINER owner access or narrowly scoped invoker
--- privileges best express the trust boundary.
+-- No direct table privileges for the gateway role. Approved business
+-- functions will be SECURITY DEFINER, owned by the non-login data owner,
+-- and executable only by temmy_ctest_gateway after separate ACL tests.
