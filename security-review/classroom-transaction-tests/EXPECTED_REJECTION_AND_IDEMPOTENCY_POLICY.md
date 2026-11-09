@@ -95,3 +95,20 @@ Before any execution or deployment:
 ## 9. Safety boundary
 
 This document records approved design only. It does not authorize SQL execution, hosted database changes, grants/revokes, migrations, Edge Function deployment, or changes to the classroom application. The production `main` branch and shared `cloud-test` branch remain out of scope.
+
+## 10. Zero-balance deduction no-op audit — approved
+
+**Approval date:** 2026-11-09
+
+When a valid deduction request is made while the student's available balance is already zero:
+
+- Treat the operation as an accepted no-op, not as a business rejection.
+- Do not create a point-ledger transaction and do not change the balance.
+- Record a lightweight audit event indicating that the deduction was attempted but no points were available.
+- The audit event must be safely attributable to the verified actor and request, and should include only minimal necessary context.
+- If the audit write is required for this outcome and fails, propagate the failure rather than claiming the no-op was successfully recorded.
+- An idempotent retry with the same request ID and payload must return the same stored no-op outcome and must not create duplicate audit entries.
+
+This is distinct from a deduction request made when a positive balance exists but the requested amount exceeds it: the approved clamp-to-available-balance rule still applies in that case.
+
+The exact audit event name, fields, retention, and implementation are to be defined during implementation review. This approval does not authorize execution or deployment.
