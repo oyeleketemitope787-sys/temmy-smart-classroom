@@ -1,0 +1,204 @@
+/*
+CLASSROOM TRANSACTION ACL / AUTHORIZATION TESTS
+STATUS: REVIEW DRAFT. NOT EXECUTED. SYNTHETIC / DISPOSABLE ONLY.
+Never run against Supabase, production, cloud-test, or any shared database.
+
+Prerequisites:
+- Fresh disposable PostgreSQL database.
+- Fixture schema and Phase 1–3 function drafts installed.
+- Run as database administrator in that disposable database.
+- These checks are read-only catalog/privilege assertions. They do not attempt
+  to mutate fixture rows or change grants.
+
+Purpose:
+Verify the intended boundary:
+- anon and authenticated roles cannot directly write protected tables.
+- client roles cannot execute trusted transaction functions.
+- only temmy_ctest_gateway can execute the public business entrypoints.
+- gateway has no direct table privileges.
+- SECURITY DEFINER functions are owned by the non-login data owner and use a
+  fixed search_path.
+- helper functions are not executable by PUBLIC or client roles.
+
+This is a catalog/privilege test for the synthetic fixture, not proof of
+production Supabase identity propagation or runtime behaviour.
+*/
+
+DO $acl_tests$
+DECLARE
+  v_table text;
+  v_function regprocedure;
+  v_owner text;
+  v_security_definer boolean;
+  v_search_path text;
+  v_has_public_execute boolean;
+  v_expected_functions regprocedure[] := ARRAY[
+    'classroom_test.award_points(uuid,uuid,integer,text,uuid)'::regprocedure,
+    'classroom_test.deduct_points(uuid,uuid,integer,text,uuid)'::regprocedure,
+    'classroom_test.reverse_transaction(uuid,uuid,uuid)'::regprocedure,
+    'classroom_test.score_activity(uuid,uuid,integer,text,uuid)'::regprocedure,
+    'classroom_test.purchase_reward_for_student(uuid,uuid,uuid,uuid)'::regprocedure
+  ];
+  v_helper_functions regprocedure[] := ARRAY[
+    'classroom_test._assert_gateway_context()'::regprocedure,
+    'classroom_test._canonical_hash(text[])'::regprocedure,
+    'classroom_test._claim_request(uuid,uuid,text,text)'::regprocedure,
+    'classroom_test._finish_request(uuid,jsonb)'::regprocedure,
+    'classroom_test._lock_student_and_get_balance(uuid,uuid)'::regprocedure
+  ];
+BEGIN
+  IF to_regclass('classroom_test.point_transactions') IS NULL
+     OR to_regclass('classroom_test.student_activity_records') IS NULL
+     OR to_regclass('classroom_test.marketplace_rewards') IS NULL THEN
+    RAISE EXCEPTION 'Synthetic classroom_test fixture is missing';
+  END IF;
+
+  -- A. Protected tables: no direct INSERT/UPDATE/DELETE for client roles
+  -- or the gateway. Read access is intentionally limited to selected
+  -- reference tables for authenticated, as defined in the fixture.
+  FOREACH v_table IN ARRAY ARRAY[
+    'classroom_test.point_transactions',
+    'classroom_test.student_activity_records',
+    'classroom_test.student_access',
+    'classroom_test.student_game_sessions',
+    'classroom_test.marketplace_rewards',
+    'classroom_test.purchases',
+    'classroom_test.transaction_requests',
+    'classroom_test.transaction_audit',
+    'classroom_test.transaction_config'
+  ]
+  LOOP
+    IF to_regclass(v_table) IS NULL THEN
+      -- student_access and student_game_sessions belong to the existing
+      -- platform and are deliberately not part of this transaction fixture.
+      IF v_table IN (
+        'classroom_test.student_access',
+        'classroom_test.student_game_sessions'
+      ) THEN
+        CONTINUE;
+      END IF;
+      RAISE EXCEPTION 'Expected fixture table missing: %', v_table;
+    END IF;
+
+    IF has_table_privilege('temmy_ctest_anon', v_table, 'INSERT')
+       OR has_table_privilege('temmy_ctest_anon', v_table, 'UPDATE')
+       OR has_table_privilege('temmy_ctest_anon', v_table, 'DELETE') THEN
+      RAISE EXCEPTION 'anon has direct write privilege on %', v_table;
+    END IF;
+
+    IF has_table_privilege('temmy_ctest_authenticated', v_table, 'INSERT')
+       OR has_table_privilege('temmy_ctest_authenticated', v_table, 'UPDATE')
+       OR has_table_privilege('temmy_ctest_authenticated', v_table, 'DELETE') THEN
+      RAISE EXCEPTION 'authenticated has direct write privilege on %', v_table;
+    END IF;
+
+    IF has_table_privilege('temmy_ctest_gateway', v_table, 'INSERT')
+       OR has_table_privilege('temmy_ctest_gateway', v_table, 'UPDATE')
+       OR has_table_privilege('temmy_ctest_gateway', v_table, 'DELETE') THEN
+      RAISE EXCEPTION 'gateway has direct write privilege on %', v_table;
+    END IF;
+  END LOOP;
+
+  -- B. Client roles must not execute business entrypoints.
+  FOREACH v_function IN ARRAY v_expected_functions
+  LOOP
+    IF has_function_privilege('temmy_ctest_anon', v_function, 'EXECUTE') THEN
+      RAISE EXCEPTION 'anon can execute trusted entrypoint %', v_function;
+    END IF;
+    IF has_function_privilege('temmy_ctest_authenticated', v_function, 'EXECUTE') THEN
+      RAISE EXCEPTION 'authenticated can execute trusted entrypoint %', v_function;
+    END IF;
+    IF NOT has_function_privilege('temmy_ctest_gateway', v_function, 'EXECUTE') THEN
+      RAISE EXCEPTION 'gateway cannot execute expected entrypoint %', v_function;
+    END IF;
+
+    SELECT r.rolname, p.prosecdef, p.proconfig
+      INTO v_owner, v_security_definer, v_search_path
+      FROM pg_proc AS p
+      JOIN pg_roles AS r ON r.oid = p.proowner
+     WHERE p.oid = v_function;
+
+    IF v_owner IS DISTINCT FROM 'temmy_ctest_data_owner' THEN
+      RAISE EXCEPTION 'Unexpected owner for %: %', v_function, v_owner;
+    END IF;
+    IF v_security_definer IS DISTINCT FROM true THEN
+      RAISE EXCEPTION 'Expected SECURITY DEFINER on %', v_function;
+    END IF;
+    IF NOT COALESCE(v_search_path LIKE '%search_path=pg_catalog%', false) THEN
+      RAISE EXCEPTION 'Expected fixed pg_catalog search_path on %: %',
+        v_function, v_search_path;
+    END IF;
+
+    -- PUBLIC is represented by grantee OID 0 in function ACL arrays.
+    SELECT EXISTS (
+      SELECT 1
+        FROM pg_proc AS p,
+             LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS a
+       WHERE p.oid = v_function
+         AND a.grantee = 0
+         AND a.privilege_type = 'EXECUTE'
+    )
+    INTO v_has_public_execute;
+
+    IF v_has_public_execute THEN
+      RAISE EXCEPTION 'PUBLIC retains EXECUTE on %', v_function;
+    END IF;
+  END LOOP;
+
+  -- C. Internal helpers must not be executable by client roles or PUBLIC.
+  FOREACH v_function IN ARRAY v_helper_functions
+  LOOP
+    IF has_function_privilege('temmy_ctest_anon', v_function, 'EXECUTE')
+       OR has_function_privilege('temmy_ctest_authenticated', v_function, 'EXECUTE')
+       OR has_function_privilege('temmy_ctest_gateway', v_function, 'EXECUTE') THEN
+      RAISE EXCEPTION 'A caller role has direct EXECUTE on internal helper %', v_function;
+    END IF;
+
+    SELECT EXISTS (
+      SELECT 1
+        FROM pg_proc AS p,
+             LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS a
+       WHERE p.oid = v_function
+         AND a.grantee = 0
+         AND a.privilege_type = 'EXECUTE'
+    )
+    INTO v_has_public_execute;
+
+    IF v_has_public_execute THEN
+      RAISE EXCEPTION 'PUBLIC retains EXECUTE on internal helper %', v_function;
+    END IF;
+  END LOOP;
+
+  -- D. The non-login owner is not a superuser and cannot log in.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_roles
+     WHERE rolname = 'temmy_ctest_data_owner'
+       AND NOT rolsuper
+       AND NOT rolcanlogin
+       AND NOT rolbypassrls
+  ) THEN
+    RAISE EXCEPTION 'Fixture data owner role is not suitably restricted';
+  END IF;
+
+  RAISE NOTICE 'ACL checks passed for the currently installed synthetic fixture.';
+END
+$acl_tests$;
+
+/*
+EXPECTED RESULT
+A single NOTICE reports that ACL checks passed. Any failed expectation raises
+an exception identifying the privilege or function that violated the model.
+
+REVIEW LIMITATIONS
+1. This test assumes the fixture and Phase 1–3 drafts were installed exactly
+   as reviewed. It does not grant/revoke privileges.
+2. Function-level ACLs are tested; runtime identity propagation through nested
+   SECURITY DEFINER functions is not proven by catalog inspection.
+3. No direct SQL mutation attempt is made. If needed, separately test actual
+   denied DML in isolated sessions with explicit role switching and rollback.
+4. The fixture does not contain student_access or student_game_sessions; their
+   existing function-only policies/ACLs need a separate platform security test.
+5. Verify that no role membership, inherited privilege, or database-level
+   default privilege outside this fixture changes the result.
+6. This does not validate the production Gateway authentication model.
+*/
