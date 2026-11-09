@@ -90,42 +90,37 @@ A database exception aborts the transaction, including an inserted idempotency r
 
 The exact list of durable versus retryable rejections must be defined in the function contract.
 
-## 4. Balance serialization and lock order
+## 4. Balance serialization and global lock order
 
 ### 4.1 One stable per-student mutex
 
-All operations that can change a student's ledger balance must lock the same stable row:
+All operations that can change a student's ledger balance must lock the same stable student row before reading the ledger balance. The approved global order now requires the relevant class row to be locked first.
 
-`SELECT id FROM classroom_test.students WHERE id = p_student_id FOR UPDATE`
+### 4.2 Approved global order
 
-This student-row lock is the serialization point for that student's balance. Do not rely on locking the latest ledger row, because a student may have no ledger rows or two concurrent requests may see no rows to lock.
+Follow the detailed rule in TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md. The order is:
 
-After acquiring the student lock, calculate:
-`COALESCE(SUM(points), 0)`
-from the signed ledger for that student.
+1. Claim/lock the idempotency request row.
+2. Lock relevant class row(s), sorted by stable UUID when more than one.
+3. Lock the student row.
+4. Lock operation-specific rows: activity record, original transaction, then reward, as applicable.
+5. Write ledger, activity, purchase, request result and audit rows.
 
-The fixture treats the balance as student-wide. This is a test assumption only; production ledger scope must be verified.
+Never acquire a later-ranked business row and then request an earlier-ranked row.
 
-### 4.2 Global lock order
+### 4.3 Safe class lookup
 
-Use this order for all mutating routines:
+Do not lock the student first to discover its class. Read its class ID without a lock, lock that class, then lock the student and re-read the class ID. If it changed, abort with a retryable stale-membership/conflict result. Only after both locks are held may the function validate active status and teacher ownership.
 
-1. claim/lock the idempotency request;
-2. lock the student row;
-3. lock the operation-specific row(s): activity record, original transaction, or reward;
-4. write ledger, purchase/activity, request result and audit rows.
+A normal business operation must hold a class lock that conflicts with class deactivation, ownership change and student-transfer administration. The exact PostgreSQL row-lock mode must be selected after verifying the lock conflict matrix for the pinned version and actual foreign keys/triggers.
 
-For activity scoring, first perform a non-locking lookup of the record's student ID, then lock that student, then re-read and lock the activity record FOR UPDATE and verify its student ID has not changed.
+### 4.4 Administration paths
 
-For reversal, first read the original transaction's student ID, lock that student, then re-read and lock the original transaction FOR UPDATE.
+Student transfer locks old and new class rows in ascending UUID order, then the student row, then revalidates the old membership before updating. Class deactivation/ownership changes lock the class before changing it. Activity administration locks class before activity. Reward maintenance must never lock a reward and then request a student lock; purchases lock class, student, then reward.
 
-For purchase, lock the student first, then lock the reward FOR UPDATE. All purchase functions must use this same order. A separate reward-maintenance operation must not take a reward lock and then attempt to lock a student.
+### 4.5 Balance result
 
-The lock order must be revisited if actual triggers, foreign-key cascades, or future workflows add other lock paths.
-
-### 4.3 Balance result
-
-Never accept a client balance. The database calculates balance after acquiring the student lock. The returned balance is the committed ledger sum for that transaction.
+After acquiring the class and student locks, calculate COALESCE(SUM(points), 0) from the signed ledger. Never accept a client balance. The returned balance is the ledger sum for that transaction.
 
 ## 5. Operation contracts
 
