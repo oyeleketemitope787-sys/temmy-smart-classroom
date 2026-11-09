@@ -147,9 +147,14 @@ $test$;
 -- zero-value ledger transaction. Use Student Three only after reducing their
 -- opening balance to zero within this disposable test transaction.
 RESET ROLE;
-UPDATE classroom_test.point_transactions
-   SET points = 0
- WHERE id = '60000000-0000-4000-8000-000000000003';
+INSERT INTO classroom_test.point_transactions
+  (id, student_id, teacher_id, points, action_name, action_type, reason, source)
+VALUES
+ ('60000000-0000-4000-8000-000000000006',
+  '30000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000001',
+  -50, 'Synthetic balance reset', 'negative',
+  'Bring fixture balance to zero for no-op test', 'test');
 
 SET LOCAL ROLE temmy_ctest_gateway;
 DO $test$
