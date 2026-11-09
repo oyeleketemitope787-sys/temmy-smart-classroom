@@ -30,6 +30,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 - `CLASSROOM_TRANSACTION_ACL_TESTS.sql.txt` — read-only catalog/privilege assertions for client-role isolation, gateway entrypoint grants, helper restrictions, function ownership and fixed search paths.
 - `CLASSROOM_TRANSACTION_CONCURRENCY_TEST_PLAN.md` — two-session protocol for finite stock, balance serialization, same-key replay, payload mismatch and concurrent awards/deductions.
 - `CLASSROOM_TRANSACTION_ATOMICITY_TEST_PLAN.md` — test-only failure-injection protocol to prove multi-table operations fully roll back when a later write or success-audit write fails.
+- `STATIC_REVIEW_FINDINGS_V1.md` — static review findings and pre-execution gates for the Phase 1–3 function drafts.
 
 ## Fixture design notes
 
@@ -50,7 +51,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 
 Phase 1–3 function drafts cover teacher awards, deductions, full award reversal, activity score adjustment and one-student marketplace purchase. The deterministic synthetic seed, successful-path smoke test, initial edge-case checks, ACL assertions, concurrency protocol and atomicity/failure-injection protocol are also drafted.
 
-**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. No production or hosted database changes have been made.
+**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. A static review has identified unresolved actor-identity, class-row locking, rejected-request audit/idempotency and no-op audit decisions; see STATIC_REVIEW_FINDINGS_V1.md. No production or hosted database changes have been made.
 
 ## Next gates
 
