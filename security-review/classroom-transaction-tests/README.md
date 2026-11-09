@@ -20,7 +20,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 
 - `CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql` — synthetic tables and isolated test-role model.
 - `TRUSTED_ACTOR_IDENTITY_DESIGN.md` — restricted test-only gateway identity model.
-- `TEMMY_GATEWAY_PRODUCTION_AUTHENTICATION_DESIGN.md` — user-approved production design target: Supabase Auth token verification at the server-side Gateway, actor ID derived from verified identity, and protected database transaction entrypoints.
+- `TEMMY_GATEWAY_PRODUCTION_AUTHENTICATION_DESIGN.md` — user-approved production design target: Supabase Auth token verification at the server-side Gateway, actor ID derived from verified identity, and protected database transaction entrypoints.\n- `TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md` — user-approved class-before-student locking rule, global lock order, transfer/admin ordering and required concurrency tests.
 - `TRANSACTION_FUNCTION_DESIGN_REVIEW_ONLY.md` — operation algorithms, idempotency, balance serialization, lock order, audit and test requirements; design document, not executable SQL.
 - `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE1_REVIEW_ONLY.sql.txt` — draft SECURITY DEFINER helpers plus teacher award and deduction functions.
 - `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE2_REVIEW_ONLY.sql.txt` — draft full award reversal and atomic activity score adjustment functions.
@@ -52,7 +52,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 
 Phase 1–3 function drafts cover teacher awards, deductions, full award reversal, activity score adjustment and one-student marketplace purchase. The deterministic synthetic seed, successful-path smoke test, initial edge-case checks, ACL assertions, concurrency protocol and atomicity/failure-injection protocol are also drafted.
 
-**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. A static review has identified unresolved actor-identity, class-row locking, rejected-request audit/idempotency and no-op audit decisions; see STATIC_REVIEW_FINDINGS_V1.md. No production or hosted database changes have been made.
+**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. A static review has identified remaining implementation gates: rejected-request audit/idempotency, no-op audit semantics, and revising the existing SQL drafts to implement the approved class-before-student lock order; see STATIC_REVIEW_FINDINGS_V1.md. No production or hosted database changes have been made.
 
 ## Next gates
 
@@ -63,7 +63,7 @@ Before any SQL is executed in a disposable test database:
 - Pin PostgreSQL version and confirm SHA-256 helper availability.
 - Verify SECURITY DEFINER role-context behaviour, function owner, fixed `search_path` and function ACLs.
 - Finalize stable result/error codes and durable rejected-request semantics.
-- Review lock order and concurrency behaviour.
+- Revise all transaction drafts to implement TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md and review lock order/concurrency behaviour.
 - Review and validate the test-only failure injector so each failpoint occurs after the intended preceding mutation.
 - Only after static review should the suite be run against synthetic data in a fresh disposable local/CI PostgreSQL database.
 
