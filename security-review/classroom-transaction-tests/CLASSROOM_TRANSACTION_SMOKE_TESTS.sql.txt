@@ -192,7 +192,7 @@ EXPECTED OUTCOMES
 - One finite-stock reward purchase debits 10 and decrements stock from 2 to 1.
 - Retrying the same purchase request returns a replay result and creates no
   second purchase, ledger debit or stock decrement.
-- Final ledger balance for Student One is 38:
+- Final ledger balance for Student One is 48:
   opening 50 + seeded award 10 + award operation 10 - deduction 5 - reversal of seeded award 10 + score delta 3 - purchase 10.
 - All assertions pass; outer transaction rolls back.
 
