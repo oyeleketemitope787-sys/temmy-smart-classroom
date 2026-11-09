@@ -67,6 +67,7 @@ At minimum, the audit design must capture:
 - Administrator appointment and removal: acting Platform Owner, affected account, action, timestamp, and confirmation that the fresh MFA/re-authentication challenge was satisfied.
 - Award-limit change: acting administrator, previous value, new value, timestamp, and confirmation that the fresh MFA/re-authentication challenge was satisfied.
 - Platform Owner recovery: the two approving ownership representatives, recovery event, authorizing evidence/process reference, outcome, and timestamp, without storing recovery secrets or sensitive proof materials in ordinary application logs.
+- Recovery-representative designation, replacement, and periodic review: approving ownership authority, affected representative identities, action, timestamp, verification/acceptance outcome, and evidence reference without placing sensitive identity documents in ordinary application logs.
 - The outcome of each administrative action.
 
 Audit records must be protected against modification by ordinary teachers and users. Audit failure must not be silently ignored. The implementation must define retention, access, and recovery requirements before deployment.
@@ -91,25 +92,24 @@ Recovery secrets, proof documents, and other sensitive evidence must not be stor
 
 The exact ownership evidence, identity-verification method, appointment and independence of the two representatives, offline custodians, operational steps, notification channel, and audit implementation remain to be specified and security-reviewed before implementation. Recovery must not be enabled until those details are approved. The two-person approval requirement itself is approved and must not be weakened during implementation without a separate decision.
 
-## 8. Proposed recovery-representative governance — pending approval
+## 8. Approved recovery-representative governance
 
-The following is a recommended governance model for deciding who may act as the two recovery representatives. It is a proposal only and does not yet authorize or appoint any individual.
+The following governance model is approved as the policy for design and future implementation. Approval does not appoint any individual or authorize implementation by itself.
 
-1. **Selection authority:** The representatives should be designated through the platform's documented legal/business ownership authority, rather than being self-appointed by a System Administrator or selected informally through the classroom application. The exact authority depends on the platform's actual ownership structure and must be confirmed before implementation.
-2. **Pre-designation:** Both representatives should be selected and recorded during secure Platform Owner bootstrap, before the platform relies on the recovery process. Their identities and acceptance should be recorded in a protected offline governance record.
-3. **Independence:** The two representatives must be different natural persons, use separate contact and authentication channels, and not share recovery credentials. Neither may approve on behalf of the other. Neither representative receives routine System Administrator privileges merely by being a recovery representative.
-4. **Identity verification:** Each representative's identity and authority should be verified independently using reliable identity evidence and an independently sourced contact channel. The specific evidence standard and verification operator must be defined in the offline runbook; sensitive identity documents should not be copied into ordinary application logs.
-5. **Recovery approval:** For a recovery event, both representatives independently review the recovery request and evidence, then provide separate approvals through separately controlled channels. The recovery operator verifies both approvals and the evidence before acting. A request initiated by one representative cannot count as that representative's approval and the second person's approval.
+1. **Selection authority:** The representatives must be designated through the platform's documented legal/business ownership authority, not self-appointed by a System Administrator or selected informally through the classroom application. The actual ownership structure and authority empowered to designate them must be confirmed before implementation.
+2. **Pre-designation:** Both representatives must be selected and recorded during secure Platform Owner bootstrap, before the platform relies on the recovery process. Their identities and acceptance must be recorded in a protected offline governance record.
+3. **Independence:** The representatives must be different natural persons, use separate contact and authentication channels, and not share recovery credentials. Neither may approve on behalf of the other. Neither receives routine System Administrator privileges merely by being a recovery representative.
+4. **Identity verification:** Each representative's identity and authority must be verified independently using reliable identity evidence and an independently sourced contact channel. The evidence standard and verification operator must be defined in the offline runbook. Sensitive identity documents must not be copied into ordinary application logs.
+5. **Recovery approval:** For a recovery event, both representatives must independently review the recovery request and evidence, then provide separate approvals through separately controlled channels. The recovery operator must verify both approvals and the evidence before acting. A request initiated by one representative cannot count as that representative's approval and the second person's approval.
 6. **Replacement while the Platform Owner is available:** A representative may be replaced only through the documented ownership authority, with fresh MFA/re-authentication by the Platform Owner, independent identity verification and acceptance by the incoming representative, and an auditable record. The change must not create a period in which fewer than two valid representatives are designated.
 7. **Replacement while the Platform Owner is unavailable:** The remaining representative cannot appoint a replacement alone. Any replacement must be authorized through the same independently documented legal/business ownership authority and independently verified process. If that authority cannot be established, recovery must pause rather than weaken the two-person rule.
-8. **Periodic review:** The designated representatives and their secure contact methods should be reviewed periodically and whenever ownership, employment, or contact circumstances change. Review must not expose recovery secrets or grant routine application access.
+8. **Periodic review:** The designated representatives and their secure contact methods must be reviewed periodically and whenever ownership, employment, or contact circumstances change. Review must not expose recovery secrets or grant routine application access.
 
-Before implementation, the platform owner must confirm that this governance model matches the actual legal/business ownership structure and name the authority responsible for designating representatives. No real person's name, identity, contact detail, or authority is assumed in this design.
+The platform owner must confirm that this governance model matches the actual legal/business ownership structure and identify the authority responsible for designating representatives before implementation. No real person's name, identity, contact detail, or authority is assumed in this design.
 
 ## 9. Remaining implementation gates
 
 The following details are intentionally not decided by these approvals:
-- Whether the proposed recovery-representative governance model in Section 8 is approved.
 - The platform's actual legal/business ownership structure and the authority empowered to designate the two representatives.
 - The identities of the two representatives and the independent identity-verification evidence/process.
 - The exact server-side role source and provisioning mechanism.
@@ -133,11 +133,14 @@ Before production use, tests and operational review must demonstrate that:
 - An expired, missing, or failed challenge blocks an appointment or removal.
 - Platform Owner recovery cannot proceed with only one ownership representative's approval.
 - Both recovery approvals are independently attributable, verified, and recorded before recovery is performed.
-- The offline recovery procedure cannot be initiated by an ordinary teacher, student, or unauthenticated public user and does not create a standing backdoor.
+- A recovery representative cannot grant themselves or another person Platform Owner or System Administrator privileges.
+- Replacement cannot be completed by one recovery representative acting alone while the Platform Owner is unavailable.
 - If two valid representatives or required approvals are unavailable, recovery remains blocked until the separately approved ownership process resolves the issue.
+- The offline recovery procedure cannot be initiated by an ordinary teacher, student, or unauthenticated public user and does not create a standing backdoor.
+- Every designation, replacement, periodic review, recovery, appointment, removal, and configuration change is attributable and audited.
 
 ## 11. Scope and safety boundary
 
-This is an approved design record with the Section 8 governance proposal pending approval. Implementation is not authorized. No application code, database schema, SQL draft, role assignment, hosted configuration, permissions, migrations, or deployment has been changed or authorized by this document.
+This is an approved design record. Implementation is not authorized. No application code, database schema, SQL draft, role assignment, hosted configuration, permissions, migrations, or deployment has been changed or authorized by this document.
 
 All future implementation and testing must remain isolated from the protected production branch `main` and shared development branch `cloud-test` unless separately and explicitly authorized.
