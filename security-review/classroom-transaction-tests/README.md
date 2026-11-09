@@ -21,6 +21,8 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 - `CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql` — synthetic table and isolated test-role model only; no transaction functions or scenario seed data yet.
 - `TRUSTED_ACTOR_IDENTITY_DESIGN.md` — restricted test-only gateway identity model and unresolved production identity propagation.
 - `TRANSACTION_FUNCTION_DESIGN_REVIEW_ONLY.md` — operation algorithms, idempotency, balance serialization, lock order, audit and test requirements. Not executable SQL.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE1_REVIEW_ONLY.sql.txt` — draft SECURITY DEFINER helpers plus teacher award and deduction functions.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE2_REVIEW_ONLY.sql.txt` — draft full award reversal and atomic activity score adjustment functions.
 
 ## Fixture design notes
 
@@ -48,15 +50,16 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 - `CLASSROOM_TRANSACTION_TEST_PLAN.md`
 - A dedicated review-branch CI workflow, separate from game-scoring tests.
 
-These are planned, not yet implemented. No CI workflow has been added. The function design document is not executable SQL and does not authorize execution.
+Phase 1 and Phase 2 function files are draft SQL text only and have not been executed or syntax-tested. Marketplace purchase functions, smoke/edge/ACL/concurrency/atomicity tests, and CI workflow are not yet implemented.
 
 ## Next gates
 
 Before executable test functions are drafted:
 - Review the function contract and lock order against the synthetic fixture.
-- Pin PostgreSQL version and the canonical payload-hash implementation.
+- Pin PostgreSQL version and confirm the built-in SHA-256 function availability.
 - Finalize stable result/error codes and which business rejections are durably stored.
-- Confirm test-only SECURITY DEFINER ownership, fixed search_path and function ACLs.
+- Verify SECURITY DEFINER role-context behaviour, owner, fixed search_path and function ACLs.
+- Review lock order and SQL syntax in a fresh disposable PostgreSQL database before implementing marketplace functions.
 - Then write functions and tests against this fixture and run them only in a fresh disposable local/CI PostgreSQL database.
 
 Production identity propagation, production schema reconciliation, and any hosted changes remain separate gates requiring explicit review and approval.
