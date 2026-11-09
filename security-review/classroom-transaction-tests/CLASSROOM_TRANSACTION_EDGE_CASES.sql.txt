@@ -148,7 +148,7 @@ $test$;
 -- opening balance to zero within this disposable test transaction.
 RESET ROLE;
 UPDATE classroom_test.point_transactions
-   SET points = -50
+   SET points = 0
  WHERE id = '60000000-0000-4000-8000-000000000003';
 
 SET LOCAL ROLE temmy_ctest_gateway;
