@@ -1,0 +1,417 @@
+/*
+CLASSROOM TRANSACTION FUNCTIONS — DISPOSABLE TEST ONLY
+Version: 0.1 — shared idempotency helpers, awards and deductions
+
+STATUS: REVIEW DRAFT. NOT EXECUTED. NOT A SUPABASE MIGRATION.
+Run only after the synthetic fixture schema has been installed in a fresh
+disposable PostgreSQL cluster/database. Never run against any hosted/shared DB.
+
+Prerequisites:
+- CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql v0.2 installed.
+- PostgreSQL version pinned by the isolated test job.
+- Built-in pg_catalog.sha256(bytea) available.
+- The test runner invokes functions only after SET ROLE temmy_ctest_gateway.
+- No production identity/authentication claim is made by this test harness.
+
+The p_actor_teacher_id parameter is test-only. It is trusted solely because
+EXECUTE is intended to be granted only to temmy_ctest_gateway and neither
+client role is a member of that role. Production identity propagation remains
+a separate design gate.
+*/
+
+BEGIN;
+
+-- Refuse accidental execution outside the disposable fixture schema.
+DO $guard$
+BEGIN
+  IF to_regclass('classroom_test.teacher_profiles') IS NULL
+     OR to_regclass('classroom_test.transaction_requests') IS NULL
+     OR to_regclass('classroom_test.point_transactions') IS NULL THEN
+    RAISE EXCEPTION 'Required classroom_test fixture is missing; aborting';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'temmy_ctest_gateway')
+     OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'temmy_ctest_data_owner') THEN
+    RAISE EXCEPTION 'Namespaced disposable test roles are missing; aborting';
+  END IF;
+END
+$guard$;
+
+-- All functions are owned by the non-login data owner.
+SET ROLE temmy_ctest_data_owner;
+
+CREATE OR REPLACE FUNCTION classroom_test._assert_gateway_context()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+BEGIN
+  IF current_setting('role', true) IS DISTINCT FROM 'temmy_ctest_gateway' THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'trusted_gateway_role_required';
+  END IF;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION classroom_test._canonical_hash(p_fields text[])
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+STRICT
+SET search_path = pg_catalog
+AS $fn$
+  SELECT pg_catalog.encode(
+    pg_catalog.sha256(
+      pg_catalog.convert_to(
+        pg_catalog.jsonb_build_array(VARIADIC p_fields)::text,
+        'UTF8'
+      )
+    ),
+    'hex'
+  )
+$fn$;
+
+-- Claim a request key. Returns stored result on a completed replay, otherwise
+-- NULL after inserting the new processing row. The enclosing business function
+-- commits the claim and mutation together.
+CREATE OR REPLACE FUNCTION classroom_test._claim_request(
+  p_request_id uuid,
+  p_actor_teacher_id uuid,
+  p_operation text,
+  p_payload_hash text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+DECLARE
+  v_inserted integer;
+  v_existing classroom_test.transaction_requests%ROWTYPE;
+BEGIN
+  PERFORM classroom_test._assert_gateway_context();
+
+  IF p_request_id IS NULL OR p_actor_teacher_id IS NULL
+     OR p_operation IS NULL OR p_payload_hash IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '22004', MESSAGE = 'missing_request_identity';
+  END IF;
+
+  INSERT INTO classroom_test.transaction_requests
+    (request_id, actor_teacher_id, operation, payload_hash, status)
+  VALUES
+    (p_request_id, p_actor_teacher_id, p_operation, p_payload_hash, 'processing')
+  ON CONFLICT (request_id) DO NOTHING;
+
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+  IF v_inserted = 1 THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT *
+    INTO v_existing
+    FROM classroom_test.transaction_requests
+   WHERE request_id = p_request_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = '40001', MESSAGE = 'request_claim_retry';
+  END IF;
+
+  IF v_existing.actor_teacher_id IS DISTINCT FROM p_actor_teacher_id
+     OR v_existing.operation IS DISTINCT FROM p_operation
+     OR v_existing.payload_hash IS DISTINCT FROM p_payload_hash THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '22023',
+      MESSAGE = 'idempotency_key_reused_with_different_payload';
+  END IF;
+
+  IF v_existing.status = 'completed' THEN
+    RETURN v_existing.result_payload;
+  END IF;
+
+  -- With claim and mutation in one transaction, a committed 'processing'
+  -- row should not normally exist. Fail closed if one is encountered.
+  RAISE EXCEPTION USING
+    ERRCODE = '55000',
+    MESSAGE = 'request_in_unexpected_processing_state';
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION classroom_test._finish_request(
+  p_request_id uuid,
+  p_result jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+BEGIN
+  UPDATE classroom_test.transaction_requests
+     SET status = 'completed',
+         result_payload = p_result,
+         completed_at = pg_catalog.now()
+   WHERE request_id = p_request_id
+     AND status = 'processing';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'request_completion_failed';
+  END IF;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION classroom_test._lock_student_and_get_balance(
+  p_student_id uuid,
+  p_actor_teacher_id uuid
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+DECLARE
+  v_class_id uuid;
+  v_balance bigint;
+BEGIN
+  PERFORM classroom_test._assert_gateway_context();
+
+  SELECT s.class_id
+    INTO v_class_id
+    FROM classroom_test.students AS s
+    JOIN classroom_test.classes AS c ON c.id = s.class_id
+   WHERE s.id = p_student_id
+     AND s.active
+     AND c.active
+     AND c.teacher_id = p_actor_teacher_id
+   FOR UPDATE OF s;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'student_not_found_or_not_owned_by_teacher';
+  END IF;
+
+  SELECT COALESCE(SUM(pt.points), 0)
+    INTO v_balance
+    FROM classroom_test.point_transactions AS pt
+   WHERE pt.student_id = p_student_id;
+
+  RETURN v_balance;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION classroom_test.award_points(
+  p_actor_teacher_id uuid,
+  p_student_id uuid,
+  p_amount integer,
+  p_reason text,
+  p_request_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+DECLARE
+  v_hash text;
+  v_replay jsonb;
+  v_balance bigint;
+  v_cap integer;
+  v_tx_id uuid;
+  v_result jsonb;
+BEGIN
+  PERFORM classroom_test._assert_gateway_context();
+
+  IF p_amount IS NULL OR p_amount <= 0 THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'award_amount_must_be_positive_integer';
+  END IF;
+
+  v_hash := classroom_test._canonical_hash(ARRAY[
+    p_actor_teacher_id::text,
+    p_student_id::text,
+    p_amount::text,
+    COALESCE(p_reason, '')
+  ]);
+
+  v_replay := classroom_test._claim_request(
+    p_request_id, p_actor_teacher_id, 'award_points', v_hash
+  );
+  IF v_replay IS NOT NULL THEN
+    RETURN v_replay || jsonb_build_object('replayed', true);
+  END IF;
+
+  -- Ownership/active-state check and common balance serialization lock.
+  v_balance := classroom_test._lock_student_and_get_balance(
+    p_student_id, p_actor_teacher_id
+  );
+
+  SELECT cfg.integer_value
+    INTO v_cap
+    FROM classroom_test.transaction_config AS cfg
+   WHERE cfg.config_key = 'maximum_teacher_award';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'award_limit_not_configured';
+  END IF;
+
+  IF p_amount > v_cap THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'award_limit_exceeded';
+  END IF;
+
+  INSERT INTO classroom_test.point_transactions
+    (student_id, teacher_id, points, action_name, action_type, reason, source)
+  VALUES
+    (p_student_id, p_actor_teacher_id, p_amount,
+     'Teacher award', 'positive', NULLIF(pg_catalog.btrim(p_reason), ''), 'teacher')
+  RETURNING id INTO v_tx_id;
+
+  v_result := jsonb_build_object(
+    'ok', true,
+    'operation', 'award_points',
+    'transaction_id', v_tx_id,
+    'awarded', p_amount,
+    'balance', v_balance + p_amount,
+    'replayed', false
+  );
+
+  INSERT INTO classroom_test.transaction_audit
+    (request_id, actor_teacher_id, operation, target_student_id, outcome, safe_metadata)
+  VALUES
+    (p_request_id, p_actor_teacher_id, 'award_points', p_student_id, 'success',
+     jsonb_build_object('transaction_id', v_tx_id, 'points', p_amount));
+
+  PERFORM classroom_test._finish_request(p_request_id, v_result);
+  RETURN v_result;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION classroom_test.deduct_points(
+  p_actor_teacher_id uuid,
+  p_student_id uuid,
+  p_requested_amount integer,
+  p_reason text,
+  p_request_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+DECLARE
+  v_hash text;
+  v_replay jsonb;
+  v_balance bigint;
+  v_actual bigint;
+  v_tx_id uuid;
+  v_result jsonb;
+BEGIN
+  PERFORM classroom_test._assert_gateway_context();
+
+  IF p_requested_amount IS NULL OR p_requested_amount <= 0 THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'deduction_amount_must_be_positive_integer';
+  END IF;
+
+  v_hash := classroom_test._canonical_hash(ARRAY[
+    p_actor_teacher_id::text,
+    p_student_id::text,
+    p_requested_amount::text,
+    COALESCE(p_reason, '')
+  ]);
+
+  v_replay := classroom_test._claim_request(
+    p_request_id, p_actor_teacher_id, 'deduct_points', v_hash
+  );
+  IF v_replay IS NOT NULL THEN
+    RETURN v_replay || jsonb_build_object('replayed', true);
+  END IF;
+
+  v_balance := classroom_test._lock_student_and_get_balance(
+    p_student_id, p_actor_teacher_id
+  );
+
+  v_actual := LEAST(p_requested_amount::bigint, GREATEST(v_balance, 0));
+
+  IF v_actual = 0 THEN
+    v_result := jsonb_build_object(
+      'ok', true,
+      'operation', 'deduct_points',
+      'status', 'zero_balance_noop',
+      'requested', p_requested_amount,
+      'deducted', 0,
+      'balance', GREATEST(v_balance, 0),
+      'transaction_id', NULL,
+      'replayed', false
+    );
+
+    PERFORM classroom_test._finish_request(p_request_id, v_result);
+    RETURN v_result;
+  END IF;
+
+  INSERT INTO classroom_test.point_transactions
+    (student_id, teacher_id, points, action_name, action_type, reason, source)
+  VALUES
+    (p_student_id, p_actor_teacher_id, -v_actual::integer,
+     'Teacher deduction', 'negative', NULLIF(pg_catalog.btrim(p_reason), ''), 'teacher')
+  RETURNING id INTO v_tx_id;
+
+  v_result := jsonb_build_object(
+    'ok', true,
+    'operation', 'deduct_points',
+    'status', CASE WHEN v_actual < p_requested_amount THEN 'clamped' ELSE 'deducted' END,
+    'requested', p_requested_amount,
+    'deducted', v_actual,
+    'balance', GREATEST(v_balance - v_actual, 0),
+    'transaction_id', v_tx_id,
+    'replayed', false
+  );
+
+  INSERT INTO classroom_test.transaction_audit
+    (request_id, actor_teacher_id, operation, target_student_id, outcome, safe_metadata)
+  VALUES
+    (p_request_id, p_actor_teacher_id, 'deduct_points', p_student_id, 'success',
+     jsonb_build_object('transaction_id', v_tx_id, 'requested', p_requested_amount,
+                        'deducted', v_actual));
+
+  PERFORM classroom_test._finish_request(p_request_id, v_result);
+  RETURN v_result;
+END
+$fn$;
+
+-- Remove implicit PUBLIC execute and grant only the two reviewed test entrypoints.
+REVOKE ALL ON FUNCTION classroom_test._assert_gateway_context() FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._canonical_hash(text[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._claim_request(uuid, uuid, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._finish_request(uuid, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._lock_student_and_get_balance(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test.award_points(uuid, uuid, integer, text, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test.deduct_points(uuid, uuid, integer, text, uuid) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION classroom_test.award_points(uuid, uuid, integer, text, uuid)
+  TO temmy_ctest_gateway;
+GRANT EXECUTE ON FUNCTION classroom_test.deduct_points(uuid, uuid, integer, text, uuid)
+  TO temmy_ctest_gateway;
+
+RESET ROLE;
+COMMIT;
+
+/*
+IMPORTANT REVIEW NOTES / KNOWN LIMITATIONS
+1. This draft uses exceptions for invalid/above-cap requests. Exceptions roll
+   back the request claim; those rejections are not durably idempotent/audited.
+   Decide whether expected rejections should instead return structured results
+   and commit a rejected request row before adding production semantics.
+2. No transaction function has been executed or syntax-tested yet.
+3. The helper function privileges and SECURITY DEFINER call chain require ACL
+   verification in the disposable database.
+4. Function owner must be confirmed as temmy_ctest_data_owner after installation.
+5. The actor check depends on current_setting('role') retaining the SET ROLE
+   identity inside SECURITY DEFINER execution; verify this explicitly in the
+   disposable test suite before relying on it.
+6. This first slice implements awards and deductions only. Undo, activity score
+   and marketplace purchase functions are not included yet.
+7. The fixture balance is student-wide and uses the synthetic signed ledger.
+8. No hosted database, production branch, or shared cloud-test resource was used.
+*/
