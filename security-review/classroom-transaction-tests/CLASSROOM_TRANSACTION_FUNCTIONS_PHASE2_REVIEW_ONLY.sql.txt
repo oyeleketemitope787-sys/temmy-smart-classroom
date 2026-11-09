@@ -1,0 +1,350 @@
+/*
+CLASSROOM TRANSACTION FUNCTIONS — DISPOSABLE TEST ONLY
+Version: 0.2 — undo and activity score adjustment
+
+STATUS: REVIEW DRAFT. NOT EXECUTED. NOT A SUPABASE MIGRATION.
+Requires the synthetic fixture schema and Phase 1 function draft to be reviewed
+and installed in a fresh disposable PostgreSQL database. Never run against a
+hosted/shared database.
+
+This file adds:
+- reverse_transaction: full reversal of an eligible positive teacher award.
+- score_activity: atomic score-record update and clamped ledger delta.
+
+Test-only actor identity is described in TRUSTED_ACTOR_IDENTITY_DESIGN.md.
+*/
+
+BEGIN;
+
+DO $guard$
+BEGIN
+  IF to_regprocedure('classroom_test._claim_request(uuid,uuid,text,text)') IS NULL
+     OR to_regprocedure('classroom_test._lock_student_and_get_balance(uuid,uuid)') IS NULL
+     OR to_regclass('classroom_test.student_activity_records') IS NULL THEN
+    RAISE EXCEPTION 'Fixture or Phase 1 functions missing; aborting';
+  END IF;
+END
+$guard$;
+
+SET ROLE temmy_ctest_data_owner;
+
+CREATE OR REPLACE FUNCTION classroom_test.reverse_transaction(
+  p_actor_teacher_id uuid,
+  p_original_transaction_id uuid,
+  p_request_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+DECLARE
+  v_original_student_id uuid;
+  v_original classroom_test.point_transactions%ROWTYPE;
+  v_hash text;
+  v_replay jsonb;
+  v_balance bigint;
+  v_reversal_id uuid;
+  v_result jsonb;
+BEGIN
+  PERFORM classroom_test._assert_gateway_context();
+
+  IF p_original_transaction_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '22004', MESSAGE = 'original_transaction_required';
+  END IF;
+
+  -- Initial lookup is intentionally non-locking to discover the student mutex.
+  SELECT pt.student_id
+    INTO v_original_student_id
+    FROM classroom_test.point_transactions AS pt
+   WHERE pt.id = p_original_transaction_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'original_transaction_not_found';
+  END IF;
+
+  v_hash := classroom_test._canonical_hash(ARRAY[
+    p_actor_teacher_id::text,
+    p_original_transaction_id::text
+  ]);
+
+  v_replay := classroom_test._claim_request(
+    p_request_id, p_actor_teacher_id, 'reverse_transaction', v_hash
+  );
+  IF v_replay IS NOT NULL THEN
+    RETURN v_replay || jsonb_build_object('replayed', true);
+  END IF;
+
+  -- Common balance lock first, then lock/re-read the original transaction.
+  v_balance := classroom_test._lock_student_and_get_balance(
+    v_original_student_id, p_actor_teacher_id
+  );
+
+  SELECT *
+    INTO v_original
+    FROM classroom_test.point_transactions AS pt
+   WHERE pt.id = p_original_transaction_id
+   FOR UPDATE;
+
+  IF NOT FOUND
+     OR v_original.student_id IS DISTINCT FROM v_original_student_id
+     OR v_original.teacher_id IS DISTINCT FROM p_actor_teacher_id
+     OR v_original.points <= 0
+     OR v_original.action_type <> 'positive'
+     OR v_original.action_name <> 'Teacher award'
+     OR v_original.reverses_transaction_id IS NOT NULL THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'transaction_not_eligible_for_teacher_award_reversal';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM classroom_test.point_transactions AS rev
+     WHERE rev.reverses_transaction_id = v_original.id
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = '23505', MESSAGE = 'transaction_already_reversed';
+  END IF;
+
+  IF v_balance < v_original.points THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '22023',
+      MESSAGE = 'undo_insufficient_balance_full_reversal_required';
+  END IF;
+
+  INSERT INTO classroom_test.point_transactions
+    (student_id, teacher_id, points, action_name, action_type, reason, source,
+     reverses_transaction_id)
+  VALUES
+    (v_original.student_id, p_actor_teacher_id, -v_original.points,
+     'Undo teacher award', 'undo', 'Full reversal of original award', 'teacher',
+     v_original.id)
+  RETURNING id INTO v_reversal_id;
+
+  v_result := jsonb_build_object(
+    'ok', true,
+    'operation', 'reverse_transaction',
+    'original_transaction_id', v_original.id,
+    'reversal_transaction_id', v_reversal_id,
+    'reversed_points', v_original.points,
+    'balance', v_balance - v_original.points,
+    'replayed', false
+  );
+
+  INSERT INTO classroom_test.transaction_audit
+    (request_id, actor_teacher_id, operation, target_student_id, outcome, safe_metadata)
+  VALUES
+    (p_request_id, p_actor_teacher_id, 'reverse_transaction',
+     v_original.student_id, 'success',
+     jsonb_build_object('original_transaction_id', v_original.id,
+                        'reversal_transaction_id', v_reversal_id,
+                        'points', v_original.points));
+
+  PERFORM classroom_test._finish_request(p_request_id, v_result);
+  RETURN v_result;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION classroom_test.score_activity(
+  p_actor_teacher_id uuid,
+  p_activity_record_id uuid,
+  p_new_score integer,
+  p_notes text,
+  p_request_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+DECLARE
+  v_student_id uuid;
+  v_record classroom_test.student_activity_records%ROWTYPE;
+  v_activity classroom_test.class_activities%ROWTYPE;
+  v_hash text;
+  v_replay jsonb;
+  v_balance bigint;
+  v_old_score integer;
+  v_delta integer;
+  v_actual_delta integer;
+  v_tx_id uuid;
+  v_result jsonb;
+BEGIN
+  PERFORM classroom_test._assert_gateway_context();
+
+  IF p_activity_record_id IS NULL OR p_new_score IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '22004', MESSAGE = 'activity_record_and_score_required';
+  END IF;
+
+  -- Initial lookup discovers the student row to lock first.
+  SELECT ar.student_id
+    INTO v_student_id
+    FROM classroom_test.student_activity_records AS ar
+   WHERE ar.id = p_activity_record_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'activity_record_not_found';
+  END IF;
+
+  v_hash := classroom_test._canonical_hash(ARRAY[
+    p_actor_teacher_id::text,
+    p_activity_record_id::text,
+    p_new_score::text,
+    COALESCE(p_notes, '')
+  ]);
+
+  v_replay := classroom_test._claim_request(
+    p_request_id, p_actor_teacher_id, 'score_activity', v_hash
+  );
+  IF v_replay IS NOT NULL THEN
+    RETURN v_replay || jsonb_build_object('replayed', true);
+  END IF;
+
+  v_balance := classroom_test._lock_student_and_get_balance(
+    v_student_id, p_actor_teacher_id
+  );
+
+  SELECT *
+    INTO v_record
+    FROM classroom_test.student_activity_records AS ar
+   WHERE ar.id = p_activity_record_id
+   FOR UPDATE;
+
+  IF NOT FOUND OR v_record.student_id IS DISTINCT FROM v_student_id
+     OR v_record.teacher_id IS DISTINCT FROM p_actor_teacher_id
+     OR v_record.activity_id IS NULL THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'activity_record_not_owned_or_not_scoreable';
+  END IF;
+
+  SELECT *
+    INTO v_activity
+    FROM classroom_test.class_activities AS a
+   WHERE a.id = v_record.activity_id
+   FOR SHARE;
+
+  IF NOT FOUND OR NOT v_activity.active
+     OR v_record.teacher_id <> p_actor_teacher_id
+     OR NOT EXISTS (
+       SELECT 1
+         FROM classroom_test.students AS s
+         JOIN classroom_test.classes AS c ON c.id = s.class_id
+        WHERE s.id = v_record.student_id
+          AND s.active
+          AND c.active
+          AND c.teacher_id = p_actor_teacher_id
+          AND c.id = v_activity.class_id
+     ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'activity_student_class_ownership_invalid';
+  END IF;
+
+  IF p_new_score < 0 OR p_new_score > v_activity.max_score THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'score_out_of_activity_bounds';
+  END IF;
+
+  v_old_score := v_record.points_awarded;
+  v_delta := p_new_score - v_old_score;
+  v_actual_delta := v_delta;
+
+  IF v_delta > 0 THEN
+    INSERT INTO classroom_test.point_transactions
+      (student_id, teacher_id, points, action_name, action_type, reason, source)
+    VALUES
+      (v_record.student_id, p_actor_teacher_id, v_delta,
+       'Activity score increase', 'activity_score', 'Activity score adjustment',
+       'teacher')
+    RETURNING id INTO v_tx_id;
+    v_balance := v_balance + v_delta;
+
+  ELSIF v_delta < 0 THEN
+    v_actual_delta := -LEAST(ABS(v_delta)::bigint, GREATEST(v_balance, 0))::integer;
+
+    IF v_actual_delta < 0 THEN
+      INSERT INTO classroom_test.point_transactions
+        (student_id, teacher_id, points, action_name, action_type, reason, source)
+      VALUES
+        (v_record.student_id, p_actor_teacher_id, v_actual_delta,
+         'Activity score decrease', 'activity_score', 'Activity score adjustment',
+         'teacher')
+      RETURNING id INTO v_tx_id;
+      v_balance := v_balance + v_actual_delta;
+    ELSE
+      v_actual_delta := 0;
+    END IF;
+
+  ELSE
+    v_actual_delta := 0;
+  END IF;
+
+  UPDATE classroom_test.student_activity_records
+     SET points_awarded = p_new_score,
+         status = 'completed',
+         completed_at = pg_catalog.now(),
+         notes = p_notes
+   WHERE id = p_activity_record_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'activity_record_update_failed';
+  END IF;
+
+  v_result := jsonb_build_object(
+    'ok', true,
+    'operation', 'score_activity',
+    'record_id', p_activity_record_id,
+    'previous_score', v_old_score,
+    'assigned_score', p_new_score,
+    'requested_delta', v_delta,
+    'actual_ledger_delta', v_actual_delta,
+    'balance', GREATEST(v_balance, 0),
+    'transaction_id', v_tx_id,
+    'replayed', false
+  );
+
+  INSERT INTO classroom_test.transaction_audit
+    (request_id, actor_teacher_id, operation, target_student_id, outcome, safe_metadata)
+  VALUES
+    (p_request_id, p_actor_teacher_id, 'score_activity',
+     v_record.student_id, 'success',
+     jsonb_build_object('record_id', p_activity_record_id,
+                        'previous_score', v_old_score,
+                        'assigned_score', p_new_score,
+                        'requested_delta', v_delta,
+                        'actual_ledger_delta', v_actual_delta));
+
+  PERFORM classroom_test._finish_request(p_request_id, v_result);
+  RETURN v_result;
+END
+$fn$;
+
+REVOKE ALL ON FUNCTION classroom_test.reverse_transaction(uuid, uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test.score_activity(uuid, uuid, integer, text, uuid) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION classroom_test.reverse_transaction(uuid, uuid, uuid)
+  TO temmy_ctest_gateway;
+GRANT EXECUTE ON FUNCTION classroom_test.score_activity(uuid, uuid, integer, text, uuid)
+  TO temmy_ctest_gateway;
+
+RESET ROLE;
+COMMIT;
+
+/*
+REVIEW NOTES:
+1. This file is a draft only; no syntax/runtime test has been run.
+2. Undo deliberately supports only a positive 'Teacher award' transaction.
+   Reversal of deductions or other action types is out of scope until approved.
+3. The duplicate activity submission policy is not changed; no unique
+   (activity_id, student_id) constraint is introduced.
+4. A score decrease can update the assigned score while the ledger deduction
+   is clamped to the student's available balance; both values are returned.
+5. The activity record and ledger changes are in one database transaction.
+6. Expected business rejections currently raise exceptions and roll back the
+   idempotency claim. Durable rejected-result semantics remain a separate
+   contract decision.
+7. Verify SECURITY DEFINER role-context behavior, function owners, ACLs,
+   locking, and all SQL syntax in the disposable database before relying on
+   this draft.
+8. No hosted/shared database or production branch was used.
+*/
