@@ -132,7 +132,7 @@ Use distinct request UUIDs unless the scenario explicitly tests a duplicate requ
 - Both ledger transactions are present exactly once.
 - No lost update or stale-balance result.
 
-## Evidence to capture
+## Additional class/student administration race scenarios\n\n8. **Award versus class deactivation:** run an award while another session deactivates the student's class. The outcome must be equivalent to one serial order; no award may commit based on a class already deactivated.\n9. **Award versus class ownership change:** change class ownership concurrently with an award. No operation may authorize using stale ownership.\n10. **Award versus student transfer:** force the preliminary class lookup to occur before a transfer, then verify the transaction detects changed membership after acquiring the class and student locks and does not award under the stale class.\n11. **Opposite-direction student transfers:** transfer students between the same two classes in opposite directions. Both sessions must lock class IDs in ascending order to avoid avoidable deadlocks.\n12. **Activity score versus activity edit/deactivation:** verify class-before-activity locking produces a consistent result.\n13. **Purchase versus class deactivation/student transfer:** no purchase may rely on stale class membership or active state.\n14. **Reward deactivation versus purchase:** reward maintenance and purchase must serialize on the reward row; no purchase may proceed after deactivation commits.\n\n## Evidence to capture
 
 For each scenario, record:
 
@@ -151,8 +151,8 @@ Do not use wall-clock timing alone as proof of concurrency. Confirm overlap by h
 
 1. **Rejected request durability:** Expected business exceptions roll back the request claim and in-transaction audit. This plan can assert no partial mutation, but it cannot establish durable rejection idempotency. Decide whether expected rejections should be stored as completed `rejected` results in a committed transaction or intentionally remain retryable.
 2. **Duplicate same-key error race:** Verify the unique-key conflict path and result visibility under the actual PostgreSQL isolation level. Default READ COMMITTED is assumed; repeat under the chosen production isolation level before approval.
-3. **Lock ordering:** All balance operations must lock the student row before ledger reads/writes. Purchases then lock reward. Review reward-management and student/class administration paths for reverse lock order.
-4. **Activity scoring:** Test concurrent score changes to the same activity record, including one increase and one decrease. The current draft locks student then activity record; inspect all other code paths for a different lock order.
+3. **Lock ordering:** Follow TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md. The class row is locked before the student row; purchases then lock reward. Verify class administration, student transfers, activity edits and reward management use compatible ordering.
+4. **Activity scoring:** Test concurrent score changes and activity administration under the approved class → student → activity order. Revise the current draft, which still uses student-first locking.
 5. **Deadlock handling:** Define retry behaviour for SQLSTATE `40P01` and serialization failures, reusing the same request UUID and identical payload.
 6. **Idempotency retention:** Define how long completed request rows are retained. Do not delete keys while a client may legitimately retry.
 7. **No execution claim:** No concurrency test has been run. This document describes expected experiments only.
