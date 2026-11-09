@@ -19,7 +19,8 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 ## Current contents
 
 - `CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql` — synthetic tables and isolated test-role model.
-- `TRUSTED_ACTOR_IDENTITY_DESIGN.md` — restricted test-only gateway identity model and unresolved production identity propagation.
+- `TRUSTED_ACTOR_IDENTITY_DESIGN.md` — restricted test-only gateway identity model.
+- `TEMMY_GATEWAY_PRODUCTION_AUTHENTICATION_DESIGN.md` — user-approved production design target: Supabase Auth token verification at the server-side Gateway, actor ID derived from verified identity, and protected database transaction entrypoints.
 - `TRANSACTION_FUNCTION_DESIGN_REVIEW_ONLY.md` — operation algorithms, idempotency, balance serialization, lock order, audit and test requirements; design document, not executable SQL.
 - `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE1_REVIEW_ONLY.sql.txt` — draft SECURITY DEFINER helpers plus teacher award and deduction functions.
 - `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE2_REVIEW_ONLY.sql.txt` — draft full award reversal and atomic activity score adjustment functions.
@@ -66,4 +67,4 @@ Before any SQL is executed in a disposable test database:
 - Review and validate the test-only failure injector so each failpoint occurs after the intended preceding mutation.
 - Only after static review should the suite be run against synthetic data in a fresh disposable local/CI PostgreSQL database.
 
-Production identity propagation, production schema reconciliation, and any hosted changes remain separate gates requiring explicit review and approval.
+The production Gateway authentication trust chain is now documented as an approved design target. Its implementation, production schema reconciliation, and any hosted changes remain separate gates requiring explicit review and approval.
