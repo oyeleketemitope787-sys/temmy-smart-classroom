@@ -128,3 +128,18 @@ The exact audit event name, fields, retention, and implementation are to be defi
 Required tests must cover an award at the configured limit, one above the limit, unauthorized attempts to change the limit, and a legitimate administrator configuration change. The policy must be enforced consistently under concurrent requests and configuration changes.
 
 This is a design approval only. It does not authorize schema changes, SQL execution, configuration writes, grants/revokes, migrations, or deployment.
+
+## 12. Initial system-wide award maximum — approved
+
+**Approval date:** 2026-11-09
+
+- The initial system-wide maximum is **20 points per individual student award**.
+- The same 20-point limit applies to every teacher.
+- For an award action applied to multiple selected students, the limit is evaluated independently for each student's individual award; the limit is not a combined batch total.
+- A request to award more than 20 points to an individual student must be rejected in full. It must not be truncated or partially awarded.
+- An authorized system administrator may change the configured system-wide maximum later, subject to the administrator authorization, validation, attribution, and audit requirements in Section 11.
+- Teachers cannot set or override the maximum.
+
+The numeric value and per-student interpretation are approved business rules. The exact administrator role/permission model remains an implementation gate. The synthetic SQL fixture currently uses a test maximum of 100 and must be aligned to 20 before any future test execution; no fixture or database has been changed by this approval.
+
+This is a design approval only. It does not authorize SQL execution, configuration writes, schema changes, grants/revokes, migrations, Edge Function deployment, or application changes.
