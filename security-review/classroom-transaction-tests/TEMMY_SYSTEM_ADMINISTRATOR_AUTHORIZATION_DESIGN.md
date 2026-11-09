@@ -23,8 +23,8 @@ This document records architecture decisions only. It does not authorize applica
    - Changing the system-wide maximum award configuration.
    - Appointing a System Administrator.
    - Removing a System Administrator.
-   
-   These challenges are required even if the Platform Owner or administrator already has an active signed-in session. The appointment/removal challenge must be completed by the Platform Owner who is authorizing the change.
+
+   These challenges are required even if the Platform Owner or administrator already has an active signed-in session. The appointment/removal challenge must be completed by the Platform Owner authorizing the change.
 
 ## 3. Platform Owner responsibilities
 
@@ -66,7 +66,7 @@ The exact role storage, provisioning workflow, token/session handling, and autho
 At minimum, the audit design must capture:
 - Administrator appointment and removal: acting Platform Owner, affected account, action, timestamp, and confirmation that the fresh MFA/re-authentication challenge was satisfied.
 - Award-limit change: acting administrator, previous value, new value, timestamp, and confirmation that the fresh MFA/re-authentication challenge was satisfied.
-- Platform Owner recovery: recovery event, authorizing evidence/process reference, outcome, and timestamp, without storing recovery secrets or sensitive proof materials in ordinary application logs.
+- Platform Owner recovery: the two approving ownership representatives, recovery event, authorizing evidence/process reference, outcome, and timestamp, without storing recovery secrets or sensitive proof materials in ordinary application logs.
 - The outcome of each administrative action.
 
 Audit records must be protected against modification by ordinary teachers and users. Audit failure must not be silently ignored. The implementation must define retention, access, and recovery requirements before deployment.
@@ -75,30 +75,35 @@ Audit records must be protected against modification by ordinary teachers and us
 
 If the Platform Owner loses access, recovery must use a **controlled offline recovery procedure**. This is not a public or self-service account recovery route.
 
+**Two-person approval is mandatory:** Platform Owner recovery requires independent verification and approval by **two separately authorized ownership representatives**. One representative acting alone cannot authorize or complete recovery. The two approvals must be independently attributable and recorded; the implementation must not treat two credentials controlled by the same person as two-person approval.
+
 The procedure must:
 1. Be documented and restricted to the legitimate platform ownership authority.
 2. Require independent proof of ownership through a separately protected recovery method.
-3. Be performed through a trusted administrative process outside ordinary teacher registration and the classroom UI.
-4. Record the recovery event, outcome, responsible authority, and timestamp in a protected audit trail.
-5. Notify the platform owner through a separately controlled notification channel where feasible.
-6. Avoid creating a permanent backdoor, public recovery endpoint, or unrestricted emergency account.
-7. Re-establish strong authentication, including MFA where supported, before normal privileged administration resumes.
+3. Obtain and verify approval from both authorized ownership representatives before any recovery action is carried out.
+4. Be performed through a trusted administrative process outside ordinary teacher registration and the classroom UI.
+5. Record the recovery event, both approving representatives, responsible recovery authority, outcome, and timestamp in a protected audit trail.
+6. Notify the Platform Owner through a separately controlled notification channel where feasible.
+7. Avoid creating a permanent backdoor, public recovery endpoint, or unrestricted emergency account.
+8. Re-establish strong authentication, including MFA where supported, before normal privileged administration resumes.
 
 Recovery secrets, proof documents, and other sensitive evidence must not be stored in ordinary application logs or exposed to teachers, students, or browser clients.
 
-The exact proof requirements, offline custodians, operational steps, notification channel, and audit implementation remain to be specified and security-reviewed before implementation. Recovery must not be enabled until those details are approved.
+The exact ownership evidence, identity-verification method, appointment and independence of the two representatives, offline custodians, operational steps, notification channel, and audit implementation remain to be specified and security-reviewed before implementation. Recovery must not be enabled until those details are approved. The two-person approval requirement itself is approved and must not be weakened during implementation without a separate decision.
 
 ## 8. Remaining implementation gates
 
 The following details are intentionally not decided by these approvals:
 - The exact server-side role source and provisioning mechanism.
 - The detailed secure initial Platform Owner bootstrap procedure.
-- The exact offline ownership evidence, custodians, and recovery runbook.
-- Whether multiple Platform Owners or emergency/break-glass administrators are permitted.
+- The exact ownership evidence and identity-verification method for recovery.
+- How the two ownership representatives are appointed, verified, kept independent, and replaced if unavailable.
+- The offline custodians, operational recovery runbook, and notification channel.
+- Whether multiple Platform Owners or emergency/break-glass administrators are permitted outside the approved two-person recovery procedure.
 - The exact MFA provider and technical challenge/session freshness mechanism.
 - Audit schema, retention, access, and administrative review workflow.
 
-These must be resolved before implementation. Any proposed change to the approved authority boundaries or offline recovery model requires a separate decision.
+These must be resolved before implementation. Any proposed change to the approved authority boundaries, two-person recovery approval, or offline recovery model requires a separate decision.
 
 ## 9. Security acceptance criteria
 
@@ -110,6 +115,8 @@ Before production use, tests and operational review must demonstrate that:
 - An expired, missing, or failed challenge blocks the configuration change.
 - A Platform Owner cannot appoint or remove an administrator without completing a fresh MFA/re-authentication challenge.
 - An expired, missing, or failed challenge blocks an appointment or removal.
+- Platform Owner recovery cannot proceed with only one ownership representative's approval.
+- Both recovery approvals are independently attributable, verified, and recorded before recovery is performed.
 - Every appointment, removal, configuration change, and Platform Owner recovery event is attributable and audited.
 - Administrator privileges cannot bypass classroom transaction invariants.
 - Revoked administrator authority ceases to authorize subsequent privileged actions, including where sessions or tokens remain active.
