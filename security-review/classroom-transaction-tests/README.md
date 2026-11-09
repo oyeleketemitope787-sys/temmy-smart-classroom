@@ -53,11 +53,11 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 - `CLASSROOM_TRANSACTION_TEST_PLAN.md`
 - A dedicated review-branch CI workflow, separate from game-scoring tests.
 
-Phase 1 and Phase 2 function files are draft SQL text only and have not been executed or syntax-tested. Phase 1–3 transaction function drafts cover teacher awards, deductions, full award reversal, activity score adjustment, and one-student marketplace purchase. The deterministic synthetic seed and successful-path smoke test draft have also been added. None of the SQL has been executed or syntax/runtime tested. Edge/ACL/concurrency/atomicity tests and the dedicated CI workflow are not yet implemented.
+Phase 1–3 transaction function drafts cover teacher awards, deductions, full award reversal, activity score adjustment, and one-student marketplace purchase. The deterministic synthetic seed and successful-path smoke test draft have also been added. None of the SQL has been executed or syntax/runtime tested. Edge/ACL/concurrency/atomicity tests and the dedicated CI workflow are not yet implemented.
 
 ## Next gates
 
-Before executable test functions are drafted:
+Before any SQL is executed in the disposable test database:
 - Review the function contract and lock order against the synthetic fixture.
 - Pin PostgreSQL version and confirm the built-in SHA-256 function availability.
 - Finalize stable result/error codes and which business rejections are durably stored.
