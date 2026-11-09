@@ -19,7 +19,12 @@ This document records architecture decisions only. It does not authorize applica
 4. System Administrators may change the system-wide maximum award configuration, subject to server-side authorization, validation, and audit requirements.
 5. System Administrator status does not grant permission to bypass the trusted transaction layer, ledger rules, student/class ownership checks, idempotency controls, or other transaction invariants.
 6. Appointment, removal, and every award-limit configuration change must be attributable to the responsible authorized actor and recorded in an audit trail.
-7. Strong authentication, including MFA where supported, is required for privileged administrator accounts. A fresh MFA/re-authentication challenge is required before changing the system-wide maximum award configuration, even if the administrator already has an active signed-in session.
+7. Strong authentication, including MFA where supported, is required for privileged administrator accounts. A fresh MFA/re-authentication challenge is required before:
+   - Changing the system-wide maximum award configuration.
+   - Appointing a System Administrator.
+   - Removing a System Administrator.
+   
+   These challenges are required even if the Platform Owner or administrator already has an active signed-in session. The appointment/removal challenge must be completed by the Platform Owner who is authorizing the change.
 
 ## 3. Platform Owner responsibilities
 
@@ -59,7 +64,7 @@ The exact role storage, provisioning workflow, token/session handling, and autho
 ## 6. Administrative audit requirements
 
 At minimum, the audit design must capture:
-- Administrator appointment and removal: acting Platform Owner, affected account, action, and timestamp.
+- Administrator appointment and removal: acting Platform Owner, affected account, action, timestamp, and confirmation that the fresh MFA/re-authentication challenge was satisfied.
 - Award-limit change: acting administrator, previous value, new value, timestamp, and confirmation that the fresh MFA/re-authentication challenge was satisfied.
 - Platform Owner recovery: recovery event, authorizing evidence/process reference, outcome, and timestamp, without storing recovery secrets or sensitive proof materials in ordinary application logs.
 - The outcome of each administrative action.
@@ -103,6 +108,8 @@ Before production use, tests and operational review must demonstrate that:
 - An unappointed account cannot change the system-wide award maximum.
 - An appointed administrator cannot change the maximum without completing a fresh MFA/re-authentication challenge.
 - An expired, missing, or failed challenge blocks the configuration change.
+- A Platform Owner cannot appoint or remove an administrator without completing a fresh MFA/re-authentication challenge.
+- An expired, missing, or failed challenge blocks an appointment or removal.
 - Every appointment, removal, configuration change, and Platform Owner recovery event is attributable and audited.
 - Administrator privileges cannot bypass classroom transaction invariants.
 - Revoked administrator authority ceases to authorize subsequent privileged actions, including where sessions or tokens remain active.
