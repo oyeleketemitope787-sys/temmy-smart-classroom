@@ -2,7 +2,9 @@
 
 **Status:** Review-only synthetic fixture draft  
 **Specification:** `security-review/student-login-hardening/CLASSROOM_TRANSACTION_TEST_SPECIFICATION_V1.0.md`  
-**SQL design:** `security-review/student-login-hardening/CLASSROOM_TRANSACTION_SQL_DESIGN_REVIEW_ONLY.sql.txt`
+**SQL design:** `security-review/student-login-hardening/CLASSROOM_TRANSACTION_SQL_DESIGN_REVIEW_ONLY.sql.txt`  
+**Actor boundary:** `TRUSTED_ACTOR_IDENTITY_DESIGN.md`  
+**Function design:** `TRANSACTION_FUNCTION_DESIGN_REVIEW_ONLY.md`
 
 ## Safety boundary
 
@@ -16,7 +18,9 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 
 ## Current contents
 
-- `CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql` — synthetic table and role model only. It does not yet contain transaction functions or test data for business scenarios.
+- `CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql` — synthetic table and isolated test-role model only; no transaction functions or scenario seed data yet.
+- `TRUSTED_ACTOR_IDENTITY_DESIGN.md` — restricted test-only gateway identity model and unresolved production identity propagation.
+- `TRANSACTION_FUNCTION_DESIGN_REVIEW_ONLY.md` — operation algorithms, idempotency, balance serialization, lock order, audit and test requirements. Not executable SQL.
 
 ## Fixture design notes
 
@@ -27,8 +31,11 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 5. `NULL` reward stock means unlimited stock; finite stock is non-negative.
 6. The fixture seeds a maximum teacher award of 100 points solely as a test value. The production maximum remains undecided.
 7. Point transactions use signed values: positive credits and negative debits.
-8. Direct table write grants are withheld from browser roles. Exact function execution grants will be added only after the trusted actor boundary is designed and reviewed.
-9. The test harness must simulate a verified Gateway identity. A caller-controlled teacher ID or user-writable session variable must never be treated as authenticated identity.
+8. Browser test roles have no direct table writes. The gateway test role has no direct table grants; narrow function EXECUTE grants remain to be designed and tested.
+9. Role names are namespaced as `temmy_ctest_*` to avoid colliding with standard Supabase roles or other local roles.
+10. The fixture refuses to reuse pre-existing namespaced test roles. Run only in a fresh disposable PostgreSQL cluster with a dedicated administrator.
+11. The test harness simulates an already-verified teacher identity; it does not test Supabase JWT or production Edge Function authentication.
+12. All balance-changing operations must lock the same student row before reading the ledger balance.
 
 ## Planned separate test assets
 
@@ -41,14 +48,15 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 - `CLASSROOM_TRANSACTION_TEST_PLAN.md`
 - A dedicated review-branch CI workflow, separate from game-scoring tests.
 
-These are planned, not yet implemented. No CI workflow has been added.
+These are planned, not yet implemented. No CI workflow has been added. The function design document is not executable SQL and does not authorize execution.
 
 ## Next gates
 
-Before executable transaction functions are drafted:
-- Review this fixture's logical schema and role assumptions.
-- Decide a safe test-only trusted-actor harness that cannot be invoked by browser roles.
-- Decide how to serialize all point-balance mutations consistently.
-- Define exact idempotency retry/recovery behaviour.
-- Keep rejected-operation audit separate from success audit if the business transaction rolls back.
+Before executable test functions are drafted:
+- Review the function contract and lock order against the synthetic fixture.
+- Pin PostgreSQL version and the canonical payload-hash implementation.
+- Finalize stable result/error codes and which business rejections are durably stored.
+- Confirm test-only SECURITY DEFINER ownership, fixed search_path and function ACLs.
 - Then write functions and tests against this fixture and run them only in a fresh disposable local/CI PostgreSQL database.
+
+Production identity propagation, production schema reconciliation, and any hosted changes remain separate gates requiring explicit review and approval.
