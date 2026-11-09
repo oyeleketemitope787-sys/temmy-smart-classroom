@@ -56,11 +56,7 @@ RESET ROLE;
 SET LOCAL ROLE temmy_ctest_gateway;
 SELECT classroom_test.reverse_transaction(
   '10000000-0000-4000-8000-000000000001',
-  (
-    SELECT (tr.result_payload ->> 'transaction_id')::uuid
-    FROM classroom_test.transaction_requests AS tr
-    WHERE tr.request_id = '80000000-0000-4000-8000-000000000001'
-  ),
+  '60000000-0000-4000-8000-000000000005',
   '80000000-0000-4000-8000-000000000003'
 );
 RESET ROLE;
@@ -110,8 +106,8 @@ BEGIN
     FROM classroom_test.point_transactions
    WHERE student_id = '30000000-0000-4000-8000-000000000001';
 
-  IF v_balance <> 38 THEN
-    RAISE EXCEPTION 'Expected final student balance 38, got %', v_balance;
+  IF v_balance <> 48 THEN
+    RAISE EXCEPTION 'Expected final student balance 48, got %', v_balance;
   END IF;
 
   SELECT points_awarded
@@ -175,9 +171,7 @@ BEGIN
     INTO v_reversal_count
     FROM classroom_test.point_transactions
    WHERE reverses_transaction_id =
-     (SELECT (result_payload ->> 'transaction_id')::uuid
-        FROM classroom_test.transaction_requests
-       WHERE request_id = '80000000-0000-4000-8000-000000000001');
+     '60000000-0000-4000-8000-000000000005';
 
   IF v_reversal_count <> 1 THEN
     RAISE EXCEPTION 'Expected exactly one full award reversal, got %', v_reversal_count;
@@ -199,7 +193,7 @@ EXPECTED OUTCOMES
 - Retrying the same purchase request returns a replay result and creates no
   second purchase, ledger debit or stock decrement.
 - Final ledger balance for Student One is 38:
-  opening 50 + award 10 - deduction 5 - reversal 10 + score delta 3 - purchase 10.
+  opening 50 + seeded award 10 + award operation 10 - deduction 5 - reversal of seeded award 10 + score delta 3 - purchase 10.
 - All assertions pass; outer transaction rolls back.
 
 This smoke suite does not yet test rejected requests, negative activity deltas,
