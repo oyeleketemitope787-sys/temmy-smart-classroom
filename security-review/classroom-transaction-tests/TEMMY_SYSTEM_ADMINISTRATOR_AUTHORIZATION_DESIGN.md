@@ -91,13 +91,29 @@ Recovery secrets, proof documents, and other sensitive evidence must not be stor
 
 The exact ownership evidence, identity-verification method, appointment and independence of the two representatives, offline custodians, operational steps, notification channel, and audit implementation remain to be specified and security-reviewed before implementation. Recovery must not be enabled until those details are approved. The two-person approval requirement itself is approved and must not be weakened during implementation without a separate decision.
 
-## 8. Remaining implementation gates
+## 8. Proposed recovery-representative governance — pending approval
+
+The following is a recommended governance model for deciding who may act as the two recovery representatives. It is a proposal only and does not yet authorize or appoint any individual.
+
+1. **Selection authority:** The representatives should be designated through the platform's documented legal/business ownership authority, rather than being self-appointed by a System Administrator or selected informally through the classroom application. The exact authority depends on the platform's actual ownership structure and must be confirmed before implementation.
+2. **Pre-designation:** Both representatives should be selected and recorded during secure Platform Owner bootstrap, before the platform relies on the recovery process. Their identities and acceptance should be recorded in a protected offline governance record.
+3. **Independence:** The two representatives must be different natural persons, use separate contact and authentication channels, and not share recovery credentials. Neither may approve on behalf of the other. Neither representative receives routine System Administrator privileges merely by being a recovery representative.
+4. **Identity verification:** Each representative's identity and authority should be verified independently using reliable identity evidence and an independently sourced contact channel. The specific evidence standard and verification operator must be defined in the offline runbook; sensitive identity documents should not be copied into ordinary application logs.
+5. **Recovery approval:** For a recovery event, both representatives independently review the recovery request and evidence, then provide separate approvals through separately controlled channels. The recovery operator verifies both approvals and the evidence before acting. A request initiated by one representative cannot count as that representative's approval and the second person's approval.
+6. **Replacement while the Platform Owner is available:** A representative may be replaced only through the documented ownership authority, with fresh MFA/re-authentication by the Platform Owner, independent identity verification and acceptance by the incoming representative, and an auditable record. The change must not create a period in which fewer than two valid representatives are designated.
+7. **Replacement while the Platform Owner is unavailable:** The remaining representative cannot appoint a replacement alone. Any replacement must be authorized through the same independently documented legal/business ownership authority and independently verified process. If that authority cannot be established, recovery must pause rather than weaken the two-person rule.
+8. **Periodic review:** The designated representatives and their secure contact methods should be reviewed periodically and whenever ownership, employment, or contact circumstances change. Review must not expose recovery secrets or grant routine application access.
+
+Before implementation, the platform owner must confirm that this governance model matches the actual legal/business ownership structure and name the authority responsible for designating representatives. No real person's name, identity, contact detail, or authority is assumed in this design.
+
+## 9. Remaining implementation gates
 
 The following details are intentionally not decided by these approvals:
+- Whether the proposed recovery-representative governance model in Section 8 is approved.
+- The platform's actual legal/business ownership structure and the authority empowered to designate the two representatives.
+- The identities of the two representatives and the independent identity-verification evidence/process.
 - The exact server-side role source and provisioning mechanism.
 - The detailed secure initial Platform Owner bootstrap procedure.
-- The exact ownership evidence and identity-verification method for recovery.
-- How the two ownership representatives are appointed, verified, kept independent, and replaced if unavailable.
 - The offline custodians, operational recovery runbook, and notification channel.
 - Whether multiple Platform Owners or emergency/break-glass administrators are permitted outside the approved two-person recovery procedure.
 - The exact MFA provider and technical challenge/session freshness mechanism.
@@ -105,7 +121,7 @@ The following details are intentionally not decided by these approvals:
 
 These must be resolved before implementation. Any proposed change to the approved authority boundaries, two-person recovery approval, or offline recovery model requires a separate decision.
 
-## 9. Security acceptance criteria
+## 10. Security acceptance criteria
 
 Before production use, tests and operational review must demonstrate that:
 - A teacher cannot promote themselves or another user.
@@ -117,13 +133,11 @@ Before production use, tests and operational review must demonstrate that:
 - An expired, missing, or failed challenge blocks an appointment or removal.
 - Platform Owner recovery cannot proceed with only one ownership representative's approval.
 - Both recovery approvals are independently attributable, verified, and recorded before recovery is performed.
-- Every appointment, removal, configuration change, and Platform Owner recovery event is attributable and audited.
-- Administrator privileges cannot bypass classroom transaction invariants.
-- Revoked administrator authority ceases to authorize subsequent privileged actions, including where sessions or tokens remain active.
 - The offline recovery procedure cannot be initiated by an ordinary teacher, student, or unauthenticated public user and does not create a standing backdoor.
+- If two valid representatives or required approvals are unavailable, recovery remains blocked until the separately approved ownership process resolves the issue.
 
-## 10. Scope and safety boundary
+## 11. Scope and safety boundary
 
-This is an approved design record only. No application code, database schema, SQL draft, role assignment, hosted configuration, permissions, migrations, or deployment has been changed or authorized by this document.
+This is an approved design record with the Section 8 governance proposal pending approval. Implementation is not authorized. No application code, database schema, SQL draft, role assignment, hosted configuration, permissions, migrations, or deployment has been changed or authorized by this document.
 
 All future implementation and testing must remain isolated from the protected production branch `main` and shared development branch `cloud-test` unless separately and explicitly authorized.
