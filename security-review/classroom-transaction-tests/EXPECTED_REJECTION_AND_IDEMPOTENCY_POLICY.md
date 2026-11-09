@@ -112,3 +112,19 @@ When a valid deduction request is made while the student's available balance is 
 This is distinct from a deduction request made when a positive balance exists but the requested amount exceeds it: the approved clamp-to-available-balance rule still applies in that case.
 
 The exact audit event name, fields, retention, and implementation are to be defined during implementation review. This approval does not authorize execution or deployment.
+
+## 11. System-wide award maximum — approved
+
+**Approval date:** 2026-11-09
+
+- A single system-wide maximum award amount will apply consistently across teachers.
+- The maximum will be configurable by an authorized system administrator, not individually adjustable by teachers.
+- The trusted transaction layer must enforce the configured maximum; browser-side checks are supplementary only and are not a security boundary.
+- An award request above the configured maximum must be rejected in full. It must not be silently truncated or partially awarded.
+- The configured maximum must be validated as a positive whole number and protected against unauthorized changes.
+- Changes to the configured maximum should be attributable to the authorized administrator and auditable.
+- The actual numeric maximum and the precise administrator role/permission model remain undecided and must be agreed before implementation.
+
+Required tests must cover an award at the configured limit, one above the limit, unauthorized attempts to change the limit, and a legitimate administrator configuration change. The policy must be enforced consistently under concurrent requests and configuration changes.
+
+This is a design approval only. It does not authorize schema changes, SQL execution, configuration writes, grants/revokes, migrations, or deployment.
