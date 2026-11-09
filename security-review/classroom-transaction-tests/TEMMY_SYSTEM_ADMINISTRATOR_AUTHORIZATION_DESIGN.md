@@ -7,9 +7,9 @@
 
 ## 1. Purpose
 
-Define how privileged system-administrator authority is appointed, verified, limited, and audited for Temmy Smart Classroom. This design supports the approved system-wide award maximum policy: initially 20 points per individual student award, changeable only by an authorized system administrator.
+Define how privileged system-administrator authority is appointed, verified, limited, audited, and recovered for Temmy Smart Classroom. This design supports the approved system-wide award maximum policy: initially 20 points per individual student award, changeable only by an authorized system administrator.
 
-This document records an architecture decision. It does not authorize application changes, database changes, SQL execution, migrations, grants, configuration writes, or deployment.
+This document records architecture decisions only. It does not authorize application changes, database changes, SQL execution, migrations, grants, configuration writes, or deployment.
 
 ## 2. Approved authority model
 
@@ -27,7 +27,7 @@ The Platform Owner is the root authority for the administrator appointment proce
 
 The Platform Owner role must not be assignable through ordinary teacher registration, student registration, public sign-up, or a user-editable metadata field. There must be no self-service privilege escalation path.
 
-The precise technical bootstrap and recovery mechanism for the initial Platform Owner remains an implementation gate and must be designed before privileged roles are implemented.
+The precise technical bootstrap and recovery mechanism for the initial Platform Owner must follow the approved controlled offline recovery procedure below and be designed before privileged roles are implemented.
 
 ## 4. System Administrator scope
 
@@ -61,34 +61,53 @@ The exact role storage, provisioning workflow, token/session handling, and autho
 At minimum, the audit design must capture:
 - Administrator appointment and removal: acting Platform Owner, affected account, action, and timestamp.
 - Award-limit change: acting administrator, previous value, new value, and timestamp.
+- Platform Owner recovery: recovery event, authorizing evidence/process reference, outcome, and timestamp, without storing recovery secrets or sensitive proof materials in ordinary application logs.
 - The outcome of each administrative action.
 
 Audit records must be protected against modification by ordinary teachers and users. Audit failure must not be silently ignored. The implementation must define retention, access, and recovery requirements before deployment.
 
-## 7. Remaining implementation gates
+## 7. Approved Platform Owner recovery approach
 
-The following details are intentionally not decided by this approval:
+If the Platform Owner loses access, recovery must use a **controlled offline recovery procedure**. This is not a public or self-service account recovery route.
+
+The procedure must:
+1. Be documented and restricted to the legitimate platform ownership authority.
+2. Require independent proof of ownership through a separately protected recovery method.
+3. Be performed through a trusted administrative process outside ordinary teacher registration and the classroom UI.
+4. Record the recovery event, outcome, responsible authority, and timestamp in a protected audit trail.
+5. Notify the platform owner through a separately controlled notification channel where feasible.
+6. Avoid creating a permanent backdoor, public recovery endpoint, or unrestricted emergency account.
+7. Re-establish strong authentication, including MFA where supported, before normal privileged administration resumes.
+
+Recovery secrets, proof documents, and other sensitive evidence must not be stored in ordinary application logs or exposed to teachers, students, or browser clients.
+
+The exact proof requirements, offline custodians, operational steps, notification channel, and audit implementation remain to be specified and security-reviewed before implementation. Recovery must not be enabled until those details are approved.
+
+## 8. Remaining implementation gates
+
+The following details are intentionally not decided by these approvals:
 - The exact server-side role source and provisioning mechanism.
-- The secure initial Platform Owner bootstrap procedure.
-- Platform Owner account recovery and loss-of-access procedure.
+- The detailed secure initial Platform Owner bootstrap procedure.
+- The exact offline ownership evidence, custodians, and recovery runbook.
 - Whether multiple Platform Owners or emergency/break-glass administrators are permitted.
-- The exact MFA/re-authentication challenge required for privileged changes.
-- Audit schema, retention, and administrative review workflow.
+- The exact MFA/re-authentication challenge required for privileged changes and recovery.
+- Audit schema, retention, access, and administrative review workflow.
 
-These must be resolved before implementation. Any proposed change to the approved authority boundaries requires a separate decision.
+These must be resolved before implementation. Any proposed change to the approved authority boundaries or offline recovery model requires a separate decision.
 
-## 8. Security acceptance criteria
+## 9. Security acceptance criteria
 
-Before production use, tests must demonstrate that:
+Before production use, tests and operational review must demonstrate that:
 - A teacher cannot promote themselves or another user.
 - A browser-supplied role or actor ID cannot confer administrator privileges.
 - An unappointed account cannot change the system-wide award maximum.
 - An appointed administrator can change the maximum only through the trusted server-side path.
-- Every appointment, removal, and configuration change is attributable and audited.
+- Every appointment, removal, configuration change, and Platform Owner recovery event is attributable and audited.
 - Administrator privileges cannot bypass classroom transaction invariants.
 - Revoked administrator authority ceases to authorize subsequent privileged actions, including where sessions or tokens remain active.
+- The offline recovery procedure cannot be initiated by an ordinary teacher, student, or unauthenticated public user and does not create a standing backdoor.
 
-## 9. Scope and safety boundary
+## 10. Scope and safety boundary
 
 This is an approved design record only. No application code, database schema, SQL draft, role assignment, hosted configuration, permissions, migrations, or deployment has been changed or authorized by this document.
 
