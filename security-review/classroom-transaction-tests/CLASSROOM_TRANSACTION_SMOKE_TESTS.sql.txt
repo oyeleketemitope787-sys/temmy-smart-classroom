@@ -1,0 +1,208 @@
+/*
+CLASSROOM TRANSACTION SMOKE TESTS — SYNTHETIC / DISPOSABLE ONLY
+STATUS: REVIEW DRAFT. NOT EXECUTED. Never run against Supabase, production,
+cloud-test, or any shared database.
+
+Prerequisites in a fresh disposable database:
+1. CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql
+2. CLASSROOM_TRANSACTION_TEST_SEED.sql.txt
+3. Phase 1, Phase 2 and Phase 3 review-only function drafts
+4. Test role/ACL setup verified independently
+
+This script runs successful-path checks inside one transaction and ROLLBACKs
+all test mutations at the end. Run as a disposable-cluster administrator.
+*/
+
+BEGIN;
+
+-- Confirm deterministic seed data exists before invoking trusted functions.
+DO $preflight$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM classroom_test.students
+    WHERE id = '30000000-0000-4000-8000-000000000001'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM classroom_test.marketplace_rewards
+    WHERE id = '70000000-0000-4000-8000-000000000001'
+  ) THEN
+    RAISE EXCEPTION 'Synthetic seed missing; install test seed first';
+  END IF;
+END
+$preflight$;
+
+-- Teacher award: +10 points.
+SET LOCAL ROLE temmy_ctest_gateway;
+SELECT classroom_test.award_points(
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  10,
+  'Smoke test award',
+  '80000000-0000-4000-8000-000000000001'
+);
+RESET ROLE;
+
+-- Teacher deduction: request 5, expect exact deduction 5.
+SET LOCAL ROLE temmy_ctest_gateway;
+SELECT classroom_test.deduct_points(
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  5,
+  'Smoke test deduction',
+  '80000000-0000-4000-8000-000000000002'
+);
+RESET ROLE;
+
+-- Reverse the award once, using the transaction ID returned by its request.
+SET LOCAL ROLE temmy_ctest_gateway;
+SELECT classroom_test.reverse_transaction(
+  '10000000-0000-4000-8000-000000000001',
+  (
+    SELECT (tr.result_payload ->> 'transaction_id')::uuid
+    FROM classroom_test.transaction_requests AS tr
+    WHERE tr.request_id = '80000000-0000-4000-8000-000000000001'
+  ),
+  '80000000-0000-4000-8000-000000000003'
+);
+RESET ROLE;
+
+-- Activity score rises from 4 to 7; expected ledger delta is +3.
+SET LOCAL ROLE temmy_ctest_gateway;
+SELECT classroom_test.score_activity(
+  '10000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000001',
+  7,
+  'Smoke test score',
+  '80000000-0000-4000-8000-000000000004'
+);
+RESET ROLE;
+
+-- One student buys one finite-stock reward. Same request is repeated to test
+-- successful idempotent replay: second call must not debit or decrement again.
+SET LOCAL ROLE temmy_ctest_gateway;
+SELECT classroom_test.purchase_reward_for_student(
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000001',
+  '80000000-0000-4000-8000-000000000005'
+);
+SELECT classroom_test.purchase_reward_for_student(
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000001',
+  '80000000-0000-4000-8000-000000000005'
+);
+RESET ROLE;
+
+-- Assertions are run after resetting to the disposable database administrator.
+DO $assertions$
+DECLARE
+  v_balance bigint;
+  v_score integer;
+  v_stock integer;
+  v_purchase_count integer;
+  v_purchase_request_count integer;
+  v_success_audit_count integer;
+  v_reversal_count integer;
+  v_purchase_debit_count integer;
+BEGIN
+  SELECT COALESCE(SUM(points), 0)
+    INTO v_balance
+    FROM classroom_test.point_transactions
+   WHERE student_id = '30000000-0000-4000-8000-000000000001';
+
+  IF v_balance <> 38 THEN
+    RAISE EXCEPTION 'Expected final student balance 38, got %', v_balance;
+  END IF;
+
+  SELECT points_awarded
+    INTO v_score
+    FROM classroom_test.student_activity_records
+   WHERE id = '50000000-0000-4000-8000-000000000001';
+
+  IF v_score <> 7 THEN
+    RAISE EXCEPTION 'Expected activity score 7, got %', v_score;
+  END IF;
+
+  SELECT stock
+    INTO v_stock
+    FROM classroom_test.marketplace_rewards
+   WHERE id = '70000000-0000-4000-8000-000000000001';
+
+  IF v_stock <> 1 THEN
+    RAISE EXCEPTION 'Expected finite reward stock 1 after one purchase, got %', v_stock;
+  END IF;
+
+  SELECT count(*)::integer
+    INTO v_purchase_count
+    FROM classroom_test.purchases
+   WHERE request_id = '80000000-0000-4000-8000-000000000005';
+
+  IF v_purchase_count <> 1 THEN
+    RAISE EXCEPTION 'Expected exactly one purchase row after retry, got %', v_purchase_count;
+  END IF;
+
+  SELECT count(*)::integer
+    INTO v_purchase_debit_count
+    FROM classroom_test.point_transactions
+   WHERE student_id = '30000000-0000-4000-8000-000000000001'
+     AND action_type = 'marketplace_purchase';
+
+  IF v_purchase_debit_count <> 1 THEN
+    RAISE EXCEPTION 'Expected exactly one marketplace debit after retry, got %', v_purchase_debit_count;
+  END IF;
+
+  SELECT count(*)::integer
+    INTO v_purchase_request_count
+    FROM classroom_test.transaction_requests
+   WHERE request_id = '80000000-0000-4000-8000-000000000005'
+     AND status = 'completed';
+
+  IF v_purchase_request_count <> 1 THEN
+    RAISE EXCEPTION 'Expected one completed purchase idempotency request, got %', v_purchase_request_count;
+  END IF;
+
+  SELECT count(*)::integer
+    INTO v_success_audit_count
+    FROM classroom_test.transaction_audit
+   WHERE actor_teacher_id = '10000000-0000-4000-8000-000000000001'
+     AND outcome = 'success';
+
+  IF v_success_audit_count <> 5 THEN
+    RAISE EXCEPTION 'Expected five success audit rows, got %', v_success_audit_count;
+  END IF;
+
+  SELECT count(*)::integer
+    INTO v_reversal_count
+    FROM classroom_test.point_transactions
+   WHERE reverses_transaction_id =
+     (SELECT (result_payload ->> 'transaction_id')::uuid
+        FROM classroom_test.transaction_requests
+       WHERE request_id = '80000000-0000-4000-8000-000000000001');
+
+  IF v_reversal_count <> 1 THEN
+    RAISE EXCEPTION 'Expected exactly one full award reversal, got %', v_reversal_count;
+  END IF;
+END
+$assertions$;
+
+-- Successful completion means every assertion passed. Roll back all synthetic
+-- mutations so this script leaves the disposable fixture seed unchanged.
+ROLLBACK;
+
+/*
+EXPECTED OUTCOMES
+- Award +10 succeeds.
+- Deduction -5 succeeds.
+- Full reversal of the +10 award succeeds once.
+- Activity score changes from 4 to 7 and ledger delta is +3.
+- One finite-stock reward purchase debits 10 and decrements stock from 2 to 1.
+- Retrying the same purchase request returns a replay result and creates no
+  second purchase, ledger debit or stock decrement.
+- Final ledger balance for Student One is 38:
+  opening 50 + award 10 - deduction 5 - reversal 10 + score delta 3 - purchase 10.
+- All assertions pass; outer transaction rolls back.
+
+This smoke suite does not yet test rejected requests, negative activity deltas,
+concurrent requests, permissions, or failure injection. Those belong in
+separate edge, ACL, concurrency and atomicity suites.
+*/
