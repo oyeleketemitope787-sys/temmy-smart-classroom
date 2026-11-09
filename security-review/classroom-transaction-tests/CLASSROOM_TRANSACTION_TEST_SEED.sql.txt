@@ -66,7 +66,11 @@ VALUES
  ('60000000-0000-4000-8000-000000000004',
   '30000000-0000-4000-8000-000000000004',
   '10000000-0000-4000-8000-000000000002',
-  50, 'Synthetic opening balance', 'positive', 'Fixture seed', 'test');
+  50, 'Synthetic opening balance', 'positive', 'Fixture seed', 'test'),
+ ('60000000-0000-4000-8000-000000000005',
+  '30000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  10, 'Teacher award', 'positive', 'Seeded reversal target', 'teacher');
 
 INSERT INTO classroom_test.marketplace_rewards
   (id, teacher_id, name, description, price, active, stock)
