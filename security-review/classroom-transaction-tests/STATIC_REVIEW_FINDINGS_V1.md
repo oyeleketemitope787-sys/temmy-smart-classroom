@@ -26,7 +26,7 @@ Phase 1's _lock_student_and_get_balance locks the student row and reads its clas
 
 A concurrent class deactivation or ownership-changing operation could race with a transaction after the check. Whether this is exploitable depends on the actual class-management permissions and update paths, which have not been fully reconciled.
 
-**Required decision:** Inventory every class/student administration path. Decide whether class rows must be locked (for example, a compatible shared lock) while validating ownership and active state, and establish one global lock order for class, student, activity record, original transaction and reward rows. Then test the chosen order under concurrent class changes and student transactions.
+**Decision approved 2026-11-09:** Lock the relevant class row before the student row, then validate active state and teacher ownership while both are held. Use one global order: idempotency request → class row(s) sorted by UUID → student row → operation-specific activity/original-transaction/reward row(s) → writes. A preliminary non-locking student-to-class lookup must be revalidated after both locks are acquired; changed membership aborts with a retryable conflict. Student transfers lock old/new classes in sorted order before the student. Class administration locks class before changing it. The detailed rule is in TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md.\n\n**Remaining verification:** Inventory every actual class/student/activity administration path and verify the selected PostgreSQL row-lock modes, foreign-key/trigger interactions and global lock graph in a fresh disposable database. The current Phase 1–3 function drafts still use student-first locking and must be revised before execution.
 
 ### F3 — Expected rejections are not durably idempotent or audited
 
@@ -40,11 +40,11 @@ Consequently, the same request ID can be retried after a rejection as if it were
 
 If choosing the first option, ensure unexpected database/system failures still abort and roll back. Do not catch every exception and turn it into a committed rejection.
 
-### F4 — Class and student administration lock ordering is not yet specified
+### F4 — Class and student administration lock ordering must be reconciled in the drafts
 
 The transaction drafts use student-first locking for balance operations; purchases then lock the reward row; activity scoring locks the student then activity record and activity. The current concurrency plan does not cover a class deactivation/transfer racing with a transaction, nor all administrative update paths.
 
-**Required decision:** Publish one lock-order matrix covering all functions that can update classes, students, activities, rewards, point transactions and activity records. Add concurrency cases for class deactivation/ownership changes and activity edits while a score is being assigned.
+**Decision approved 2026-11-09:** The lock-order matrix is now published in TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md. It requires class-before-student locking, sorted class UUIDs for multi-class operations, then operation-specific rows. The concurrency plan now includes class deactivation/ownership change, student transfer, activity edit/deactivation and reward deactivation races.\n\n**Remaining verification:** Reconcile all real administration paths and revise the current function drafts, which do not yet implement the approved order. Validate lock modes and implicit FK/trigger locks in a fresh disposable database.
 
 ### F5 — Activity score and ledger atomicity needs the failure-injection proof
 
@@ -78,7 +78,7 @@ The approved business rule says a zero-balance deduction is a no-op with no zero
 Do not execute any draft until:
 
 - Production identity propagation is designed independently from the test-only role argument.
-- Class/student administration paths and global lock order are reconciled.
+- The approved class-before-student global lock order is implemented in revised drafts; actual class/student administration paths and lock modes are reconciled.
 - Durable rejected-request semantics are decided.
 - Zero-balance no-op audit semantics are decided.
 - The fixture, seed and SQL are statically reviewed together.
