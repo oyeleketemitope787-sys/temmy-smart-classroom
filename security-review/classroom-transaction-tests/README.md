@@ -28,6 +28,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 - `CLASSROOM_TRANSACTION_SMOKE_TESTS.sql.txt` — successful-path smoke checks for award, deduction, reversal, activity scoring, marketplace purchase and successful retry replay; outer transaction rolls back.
 - `CLASSROOM_TRANSACTION_EDGE_CASES.sql.txt` — draft rejection/no-op checks for insufficient balance, stock, inactive rewards, cross-teacher access, award cap, zero-balance deduction and invalid activity scores.
 - `CLASSROOM_TRANSACTION_ACL_TESTS.sql.txt` — read-only catalog/privilege assertions for client-role isolation, gateway entrypoint grants, helper restrictions, function ownership and fixed search paths.
+- `CLASSROOM_TRANSACTION_CONCURRENCY_TEST_PLAN.md` — two-session test protocol for finite stock, balance serialization, same-key replay, payload mismatch, and concurrent awards/deductions.
 
 ## Fixture design notes
 
@@ -55,7 +56,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 - `CLASSROOM_TRANSACTION_TEST_PLAN.md`
 - A dedicated review-branch CI workflow, separate from game-scoring tests.
 
-Phase 1–3 transaction function drafts cover teacher awards, deductions, full award reversal, activity score adjustment, and one-student marketplace purchase. The deterministic synthetic seed, successful-path smoke test draft and initial edge-case test draft have also been added. None of the SQL has been executed or syntax/runtime tested. Concurrency/atomicity tests and the dedicated CI workflow are not yet implemented. The ACL test file is a catalog-only draft and has not been executed.
+Phase 1–3 transaction function drafts cover teacher awards, deductions, full award reversal, activity score adjustment, and one-student marketplace purchase. The deterministic synthetic seed, successful-path smoke test draft and initial edge-case test draft have also been added. None of the SQL has been executed or syntax/runtime tested. Atomicity tests and the dedicated CI workflow are not yet implemented. The ACL assertions and concurrency protocol are drafts and have not been executed.
 
 ## Next gates
 
@@ -65,6 +66,6 @@ Before any SQL is executed in the disposable test database:
 - Finalize stable result/error codes and which business rejections are durably stored.
 - Verify SECURITY DEFINER role-context behaviour, owner, fixed search_path and function ACLs.
 - Review lock order and SQL syntax in a fresh disposable PostgreSQL database before implementing marketplace functions.
-- Review the seed, smoke-test and edge-case assumptions. Resolve durable rejected-request semantics and validate the exception-catching harness. Review the ACL assertions, then build concurrency and atomicity tests. Only after static review should the suite be run in a fresh disposable local/CI PostgreSQL database.
+- Review the seed, smoke-test and edge-case assumptions. Resolve durable rejected-request semantics and validate the exception-catching harness. Review the ACL assertions and concurrency protocol, then build failure-injection atomicity tests. Only after static review should the suite be run in a fresh disposable local/CI PostgreSQL database.
 
 Production identity propagation, production schema reconciliation, and any hosted changes remain separate gates requiring explicit review and approval.
