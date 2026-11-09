@@ -30,7 +30,7 @@ DECLARE
   v_function regprocedure;
   v_owner text;
   v_security_definer boolean;
-  v_search_path text;
+  v_search_path text[];
   v_has_public_execute boolean;
   v_expected_functions regprocedure[] := ARRAY[
     'classroom_test.award_points(uuid,uuid,integer,text,uuid)'::regprocedure,
@@ -124,7 +124,7 @@ BEGIN
     IF v_security_definer IS DISTINCT FROM true THEN
       RAISE EXCEPTION 'Expected SECURITY DEFINER on %', v_function;
     END IF;
-    IF NOT COALESCE(v_search_path LIKE '%search_path=pg_catalog%', false) THEN
+    IF NOT COALESCE(pg_catalog.array_to_string(v_search_path, ',') LIKE '%search_path=pg_catalog%', false) THEN
       RAISE EXCEPTION 'Expected fixed pg_catalog search_path on %: %',
         v_function, v_search_path;
     END IF;
