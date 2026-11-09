@@ -1,0 +1,229 @@
+/*
+CLASSROOM TRANSACTION FUNCTIONS — DISPOSABLE TEST ONLY
+Version: 0.3 — one-student marketplace purchase
+
+STATUS: REVIEW DRAFT. NOT EXECUTED. NOT A SUPABASE MIGRATION.
+Requires the synthetic fixture schema and Phase 1/2 function drafts to be
+reviewed and installed in a fresh disposable PostgreSQL database. Never run
+against a hosted/shared database.
+
+Business contract:
+- One student per call/request. No batch all-or-nothing purchase.
+- Student row is locked before reward row; all balance-changing functions use
+  the same student-row mutex before reading the signed ledger.
+- NULL stock means unlimited; finite stock is non-negative.
+- Purchase, ledger debit, finite stock decrement, success audit and completed
+  idempotency result commit atomically.
+- Insufficient balance and out-of-stock do not debit or decrement.
+- Purchase name/price are snapshotted; deactivation does not erase history.
+- No reward deletion function is provided.
+- Reuse the same request UUID for retries of the same student/reward request.
+
+Important limitation:
+Expected business rejections currently raise exceptions. PostgreSQL rolls back
+the request claim and any in-transaction audit. Durable rejected outcomes and
+rejected-request idempotency need a separately approved contract before this
+draft can be treated as final.
+*/
+
+BEGIN;
+
+DO $guard$
+BEGIN
+  IF to_regprocedure('classroom_test._claim_request(uuid,uuid,text,text)') IS NULL
+     OR to_regprocedure('classroom_test._lock_student_and_get_balance(uuid,uuid)') IS NULL
+     OR to_regclass('classroom_test.marketplace_rewards') IS NULL
+     OR to_regclass('classroom_test.purchases') IS NULL THEN
+    RAISE EXCEPTION 'Fixture or Phase 1 helpers missing; aborting';
+  END IF;
+END
+$guard$;
+
+SET ROLE temmy_ctest_data_owner;
+
+CREATE OR REPLACE FUNCTION classroom_test.purchase_reward_for_student(
+  p_actor_teacher_id uuid,
+  p_student_id uuid,
+  p_reward_id uuid,
+  p_request_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $fn$
+DECLARE
+  v_hash text;
+  v_replay jsonb;
+  v_balance bigint;
+  v_reward classroom_test.marketplace_rewards%ROWTYPE;
+  v_purchase_id uuid;
+  v_transaction_id uuid;
+  v_result jsonb;
+BEGIN
+  PERFORM classroom_test._assert_gateway_context();
+
+  IF p_actor_teacher_id IS NULL OR p_student_id IS NULL
+     OR p_reward_id IS NULL OR p_request_id IS NULL THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '22004',
+      MESSAGE = 'teacher_student_reward_and_request_required';
+  END IF;
+
+  v_hash := classroom_test._canonical_hash(ARRAY[
+    p_actor_teacher_id::text,
+    p_student_id::text,
+    p_reward_id::text
+  ]);
+
+  v_replay := classroom_test._claim_request(
+    p_request_id, p_actor_teacher_id, 'purchase_reward_for_student', v_hash
+  );
+  IF v_replay IS NOT NULL THEN
+    RETURN v_replay || jsonb_build_object('replayed', true);
+  END IF;
+
+  -- Lock order: student mutex first, then reward row. The helper validates
+  -- active student/class ownership and serializes all student balance writes.
+  v_balance := classroom_test._lock_student_and_get_balance(
+    p_student_id, p_actor_teacher_id
+  );
+
+  SELECT *
+    INTO v_reward
+    FROM classroom_test.marketplace_rewards AS r
+   WHERE r.id = p_reward_id
+     AND r.teacher_id = p_actor_teacher_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'reward_not_found_or_not_owned_by_teacher';
+  END IF;
+
+  IF NOT v_reward.active THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '22023',
+      MESSAGE = 'reward_not_active';
+  END IF;
+
+  IF v_reward.stock IS NOT NULL AND v_reward.stock <= 0 THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '22023',
+      MESSAGE = 'reward_out_of_stock';
+  END IF;
+
+  IF v_balance < v_reward.price THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '22023',
+      MESSAGE = 'insufficient_points';
+  END IF;
+
+  -- Every individual purchase is represented by one purchase row and one
+  -- matching negative ledger transaction. Both, plus stock, are transactional.
+  INSERT INTO classroom_test.point_transactions
+    (student_id, teacher_id, points, action_name, action_type, reason, source)
+  VALUES
+    (p_student_id, p_actor_teacher_id, -v_reward.price,
+     'Marketplace purchase', 'marketplace_purchase',
+     'Purchase: ' || v_reward.name, 'marketplace')
+  RETURNING id INTO v_transaction_id;
+
+  INSERT INTO classroom_test.purchases
+    (request_id, student_id, teacher_id, reward_id,
+     reward_name_snapshot, points_spent)
+  VALUES
+    (p_request_id, p_student_id, p_actor_teacher_id, v_reward.id,
+     v_reward.name, v_reward.price)
+  RETURNING id INTO v_purchase_id;
+
+  IF v_reward.stock IS NOT NULL THEN
+    UPDATE classroom_test.marketplace_rewards
+       SET stock = stock - 1
+     WHERE id = v_reward.id
+       AND teacher_id = p_actor_teacher_id
+       AND active
+       AND stock > 0;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING
+        ERRCODE = '40001',
+        MESSAGE = 'reward_stock_changed_retry_request';
+    END IF;
+  END IF;
+
+  v_result := jsonb_build_object(
+    'ok', true,
+    'operation', 'purchase_reward_for_student',
+    'purchase_id', v_purchase_id,
+    'transaction_id', v_transaction_id,
+    'student_id', p_student_id,
+    'reward_id', v_reward.id,
+    'reward_name', v_reward.name,
+    'points_spent', v_reward.price,
+    'balance', v_balance - v_reward.price,
+    'remaining_stock', CASE
+      WHEN v_reward.stock IS NULL THEN NULL
+      ELSE v_reward.stock - 1
+    END,
+    'replayed', false
+  );
+
+  INSERT INTO classroom_test.transaction_audit
+    (request_id, actor_teacher_id, operation, target_student_id, outcome, safe_metadata)
+  VALUES
+    (p_request_id, p_actor_teacher_id, 'purchase_reward_for_student',
+     p_student_id, 'success',
+     jsonb_build_object(
+       'purchase_id', v_purchase_id,
+       'transaction_id', v_transaction_id,
+       'reward_id', v_reward.id,
+       'points_spent', v_reward.price,
+       'remaining_stock', CASE
+         WHEN v_reward.stock IS NULL THEN NULL
+         ELSE v_reward.stock - 1
+       END
+     ));
+
+  PERFORM classroom_test._finish_request(p_request_id, v_result);
+  RETURN v_result;
+END
+$fn$;
+
+REVOKE ALL ON FUNCTION classroom_test.purchase_reward_for_student(uuid, uuid, uuid, uuid)
+  FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION classroom_test.purchase_reward_for_student(uuid, uuid, uuid, uuid)
+  TO temmy_ctest_gateway;
+
+RESET ROLE;
+COMMIT;
+
+/*
+REVIEW NOTES / OPEN CHECKS
+1. No SQL syntax, runtime, ACL, concurrency or atomicity test has been run.
+2. The function uses the synthetic fixture only. Production marketplace table
+   names, columns, purchase history and RPC contract have not been verified.
+3. The current browser UI appears to submit multiple student IDs in one RPC.
+   This function deliberately accepts one student only; the future UI must
+   issue one request UUID per student and show per-student outcomes. Do not
+   silently map this to the existing batch RPC.
+4. The same request UUID with the same actor/student/reward returns the stored
+   successful result. Reusing it with a different payload is rejected by the
+   shared idempotency helper. A retry after an expected rejection is not
+   durably recorded because the exception rolls back the request claim.
+5. Lock ordering is student row then reward row. Test this against all other
+   classroom functions and marketplace administration paths for deadlocks.
+6. The reward row lock serializes finite-stock purchases. NULL stock remains
+   unlimited and is not decremented.
+7. The purchase snapshot preserves the name and points spent at purchase time.
+   The fixture does not snapshot every reward field; extend only if required.
+8. Deactivation is expected to update active=false through a separately
+   authorized management path. No deletion function is supplied.
+9. Verify SECURITY DEFINER owner, role context, helper execution chain,
+   request replay, rollback atomicity, finite/unlimited stock, concurrent last
+   item purchases, insufficient balance, and ACLs in a fresh disposable DB.
+10. No hosted/shared database, production branch, or cloud-test resource was
+    used.
+*/
