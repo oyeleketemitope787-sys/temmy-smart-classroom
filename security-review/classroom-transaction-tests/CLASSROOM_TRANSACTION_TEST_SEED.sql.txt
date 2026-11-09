@@ -1,0 +1,90 @@
+/*
+SYNTHETIC CLASSROOM TRANSACTION TEST DATA
+STATUS: REVIEW DRAFT. Run only after fixture schema installation in a fresh,
+disposable PostgreSQL database. Never run in Supabase or a shared database.
+
+This seed uses fixed UUIDs for repeatable assertions. It is intentionally
+one-time for a fresh fixture; duplicate execution should fail rather than
+silently mutate prior test state.
+*/
+
+BEGIN;
+
+INSERT INTO classroom_test.teacher_profiles(id, display_name)
+VALUES ('10000000-0000-4000-8000-000000000001', 'Synthetic Teacher A');
+
+INSERT INTO classroom_test.teacher_profiles(id, display_name)
+VALUES ('10000000-0000-4000-8000-000000000002', 'Synthetic Teacher B');
+
+INSERT INTO classroom_test.classes(id, teacher_id, name, active)
+VALUES
+ ('20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001', 'Synthetic Class A', true),
+ ('20000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000002', 'Synthetic Class B', true);
+
+INSERT INTO classroom_test.students(id, class_id, first_name, active)
+VALUES
+ ('30000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001', 'Student One', true),
+ ('30000000-0000-4000-8000-000000000002',
+  '20000000-0000-4000-8000-000000000001', 'Student Two', true),
+ ('30000000-0000-4000-8000-000000000003',
+  '20000000-0000-4000-8000-000000000001', 'Student Three', true),
+ ('30000000-0000-4000-8000-000000000004',
+  '20000000-0000-4000-8000-000000000002', 'Other Teacher Student', true);
+
+INSERT INTO classroom_test.class_activities(id, class_id, title, max_score, active)
+VALUES
+ ('40000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001', 'Synthetic Activity', 20, true);
+
+INSERT INTO classroom_test.student_activity_records
+  (id, activity_id, student_id, teacher_id, status, points_awarded, completed_at)
+VALUES
+ ('50000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'completed', 4, now());
+
+INSERT INTO classroom_test.point_transactions
+  (id, student_id, teacher_id, points, action_name, action_type, reason, source)
+VALUES
+ ('60000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  50, 'Synthetic opening balance', 'positive', 'Fixture seed', 'test'),
+ ('60000000-0000-4000-8000-000000000002',
+  '30000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000001',
+  5, 'Synthetic low balance', 'positive', 'Fixture seed', 'test'),
+ ('60000000-0000-4000-8000-000000000003',
+  '30000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000001',
+  50, 'Synthetic opening balance', 'positive', 'Fixture seed', 'test'),
+ ('60000000-0000-4000-8000-000000000004',
+  '30000000-0000-4000-8000-000000000004',
+  '10000000-0000-4000-8000-000000000002',
+  50, 'Synthetic opening balance', 'positive', 'Fixture seed', 'test');
+
+INSERT INTO classroom_test.marketplace_rewards
+  (id, teacher_id, name, description, price, active, stock)
+VALUES
+ ('70000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'Limited Reward', 'Finite stock test', 10, true, 2),
+ ('70000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000001',
+  'Unlimited Reward', 'NULL stock test', 5, true, NULL),
+ ('70000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000001',
+  'Empty Reward', 'Zero stock test', 5, true, 0),
+ ('70000000-0000-4000-8000-000000000004',
+  '10000000-0000-4000-8000-000000000001',
+  'Inactive Reward', 'Deactivated reward test', 5, false, 3),
+ ('70000000-0000-4000-8000-000000000005',
+  '10000000-0000-4000-8000-000000000002',
+  'Other Teacher Reward', 'Ownership boundary test', 5, true, 3);
+
+COMMIT;
