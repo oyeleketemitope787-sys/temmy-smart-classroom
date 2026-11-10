@@ -607,3 +607,27 @@ deno check \
 This confirms local Deno type/module checking completed for the two Gateway entrypoints. It is not a live Edge Function deployment or runtime test and does not verify database connectivity, RPC grants, CORS behaviour, HTTP status contracts, rate limiting, or transaction safety.
 
 No source files, database objects, secrets, or hosted configuration were modified by this check.
+
+
+## 21. Local Deno lint result (user-run, 2026-11-10)
+
+The user ran:
+
+```bash
+deno lint \
+  supabase/functions/game-result-gateway \
+  supabase/functions/student-access-gateway
+```
+
+**Observed result:** 8 files checked; 3 `no-unused-vars` findings.
+
+1. `student-access-gateway/index.ts:14` — `createClient` import unused.
+2. `student-access-gateway/index.ts:142` — `RPC_BY_ACTION` mapping unused.
+3. `game-result-gateway/scoring-contract.ts:123` — local `questionCount` unused.
+
+Assessment:
+- Findings 1 and 2 are expected in the current student-access scaffold: the service-client import and fixed RPC map are future implementation pieces, while the active handler intentionally has an unconditional 503 hard stop and executes no RPC. Do not enable the path merely to silence lint. Keep the hard stop.
+- Finding 3 is a redundant unused local variable and can be removed in a separately approved review-branch cleanup. It does not presently change execution because the contract validates the question count through the existing direct field checks.
+- The lint command exited with findings; lint is not clean at this checkpoint.
+
+No source changes were made in response to this lint output. Any lint cleanup must preserve the student Gateway's fail-closed behaviour. No deployment, SQL, grants, secrets, or hosted configuration changed.
