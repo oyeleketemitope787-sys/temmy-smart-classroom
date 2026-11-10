@@ -658,3 +658,28 @@ The formatter displayed style-only diffs across:
 The shown differences are formatting changes such as line wrapping, indentation and import layout. The command used `--check`, so it did not write changes.
 
 **Checkpoint outcome:** formatting check did not pass; 8 files need formatting. No source file was modified. Before a future formatting write, sync the local review branch with the newer report commits on origin and reconfirm branch/status. Any formatter write must remain on `security-review/student-login-hardening` and must preserve both Gateway fail-closed stops. No deployment, SQL, grants, secrets, or hosted configuration changed.
+
+
+## 23. Post-format verification (user-run, 2026-11-10)
+
+After Deno formatted the eight files identified in Checkpoint 22, the user reran all 34 pure unit tests and type-checked both Gateway entrypoints.
+
+Command:
+
+```bash
+deno test \
+  supabase/functions/game-result-gateway/validation_test.ts \
+  supabase/functions/game-result-gateway/scoring-contract_test.ts \
+  supabase/functions/game-result-gateway/question-generator_test.ts && \
+deno check \
+  supabase/functions/game-result-gateway/index.ts \
+  supabase/functions/student-access-gateway/index.ts
+```
+
+**Observed results:**
+- Unit tests: `ok | 34 passed | 0 failed (178ms)`.
+- Deno check: both `game-result-gateway/index.ts` and `student-access-gateway/index.ts` checked with no diagnostics/errors.
+
+This confirms that formatting preserved the existing tested pure-function behavior and both entrypoints still type-check. It does not provide database/HTTP/Edge runtime/concurrency or deployed-configuration evidence.
+
+The formatting changes remain local and uncommitted at this point. No database, secret, deployment or hosted configuration was changed.
