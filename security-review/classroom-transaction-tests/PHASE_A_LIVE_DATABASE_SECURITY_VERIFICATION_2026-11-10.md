@@ -298,3 +298,41 @@ Recommended sequence:
 - [Creating API Routes](https://supabase.com/docs/guides/api/creating-routes) — Postgres grants determine whether objects are accessible through the Data API.
 - [Securing your API](https://supabase.com/docs/guides/api/securing-your-api) — grants and RLS are separate access-control layers; default privileges and API pre-request checks.
 - [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) — RLS policies control rows, while grants control access to the object.
+
+
+## 13. Follow-up verification — global and schema-specific default privileges (2026-11-10)
+
+A complete `pg_default_acl` inventory was subsequently run, including both global and schema-specific rows. The result contained **no global (`defaclnamespace = 0`) default-privilege rows**. All returned rows were schema-specific.
+
+PostgreSQL's built-in default for newly created functions grants EXECUTE to `PUBLIC`. PostgreSQL documents that per-schema default privileges are additive to global defaults and cannot revoke privileges granted globally. Therefore, the absence of a global default-privilege override means the built-in PUBLIC EXECUTE default remains in effect for future functions, subject to the effective current role and creation context.
+
+Specific implications from the returned rows:
+
+- For functions created by `postgres` in `public`, the schema-specific default ACL shown grants EXECUTE to the owner. It does not remove the built-in global PUBLIC EXECUTE default.
+- For functions created by `supabase_admin` in `public`, the schema-specific default ACL additionally grants EXECUTE to `anon`, `authenticated`, and `service_role`; the global PUBLIC EXECUTE default also remains.
+- For tables created by `supabase_admin` in `public`, the schema-specific defaults grant broad table privileges to `anon`, `authenticated`, and `service_role`.
+- For tables created by `postgres` in `public`, the schema-specific defaults shown do not grant SELECT/INSERT/UPDATE/DELETE to `anon` or `authenticated`; they do include REFERENCES/TRIGGER/MAINTAIN for those roles and TRUNCATE/REFERENCES/TRIGGER/MAINTAIN for `service_role`.
+- Additional broad defaults were observed for selected Supabase-managed schemas (including `storage`, `graphql`, and `graphql_public`). These are schema-specific and should be treated in the context of each schema's purpose and actual exposure.
+
+These defaults affect future objects created by the relevant owner; they do not retroactively change existing classroom object grants. Existing routine ACLs still require per-function inspection to distinguish explicitly granted roles from PUBLIC. The existing Data API dashboard/ACL reachability discrepancy remains open.
+
+**Risk update:** Treat future routine creation in `public` by `postgres` or `supabase_admin` as requiring explicit privilege review. Before creating a privileged function, ensure the intended EXECUTE audience is explicitly established and unwanted PUBLIC access is removed as part of the same controlled creation transaction or approved migration. For future tables created by `supabase_admin` in `public`, broad default grants require particular caution.
+
+This is a read-only finding. No default privileges were altered.
+
+Official PostgreSQL references:
+- [ALTER DEFAULT PRIVILEGES — PostgreSQL current documentation](https://www.postgresql.org/docs/current/sql-alterdefaultprivileges.html)
+- [Privileges — PostgreSQL current documentation](https://www.postgresql.org/docs/current/ddl-priv.html)
+
+## 14. Revised remaining Phase A tasks
+
+The global and schema-specific default-privilege inventory is now complete. The following items remain:
+
+1. Reconcile Data API dashboard counts against actual PostgREST route behaviour using a harmless invalid-code, read-only RPC test.
+2. Complete the truncated column inventory for `student_game_sessions` and any other missing column output.
+3. Complete the browser/application caller map on the review branch, including every direct `.from()` and `.rpc()` operation and every writer of point ledger and activity score fields.
+4. Recheck the Edge Functions dashboard immediately before implementation planning.
+5. Inspect effective per-function ACLs for all 20 function inventory entries, explicitly identifying `PUBLIC` grants separately from grants to `anon`, `authenticated`, and `service_role`.
+6. Record the final table/function privilege evidence in a per-object matrix.
+
+No production SQL execution, migrations, grants/revokes, code deployment, Edge Function deployment, or application changes are authorized by this report.
