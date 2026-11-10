@@ -54,9 +54,11 @@ function validSessionAndRule(
   value: Record<string, unknown>,
   catalogue: Readonly<Record<string, GameScoringRule>>,
 ): GameScoringRule | null {
-  if (typeof value.session_token !== "string" ||
-      !UUID_PATTERN.test(value.session_token) ||
-      typeof value.game_id !== "string") {
+  if (
+    typeof value.session_token !== "string" ||
+    !UUID_PATTERN.test(value.session_token) ||
+    typeof value.game_id !== "string"
+  ) {
     return null;
   }
   if (!Object.prototype.hasOwnProperty.call(catalogue, value.game_id)) {
@@ -97,13 +99,15 @@ export function validateResultRequest(
   }
 
   if (value.action === "submit_answer") {
-    if (!hasExactKeys(value, [
-      "action",
-      "session_token",
-      "game_id",
-      "question_index",
-      "choice_index",
-    ])) {
+    if (
+      !hasExactKeys(value, [
+        "action",
+        "session_token",
+        "game_id",
+        "question_index",
+        "choice_index",
+      ])
+    ) {
       return { ok: false };
     }
 
@@ -112,12 +116,14 @@ export function validateResultRequest(
 
     const questionIndex = value.question_index;
     const choiceIndex = value.choice_index;
-    if (!Number.isInteger(questionIndex) ||
-        (questionIndex as number) < 0 ||
-        (questionIndex as number) >= rule.questionCount ||
-        !Number.isInteger(choiceIndex) ||
-        (choiceIndex as number) < 0 ||
-        (choiceIndex as number) > 3) {
+    if (
+      !Number.isInteger(questionIndex) ||
+      (questionIndex as number) < 0 ||
+      (questionIndex as number) >= rule.questionCount ||
+      !Number.isInteger(choiceIndex) ||
+      (choiceIndex as number) < 0 ||
+      (choiceIndex as number) > 3
+    ) {
       return { ok: false };
     }
 

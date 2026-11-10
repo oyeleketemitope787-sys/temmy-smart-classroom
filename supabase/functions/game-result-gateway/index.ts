@@ -62,7 +62,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function disabledResponse(origin: string | null): Response {
   return jsonResponse(
     503,
-    { error: "Game scoring is disabled pending approved deployment and verification." },
+    {
+      error:
+        "Game scoring is disabled pending approved deployment and verification.",
+    },
     origin,
   );
 }
@@ -83,7 +86,11 @@ Deno.serve(async (req: Request) => {
   if (origin && !ALLOWED_ORIGINS.has(origin)) {
     return jsonResponse(403, { error: "Request not permitted." }, origin);
   }
-  if (!req.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+  if (
+    !req.headers.get("content-type")?.toLowerCase().startsWith(
+      "application/json",
+    )
+  ) {
     return jsonResponse(415, { error: "Unsupported content type." }, origin);
   }
 
@@ -116,8 +123,10 @@ Deno.serve(async (req: Request) => {
 
   // Default-deny feature gate. There is intentionally no RPC call before both
   // flags are explicitly set in the server environment.
-  if (Deno.env.get("GAME_RESULT_GATEWAY_READY") !== "true" ||
-      Deno.env.get("GAME_RESULT_WRITE_ENABLED") !== "true") {
+  if (
+    Deno.env.get("GAME_RESULT_GATEWAY_READY") !== "true" ||
+    Deno.env.get("GAME_RESULT_WRITE_ENABLED") !== "true"
+  ) {
     return disabledResponse(origin);
   }
 
@@ -136,13 +145,17 @@ Deno.serve(async (req: Request) => {
   if (checked.request.action === "start_attempt") {
     const rule = GAME_SCORING_CATALOGUE[checked.request.game_id];
     if (!rule) {
-      return jsonResponse(400, { error: "This game is not registered for central scoring." }, origin);
+      return jsonResponse(400, {
+        error: "This game is not registered for central scoring.",
+      }, origin);
     }
 
     // A generator must be explicitly implemented for every registered game.
     // Only Number Challenge is wired in this review version.
     if (checked.request.game_id !== "grade3-temmy-number-challenge") {
-      return jsonResponse(503, { error: "Question generation is not configured for this game." }, origin);
+      return jsonResponse(503, {
+        error: "Question generation is not configured for this game.",
+      }, origin);
     }
 
     const questions = generateNumberChallengeQuestions();
@@ -166,8 +179,12 @@ Deno.serve(async (req: Request) => {
   }
 
   // Never include the raw Postgres error or request token in browser responses.
-  if (rpcResult.error || !isRecord(rpcResult.data) || rpcResult.data.ok !== true) {
-    return jsonResponse(400, { error: "The game request could not be completed." }, origin);
+  if (
+    rpcResult.error || !isRecord(rpcResult.data) || rpcResult.data.ok !== true
+  ) {
+    return jsonResponse(400, {
+      error: "The game request could not be completed.",
+    }, origin);
   }
 
   const result = rpcResult.data;
@@ -190,12 +207,14 @@ Deno.serve(async (req: Request) => {
       checked.request.game_id,
       validated.score,
     );
-    if (!verified.ok ||
-        verified.result.score !== validated.score ||
-        verified.result.max_score !== validated.maxScore ||
-        verified.result.points_awarded !== validated.score ||
-        result.points_awarded !== verified.result.points_awarded ||
-        result.score_rule_version !== verified.result.score_rule_version) {
+    if (
+      !verified.ok ||
+      verified.result.score !== validated.score ||
+      verified.result.max_score !== validated.maxScore ||
+      verified.result.points_awarded !== validated.score ||
+      result.points_awarded !== verified.result.points_awarded ||
+      result.score_rule_version !== verified.result.score_rule_version
+    ) {
       // A database/code catalogue mismatch is fail-closed; never rewrite score.
       return disabledResponse(origin);
     }

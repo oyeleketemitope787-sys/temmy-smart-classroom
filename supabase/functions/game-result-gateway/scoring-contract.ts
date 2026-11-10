@@ -73,7 +73,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function hasExactKeys(value: Record<string, unknown>, allowed: string[]): boolean {
+function hasExactKeys(
+  value: Record<string, unknown>,
+  allowed: string[],
+): boolean {
   return Object.keys(value).every((key) => allowed.includes(key)) &&
     allowed.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
@@ -98,18 +101,22 @@ export function validateCentralAttemptResponse(
   }
 
   const mode = value.mode;
-  if (typeof mode !== "string" ||
-      !(GAME_MODES as readonly string[]).includes(mode)) {
+  if (
+    typeof mode !== "string" ||
+    !(GAME_MODES as readonly string[]).includes(mode)
+  ) {
     return { ok: false, reason: "invalid_response" };
   }
   if (requestedMode !== undefined && mode !== requestedMode) {
     return { ok: false, reason: "catalogue_mismatch" };
   }
 
-  if (value.game_id !== rule.gameId ||
-      value.max_score !== rule.maxScore ||
-      value.question_count !== rule.questionCount ||
-      value.score_rule_version !== rule.ruleVersion) {
+  if (
+    value.game_id !== rule.gameId ||
+    value.max_score !== rule.maxScore ||
+    value.question_count !== rule.questionCount ||
+    value.score_rule_version !== rule.ruleVersion
+  ) {
     return { ok: false, reason: "catalogue_mismatch" };
   }
 
@@ -120,59 +127,73 @@ export function validateCentralAttemptResponse(
 
   const score = value.score;
   const questionsAnswered = value.questions_answered;
-  const questionCount = value.question_count;
   const correctCount = value.correct_count;
   const livesRemaining = value.lives_remaining;
 
-  if (!Number.isSafeInteger(score) ||
-      (score as number) < 0 ||
-      (score as number) > rule.maxScore ||
-      !Number.isSafeInteger(questionsAnswered) ||
-      (questionsAnswered as number) < 0 ||
-      (questionsAnswered as number) > rule.questionCount ||
-      !Number.isSafeInteger(correctCount) ||
-      (correctCount as number) < 0 ||
-      (correctCount as number) > (questionsAnswered as number) ||
-      !Number.isSafeInteger(livesRemaining) ||
-      (livesRemaining as number) < 0 ||
-      (livesRemaining as number) > 3) {
+  if (
+    !Number.isSafeInteger(score) ||
+    (score as number) < 0 ||
+    (score as number) > rule.maxScore ||
+    !Number.isSafeInteger(questionsAnswered) ||
+    (questionsAnswered as number) < 0 ||
+    (questionsAnswered as number) > rule.questionCount ||
+    !Number.isSafeInteger(correctCount) ||
+    (correctCount as number) < 0 ||
+    (correctCount as number) > (questionsAnswered as number) ||
+    !Number.isSafeInteger(livesRemaining) ||
+    (livesRemaining as number) < 0 ||
+    (livesRemaining as number) > 3
+  ) {
     return { ok: false, reason: "invalid_progress" };
   }
 
-  if ((mode !== "challenge" && (livesRemaining as number) !== 3) ||
-      (status === "in_progress" &&
-        ((questionsAnswered as number) >= rule.questionCount ||
-         (mode === "challenge" && (livesRemaining as number) === 0)))) {
+  if (
+    (mode !== "challenge" && (livesRemaining as number) !== 3) ||
+    (status === "in_progress" &&
+      ((questionsAnswered as number) >= rule.questionCount ||
+        (mode === "challenge" && (livesRemaining as number) === 0)))
+  ) {
     return { ok: false, reason: "invalid_progress" };
   }
 
   if (status === "completed") {
     const finishedAllQuestions = questionsAnswered === rule.questionCount;
     const challengeRanOutOfLives = mode === "challenge" && livesRemaining === 0;
-    if (value.points_awarded !== score ||
-        questionsAnswered === 0 ||
-        (!finishedAllQuestions && !challengeRanOutOfLives)) {
+    if (
+      value.points_awarded !== score ||
+      questionsAnswered === 0 ||
+      (!finishedAllQuestions && !challengeRanOutOfLives)
+    ) {
       return { ok: false, reason: "invalid_completion" };
     }
   } else {
-    if (Object.prototype.hasOwnProperty.call(value, "points_awarded") &&
-        value.points_awarded !== null) {
+    if (
+      Object.prototype.hasOwnProperty.call(value, "points_awarded") &&
+      value.points_awarded !== null
+    ) {
       return { ok: false, reason: "invalid_completion" };
     }
 
     const question = value.question;
-    if (!isRecord(question) ||
-        !hasExactKeys(question, ["question_index", "prompt", "options", "hint"]) ||
-        question.question_index !== questionsAnswered ||
-        typeof question.prompt !== "string" ||
-        question.prompt.trim().length < 1 ||
-        question.prompt.length > 1000 ||
-        !Array.isArray(question.options) ||
-        question.options.length !== 4 ||
-        question.options.some((option) => typeof option !== "string") ||
-        new Set(question.options).size !== 4 ||
-        !(question.hint === null ||
-          (typeof question.hint === "string" && question.hint.length <= 500))) {
+    if (
+      !isRecord(question) ||
+      !hasExactKeys(question, [
+        "question_index",
+        "prompt",
+        "options",
+        "hint",
+      ]) ||
+      question.question_index !== questionsAnswered ||
+      typeof question.prompt !== "string" ||
+      question.prompt.trim().length < 1 ||
+      question.prompt.length > 1000 ||
+      !Array.isArray(question.options) ||
+      question.options.length !== 4 ||
+      question.options.some((option) => typeof option !== "string") ||
+      new Set(question.options).size !== 4 ||
+      !(question.hint === null ||
+        (typeof question.hint === "string" && question.hint.length <= 500))
+    ) {
       return { ok: false, reason: "invalid_question" };
     }
   }
@@ -224,9 +245,11 @@ export function buildVerifiedScoreResult(
   const rule = catalogue[gameId];
   if (!rule) return { ok: false, reason: "unknown_game" };
 
-  if (typeof verifiedScore !== "number" ||
-      !Number.isSafeInteger(verifiedScore) ||
-      verifiedScore < 0) {
+  if (
+    typeof verifiedScore !== "number" ||
+    !Number.isSafeInteger(verifiedScore) ||
+    verifiedScore < 0
+  ) {
     return { ok: false, reason: "invalid_score" };
   }
 
@@ -257,10 +280,15 @@ export function scoreNumberChallengeAnswer(args: {
   currentStreak: number;
 }): { pointsDelta: number; nextStreak: number } {
   const { questionIndex, isCorrect, currentStreak } = args;
-  if (!Number.isInteger(questionIndex) || questionIndex < 0 || questionIndex >= 15) {
+  if (
+    !Number.isInteger(questionIndex) || questionIndex < 0 || questionIndex >= 15
+  ) {
     throw new RangeError("questionIndex must be between 0 and 14");
   }
-  if (!Number.isInteger(currentStreak) || currentStreak < 0 || currentStreak > questionIndex) {
+  if (
+    !Number.isInteger(currentStreak) || currentStreak < 0 ||
+    currentStreak > questionIndex
+  ) {
     throw new RangeError("currentStreak is outside the valid attempt range");
   }
 

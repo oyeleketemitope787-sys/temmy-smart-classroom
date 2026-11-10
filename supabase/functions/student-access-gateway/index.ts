@@ -49,7 +49,8 @@ const corsHeaders = (origin: string | null) => {
     "Vary": "Origin",
     ...(permitted ? { "Access-Control-Allow-Origin": origin } : {}),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+    "Access-Control-Allow-Headers":
+      "authorization, apikey, content-type, x-client-info",
     "Access-Control-Max-Age": "600",
   };
 };
@@ -88,11 +89,23 @@ function validate(body: RequestBody):
     case "login":
       return { ok: true, action: "login", args: { p_access_code: code } };
     case "point_history":
-      return { ok: true, action: "point_history", args: { p_access_code: code } };
+      return {
+        ok: true,
+        action: "point_history",
+        args: { p_access_code: code },
+      };
     case "live_activities":
-      return { ok: true, action: "live_activities", args: { p_access_code: code } };
+      return {
+        ok: true,
+        action: "live_activities",
+        args: { p_access_code: code },
+      };
     case "game_sessions":
-      return { ok: true, action: "game_sessions", args: { p_access_code: code } };
+      return {
+        ok: true,
+        action: "game_sessions",
+        args: { p_access_code: code },
+      };
     case "messages":
       return { ok: true, action: "messages", args: { p_access_code: code } };
     case "mark_messages_read":
@@ -110,8 +123,10 @@ function validate(body: RequestBody):
         args: { p_access_code: code, p_message: body.message },
       };
     case "submit_activity":
-      if (typeof body.activity_id !== "string" ||
-          !UUID_PATTERN.test(body.activity_id)) return { ok: false };
+      if (
+        typeof body.activity_id !== "string" ||
+        !UUID_PATTERN.test(body.activity_id)
+      ) return { ok: false };
       if (typeof body.answer !== "string" || body.answer.length > 10000) {
         return { ok: false };
       }
@@ -167,7 +182,11 @@ Deno.serve(async (req: Request) => {
   if (origin && !ALLOWED_ORIGINS.has(origin)) {
     return jsonResponse(403, { error: "Request not permitted." }, origin);
   }
-  if (!req.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+  if (
+    !req.headers.get("content-type")?.toLowerCase().startsWith(
+      "application/json",
+    )
+  ) {
     return jsonResponse(415, { error: "Unsupported content type." }, origin);
   }
 
@@ -209,12 +228,16 @@ Deno.serve(async (req: Request) => {
    * the RPC below. This scaffold intentionally does not execute an RPC.
    */
   if (Deno.env.get("STUDENT_ACCESS_GATEWAY_READY") !== "true") {
-    return jsonResponse(503, { error: "Student access is temporarily unavailable." }, origin);
+    return jsonResponse(503, {
+      error: "Student access is temporarily unavailable.",
+    }, origin);
   }
 
   // A second hard stop prevents accidental RPC access before the rate limiter
   // is implemented and reviewed. Remove only as part of a reviewed completion.
-  return jsonResponse(503, { error: "Student access is temporarily unavailable." }, origin);
+  return jsonResponse(503, {
+    error: "Student access is temporarily unavailable.",
+  }, origin);
 
   // Planned implementation (deliberately unreachable until reviewed):
   // const url = Deno.env.get("SUPABASE_URL");

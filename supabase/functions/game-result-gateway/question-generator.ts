@@ -17,7 +17,9 @@ type RandomSource = () => number;
 
 function randomInt(random: RandomSource, min: number, max: number): number {
   const value = random();
-  const safe = Number.isFinite(value) ? Math.min(Math.max(value, 0), 0.999999999) : 0;
+  const safe = Number.isFinite(value)
+    ? Math.min(Math.max(value, 0), 0.999999999)
+    : 0;
   return min + Math.floor(safe * (max - min + 1));
 }
 
@@ -76,7 +78,10 @@ function withCorrect(
   };
 }
 
-function comparison(questionIndex: number, random: RandomSource): GeneratedQuestion {
+function comparison(
+  questionIndex: number,
+  random: RandomSource,
+): GeneratedQuestion {
   const pair = uniqueNumbers(random, 20, 999, 2);
   const a = pair[0], b = pair[1];
   const correct = a < b ? "<" : ">";
@@ -119,15 +124,21 @@ function orderedList(
 
   return withCorrect(
     questionIndex,
-    (descending ? "Greatest → Smallest: " : "Smallest → Greatest: ") + values.join(", "),
+    (descending ? "Greatest → Smallest: " : "Smallest → Greatest: ") +
+      values.join(", "),
     correct,
     [...candidates],
-    descending ? "Start with the greatest number." : "Start with the smallest number.",
+    descending
+      ? "Start with the greatest number."
+      : "Start with the smallest number.",
     random,
   );
 }
 
-function closestNumber(questionIndex: number, random: RandomSource): GeneratedQuestion {
+function closestNumber(
+  questionIndex: number,
+  random: RandomSource,
+): GeneratedQuestion {
   const target = randomInt(random, 120, 880);
   const delta = randomInt(random, 1, 8) * (random() < 0.5 ? -1 : 1);
   const correct = target + delta;
@@ -171,7 +182,10 @@ function inequality(
   );
 }
 
-function numberLessThan(questionIndex: number, random: RandomSource): GeneratedQuestion {
+function numberLessThan(
+  questionIndex: number,
+  random: RandomSource,
+): GeneratedQuestion {
   const target = randomInt(random, 150, 850);
   const correct = target + randomInt(random, 1, 80);
   return withCorrect(
@@ -184,7 +198,10 @@ function numberLessThan(questionIndex: number, random: RandomSource): GeneratedQ
   );
 }
 
-function betweenNumbers(questionIndex: number, random: RandomSource): GeneratedQuestion {
+function betweenNumbers(
+  questionIndex: number,
+  random: RandomSource,
+): GeneratedQuestion {
   const lower = randomInt(random, 120, 500);
   const gap = randomInt(random, 40, 160);
   const upper = lower + gap;
@@ -204,7 +221,10 @@ function betweenNumbers(questionIndex: number, random: RandomSource): GeneratedQ
   );
 }
 
-function trueComparison(questionIndex: number, random: RandomSource): GeneratedQuestion {
+function trueComparison(
+  questionIndex: number,
+  random: RandomSource,
+): GeneratedQuestion {
   const pair = uniqueNumbers(random, 100, 999, 2);
   const low = Math.min(pair[0], pair[1]);
   const high = Math.max(pair[0], pair[1]);
@@ -222,7 +242,10 @@ function trueComparison(questionIndex: number, random: RandomSource): GeneratedQ
   );
 }
 
-function placeValueReasoning(questionIndex: number, random: RandomSource): GeneratedQuestion {
+function placeValueReasoning(
+  questionIndex: number,
+  random: RandomSource,
+): GeneratedQuestion {
   const hundreds = randomInt(random, 1, 8);
   const tens = randomInt(random, 1, 7);
   const aOnes = randomInt(random, 5, 9);
@@ -232,7 +255,8 @@ function placeValueReasoning(questionIndex: number, random: RandomSource): Gener
 
   return withCorrect(
     questionIndex,
-    "A pupil says " + a + " > " + b + " because " + aOnes + " > " + bOnes + ". Is the pupil correct?",
+    "A pupil says " + a + " > " + b + " because " + aOnes + " > " + bOnes +
+      ". Is the pupil correct?",
     "No",
     ["Yes", "Sometimes", "Cannot tell"],
     "Compare hundreds first, then tens, then ones.",
@@ -240,7 +264,10 @@ function placeValueReasoning(questionIndex: number, random: RandomSource): Gener
   );
 }
 
-function greatestNumber(questionIndex: number, random: RandomSource): GeneratedQuestion {
+function greatestNumber(
+  questionIndex: number,
+  random: RandomSource,
+): GeneratedQuestion {
   const values = uniqueNumbers(random, 100, 999, 4);
   const correct = String(Math.max(...values));
   return withCorrect(

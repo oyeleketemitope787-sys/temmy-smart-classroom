@@ -29,7 +29,10 @@ Deno.test("accepts all documented Number Challenge modes", () => {
     });
     assert(result.ok, "expected mode to be accepted: " + mode);
     if (result.ok) {
-      assert(result.request.action === "start_attempt", "expected start action");
+      assert(
+        result.request.action === "start_attempt",
+        "expected start action",
+      );
       assert(result.request.mode === mode, "selected mode should be preserved");
     }
   }
@@ -44,7 +47,10 @@ Deno.test("accepts one valid answer submission", () => {
     choice_index: 1,
   });
   assert(result.ok, "expected a valid answer request");
-  assert(result.request.action === "submit_answer", "expected submit-answer action");
+  assert(
+    result.request.action === "submit_answer",
+    "expected submit-answer action",
+  );
 });
 
 Deno.test("rejects client-supplied score fields", () => {
@@ -111,7 +117,10 @@ Deno.test("rejects inherited object property names as game IDs", () => {
       game_id: candidate,
       mode: "practice",
     });
-    assert(!result.ok, "non-catalogue property name must not be accepted: " + candidate);
+    assert(
+      !result.ok,
+      "non-catalogue property name must not be accepted: " + candidate,
+    );
   }
 });
 
@@ -182,7 +191,6 @@ Deno.test("rejects unknown actions and unexpected nested fields", () => {
   assert(!nested.ok, "unexpected fields must be rejected");
 });
 
-
 Deno.test("supports a separately registered 20-question game", () => {
   const catalogue: Readonly<Record<string, GameScoringRule>> = {
     "test-game-out-of-20": {
@@ -208,7 +216,10 @@ Deno.test("supports a separately registered 20-question game", () => {
     choice_index: 3,
   }, catalogue);
   assert(start.ok, "the registered 20-question game should be accepted");
-  assert(lastAnswer.ok, "question index 19 should be valid for a 20-question game");
+  assert(
+    lastAnswer.ok,
+    "question index 19 should be valid for a 20-question game",
+  );
 });
 
 Deno.test("rejects question indexes beyond that game's configured count", () => {
@@ -229,5 +240,8 @@ Deno.test("rejects question indexes beyond that game's configured count", () => 
     question_index: 20,
     choice_index: 0,
   }, catalogue);
-  assert(!result.ok, "question index 20 should be invalid for a 20-question game");
+  assert(
+    !result.ok,
+    "question index 20 should be invalid for a 20-question game",
+  );
 });
