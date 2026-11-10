@@ -336,3 +336,28 @@ The global and schema-specific default-privilege inventory is now complete. The 
 6. Record the final table/function privilege evidence in a per-object matrix.
 
 No production SQL execution, migrations, grants/revokes, code deployment, Edge Function deployment, or application changes are authorized by this report.
+
+
+## 15. Follow-up verification — effective per-function EXECUTE ACLs (2026-11-10)
+
+The `aclexplode(COALESCE(proacl, acldefault(...)))` inventory was run for the 20 public function catalog rows. It confirms the following explicit PUBLIC EXECUTE grants:
+
+- `get_student_game_sessions(text)`
+- `get_student_live_activities(text)`
+- `record_student_game_result(uuid,text,text,integer,integer)`
+- `start_student_game_session(text,text)`
+- `rls_auto_enable()`
+
+The first four are ordinary application functions and have effective EXECUTE for `anon`, `authenticated`, and `service_role` as reflected by `has_function_privilege`. Of these, the game-result function directly accepts client-supplied score, maximum score and game name; this compounds the previously identified score-trust weakness.
+
+The following student-facing functions show explicit EXECUTE grants to `anon` and `authenticated` (not a separate PUBLIC grant in the returned expanded ACL rows): `get_student_messages(text)`, `get_student_point_history(text)`, `mark_student_messages_read(text)`, `send_student_message(text,text)`, `student_portal_login(text)`, and `submit_student_activity(text,uuid,text)`.
+
+Other listed teacher functions show EXECUTE for `authenticated`, with no anonymous EXECUTE in the effective privilege columns: `generate_student_access_code(uuid)`, `get_teacher_messages()`, `get_teacher_student_code_status(uuid)`, `mark_teacher_messages_read(uuid)`, `purchase_marketplace_reward(uuid,uuid,uuid[])`, `record_student_punctuality(uuid,uuid[],text,integer,date)`, `send_teacher_message(uuid,text)`, `start_teacher_game_session(uuid,text)`, and `verify_student_access_code(text)`.
+
+**Important event-trigger distinction:** `rls_auto_enable()` is a PostgreSQL event-trigger function returning `event_trigger`, attached to the enabled `ensure_rls` DDL event trigger. Its PUBLIC EXECUTE ACL must not be described as an ordinary PostgREST-callable application RPC. PostgreSQL restricts invocation of event-trigger functions to the event-trigger mechanism. Keep it in the database privilege inventory, but classify it separately from callable application functions.
+
+The ACL output includes owner EXECUTE entries and non-grantable grantee entries. The explicit PUBLIC grants on the four ordinary functions above are material. In addition, the functions with explicit `anon` grants are anonymously executable irrespective of whether an additional PUBLIC ACL row is present.
+
+**Security implication:** PUBLIC EXECUTE is broader than granting only `anon` and `authenticated` and should not be used as the default for future privileged application functions. The ordinary SECURITY DEFINER functions with PUBLIC or anon EXECUTE are particularly sensitive because they run as `postgres`, a role with BYPASSRLS. Actual HTTP/PostgREST route exposure remains to be independently verified because the dashboard exposure counts and runtime route configuration have not yet been reconciled.
+
+This is a catalog-only verification. No function ACLs were altered.
