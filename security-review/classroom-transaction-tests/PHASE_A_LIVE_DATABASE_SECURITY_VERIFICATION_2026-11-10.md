@@ -386,3 +386,91 @@ Security implications and design considerations:
 - Add indexes only after query-plan and workload review.
 
 This completes the outstanding truncated column inventory for `student_game_sessions`. No data or schema changes were made.
+
+
+## 17. Follow-up verification — browser caller inventory in review-branch index.html (2026-11-10)
+
+A full source scan was performed on `index.html` at review branch `security-review/student-login-hardening` (blob SHA `9fc70a0ae617472904e0b96910940adab4553df9`, header version V8.9.2). The scan covered the complete file and searched for Supabase `.rpc()`, `.from()` data operations, writes (`.insert()`, `.update()`, `.delete()`, `.upsert()`), Edge Function invocation patterns, and direct fetch/function endpoint patterns.
+
+**Source-scope caveat:** this is the review-branch browser source, not proof of the exact deployed `main` HTML bundle. The dashboard view previously showed `main` / `PRODUCTION`. Do not assume this caller map is identical to the deployed production artifact until the deployed source/build is independently matched.
+
+### 17.1 Direct browser table reads
+
+The review-branch `index.html` reads these tables directly through the Supabase client:
+
+- `classes` — teacher's active classes.
+- `students` — students for each class.
+- `point_transactions` — teacher point totals/history and per-student transaction history.
+- `groups` and `group_members` — groups and memberships.
+- `class_activities` — teacher's activities.
+- `student_activity_records` — activity submissions and grading details.
+- `marketplace_rewards` — active teacher rewards.
+- `purchases` — purchase history.
+- `teacher_profiles` — teacher profile read.
+
+### 17.2 Direct browser table writes
+
+The review-branch browser code directly performs the following table writes:
+
+- `students`: INSERT when adding a student; UPDATE first/last name; UPDATE `active=false` when deactivating a student.
+- `classes`: INSERT when creating a class.
+- `groups`: INSERT, UPDATE, DELETE for group management.
+- `group_members`: DELETE current group membership, then INSERT selected membership rows.
+- `class_activities`: INSERT draft; UPDATE status to live/closed; DELETE activity.
+- `student_activity_records`: UPDATE status, score/points_awarded, completed_at and notes during grading; a second UPDATE attempts to restore previous score fields if the subsequent point transaction INSERT fails.
+- `point_transactions`: direct INSERT for teacher award/deduction batch operations; direct INSERT for undo rows; direct INSERT for activity score deltas.
+- `marketplace_rewards`: INSERT reward; DELETE reward.
+- `teacher_profiles`: UPSERT teacher profile.
+
+The direct point-ledger INSERT paths are particularly important. The teacher award/deduction UI constructs ledger rows in the browser and inserts them directly. Undo also constructs reversal-like ledger rows in the browser and inserts them directly. These paths do not use the approved full reversal linkage/idempotency workflow.
+
+The activity grading workflow performs the protected activity-record UPDATE first and then separately INSERTs the corresponding point transaction. If the ledger insert fails, it attempts a compensating UPDATE to restore the record. This is not atomic: the compensating UPDATE can itself fail, and there is an interval in which the activity record has changed without its ledger delta. This confirms the need to replace both operations with one trusted atomic transaction function.
+
+### 17.3 RPC callers found in review-branch index.html
+
+Teacher-facing RPC calls:
+- `get_teacher_messages()`
+- `mark_teacher_messages_read(p_student_id)`
+- `send_teacher_message(p_student_id, p_message)`
+- `generate_student_access_code(p_student_id)`
+- `record_student_punctuality(p_class_id, p_student_ids, p_status, p_points, p_punctuality_date)`
+- `start_teacher_game_session(p_student_id, p_game_id)`
+- `purchase_marketplace_reward(p_request_id, p_reward_id, p_student_ids)`
+
+Student-facing RPC calls:
+- `student_portal_login(p_access_code)`
+- `get_student_live_activities(p_access_code)`
+- `submit_student_activity(p_access_code, p_activity_id, p_answer)`
+- `get_student_messages(p_access_code)`
+- `mark_student_messages_read(p_access_code)`
+- `send_student_message(p_access_code, p_message)`
+- `get_student_point_history(p_access_code)`
+- `get_student_game_sessions(p_access_code)`
+
+### 17.4 Functions in the database inventory with no direct call found in index.html
+
+The following functions were not found as direct `.rpc()` calls in this reviewed HTML file:
+- `get_teacher_student_code_status`
+- `verify_student_access_code` (used internally by other database functions)
+- `start_student_game_session` (may be called by a separate game/client artifact)
+- `record_student_game_result` (may be called by a separate game/client artifact)
+- `rls_auto_enable` (DDL event-trigger function, not an ordinary client RPC)
+
+Absence from this one browser file does not establish that no other client, external game application, Edge Function, scheduled process, or administrative tool invokes these functions. Complete repository-wide and deployed-caller inventory remains required.
+
+### 17.5 Edge Function and raw endpoint search
+
+No `supabaseClient.functions.invoke()`, `/functions/v1/` endpoint, or direct `fetch()`-based Edge Function call was found in this reviewed `index.html`. This is consistent with the earlier Edge Functions dashboard screenshot showing no deployed functions in the selected project/branch view, but it does not establish that no other deployed client or endpoint exists.
+
+### 17.6 Required caller-migration implications
+
+Before any grant changes, the following direct browser write paths must be mapped to approved trusted replacements:
+1. Point awards/deductions → trusted award/deduction transaction operation enforcing the system-wide 20-point cap, deduction clamp, idempotency, and audit.
+2. Undo → linked full compensating reversal, at most once, with no partial reversal or negative balance.
+3. Activity grading → one atomic operation updating activity score and ledger delta with the approved clamp/zero-delta policy.
+4. Punctuality → trusted operation enforcing the 20-point cap, balance-safe adjustment, approved locking and idempotency.
+5. Marketplace → per-student independent purchase outcomes, atomic purchase/debit/finite-stock decrement, and durable outcome/audit semantics.
+6. Other mutable classroom tables → preserve legitimate teacher workflows while narrowing direct grants/column updates as appropriate.
+7. Teacher profile/group/class/activity/student management → inventory and preserve intended CRUD capabilities while strengthening ownership and transition validation.
+
+This scan is a review-only source analysis. No browser code, grants, RLS policies, database functions, or deployments were changed.
