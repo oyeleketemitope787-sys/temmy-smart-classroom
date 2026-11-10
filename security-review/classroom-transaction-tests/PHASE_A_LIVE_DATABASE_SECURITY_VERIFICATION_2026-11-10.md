@@ -696,3 +696,20 @@ The user reran Deno lint after formatting all eight Gateway files.
 3. `student-access-gateway/index.ts:157` — unused `RPC_BY_ACTION` map. Intentionally retained with the same inactive scaffold; do not activate RPC execution to silence lint.
 
 The two student Gateway findings are expected scaffolding artifacts and should remain until a complete, separately reviewed implementation is ready. The only proposed code cleanup at this stage is deletion of the redundant `questionCount` local; no code has yet been changed in response to this lint run.
+
+
+## 25. Narrow lint cleanup result (user-run, 2026-11-10)
+
+The user removed only the redundant local declaration `const questionCount = value.question_count;` from `game-result-gateway/scoring-contract.ts`. The complete diff was inspected. All other differences in that file were the previously approved Deno formatting output; validation still compares `value.question_count` directly with `rule.questionCount`.
+
+The user reran Deno lint across both Gateway folders.
+
+**Observed result:** 8 files checked; findings reduced from 3 to 2.
+
+Remaining expected scaffold-only findings:
+1. `student-access-gateway/index.ts` — unused `createClient` import.
+2. `student-access-gateway/index.ts` — unused `RPC_BY_ACTION` map.
+
+Both are intentionally retained while the student-access Gateway has no active RPC path and returns 503 even if its first readiness flag is set. Do not remove the hard stop or add active use of the import/map merely to silence lint.
+
+The redundant-variable cleanup is a verified narrow nonfunctional change. The two remaining lint warnings are documented intentional scaffold artifacts; lint is not fully clean. Final post-cleanup unit tests, type-check, formatting check, and diff review remain to be run before any local commit.
