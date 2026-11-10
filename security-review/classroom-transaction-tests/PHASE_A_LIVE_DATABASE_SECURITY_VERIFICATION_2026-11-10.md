@@ -361,3 +361,28 @@ The ACL output includes owner EXECUTE entries and non-grantable grantee entries.
 **Security implication:** PUBLIC EXECUTE is broader than granting only `anon` and `authenticated` and should not be used as the default for future privileged application functions. The ordinary SECURITY DEFINER functions with PUBLIC or anon EXECUTE are particularly sensitive because they run as `postgres`, a role with BYPASSRLS. Actual HTTP/PostgREST route exposure remains to be independently verified because the dashboard exposure counts and runtime route configuration have not yet been reconciled.
 
 This is a catalog-only verification. No function ACLs were altered.
+
+
+## 16. Follow-up verification — complete student_game_sessions columns (2026-11-10)
+
+The previously truncated column inventory was rerun specifically for `public.student_game_sessions`. All eight columns were returned:
+
+- `id uuid NOT NULL DEFAULT gen_random_uuid()`
+- `student_id uuid NOT NULL`
+- `class_id uuid NOT NULL`
+- `game_id text NOT NULL`
+- `session_token uuid NOT NULL DEFAULT gen_random_uuid()`
+- `created_at timestamptz NOT NULL DEFAULT now()`
+- `expires_at timestamptz NOT NULL DEFAULT now() + interval '30 minutes'`
+- `used_at timestamptz NULL`
+
+This confirms the 30-minute default lifetime at the table level, in addition to the 30-minute assignment present in both inspected session-creation functions. The earlier constraint inventory showed a primary key on `id` and a unique constraint on `session_token`, but no foreign keys for `student_id` or `class_id`, and no CHECK constraint for expiry ordering. The earlier index inventory showed no non-unique lookup indexes for `student_id`, `expires_at`, or `used_at`.
+
+Security implications and design considerations:
+- Required student, class, game, and token columns prevent NULL values, but do not by themselves prove the referenced student/class relationship is valid.
+- The unique session-token constraint is a useful collision/replay safeguard, but session issuance/consumption still depends on the function logic.
+- No expiry-after-creation CHECK constraint was observed; creation functions set 30 minutes, but direct privileged writes or future code paths would not be constrained by this invariant at the table level.
+- No rate-limit/attempt-count fields are present in this table. Rate limiting could exist elsewhere; it was not established by this schema review.
+- Add indexes only after query-plan and workload review.
+
+This completes the outstanding truncated column inventory for `student_game_sessions`. No data or schema changes were made.
