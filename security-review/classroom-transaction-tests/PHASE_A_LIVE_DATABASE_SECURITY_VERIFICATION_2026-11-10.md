@@ -474,3 +474,96 @@ Before any grant changes, the following direct browser write paths must be mappe
 7. Teacher profile/group/class/activity/student management → inventory and preserve intended CRUD capabilities while strengthening ownership and transition validation.
 
 This scan is a review-only source analysis. No browser code, grants, RLS policies, database functions, or deployments were changed.
+
+
+## 18. Follow-up static review — review-only Gateway scaffolds (2026-11-10)
+
+The following review-branch source files were inspected without deployment or execution:
+
+- `supabase/functions/student-access-gateway/index.ts` (blob SHA `d53728bc43c20e3dd84b883b2953baae52ccc7fb`)
+- `supabase/functions/game-result-gateway/index.ts` (blob SHA `0f0a354494ee89f9dbd8b1b316b3f3d6c0766dca`)
+- `supabase/functions/game-result-gateway/validation.ts`
+- `supabase/functions/game-result-gateway/scoring-contract.ts`
+- `supabase/functions/game-result-gateway/question-generator.ts`
+- Supporting static review notes, action/response contract drafts, central scoring schema/function proposals, and Deno unit-test sources.
+
+Both Gateway files are scaffolds only. They are not deployed. No secrets or feature flags were configured.
+
+### 18.1 Student-access Gateway scaffold
+
+Positive controls:
+- Fixed action-to-RPC mapping; caller cannot supply arbitrary RPC names.
+- POST/OPTIONS handling, JSON content type check, body size limit, and field-shape validation.
+- Access-code shape matches the observed live generator format of eight hexadecimal characters.
+- Message and answer lengths are bounded at the Gateway.
+- Origin allowlist and `Cache-Control: no-store`.
+- The service-role client and RPC execution block are not active.
+- The handler returns HTTP 503 if `STUDENT_ACCESS_GATEWAY_READY` is not `true`; even if true, a second unconditional HTTP 503 prevents RPC execution.
+
+Unresolved requirements before any enablement:
+1. No atomic/shared rate limiter is implemented.
+2. No trusted-source metadata policy, HMAC derivation/rotation, or reliable network-source semantics are finalized.
+3. `start_game_session` only validates game ID shape (regex), then maps to the existing `start_student_game_session` function. That live function accepts any non-empty game ID and has no authoritative allowlist. Keep this action disabled until caller identity and authoritative game authorization are resolved.
+4. The request validator ignores unexpected extra properties instead of rejecting them. They are not currently forwarded, but strict exact-key contracts should be implemented and tested.
+5. The proposed `{data}` response envelope does not match all existing frontend expectations without an adapter. In particular, mark-read expects a scalar integer; other calls expect arrays/rows. The frontend adapter and response contract must be designed and tested together.
+6. CORS origin checks are not authentication and do not block non-browser clients.
+7. No dedicated unit/contract tests were found for this student-access Gateway scaffold.
+8. The exact RPC permission set, response error taxonomy, and direct-RPC bypass migration are still unresolved.
+9. Existing anonymous direct RPC privileges must not be revoked until every active client caller (including separate game sites) has been found and migrated. Conversely, a new Gateway must not be considered effective while an old direct route can bypass its controls.
+
+**Decision:** keep the student-access Gateway permanently fail-closed until the rate limiter, trust-source approach, exact request/response contracts, action allowlist, narrow database execution path, complete caller map, direct-RPC migration plan, and isolated end-to-end tests are complete.
+
+### 18.2 Game-result Gateway scaffold
+
+Positive controls:
+- Requires POST JSON (plus OPTIONS preflight), enforces a 16 KiB body limit, and checks actual body bytes in addition to Content-Length.
+- Uses a fixed server-side game scoring catalogue; unknown game IDs fail closed.
+- Request validation rejects unknown and missing top-level keys for both actions.
+- Does not accept score, max score, teacher ID, student ID, points, or correctness from the browser.
+- Generates Number Challenge questions on the server with Web Crypto and stores the correct-choice index only through the proposed backend function contract.
+- Service-role key is read only from Edge Function environment variables; it is not returned to the browser.
+- Requires both `GAME_RESULT_GATEWAY_READY=true` and `GAME_RESULT_WRITE_ENABLED=true` before creating the service-role client or calling a database RPC.
+- The proposed scoring contract uses game-specific maximum scores and scoring-rule versions; Number Challenge v1 is catalogued at 41 including bonuses.
+- Identical answer retry and single-use behavior are designed into the proposed SQL functions.
+
+Unresolved requirements before any enablement:
+1. The live public function inventory did not contain `begin_game_attempt` or `record_game_attempt_answer`. The proposal SQL is draft-only and the gateway would not work until those functions and tables are separately approved, implemented and tested in an isolated database.
+2. The game-result handler does not itself require a teacher JWT or another Authorization header. The intended request credential is the session token; its security therefore depends on high-entropy, short-lived, single-use session state, database-side validation, rate limiting and careful token secrecy. CORS is not authentication.
+3. The code accepts requests with no Origin header; this is not itself a CORS defect for non-browser clients, but confirms Origin cannot be treated as a security credential.
+4. No rate limiter is implemented in the handler. The separate rate-limit design correctly states that in-memory limits and untrusted `X-Forwarded-For` headers are insufficient.
+5. The handler maps every RPC error to HTTP 400. Transient infrastructure/database failures may need a distinct retryable 5xx response and safe error taxonomy; raw database errors must remain private.
+6. After response validation, the handler spreads the entire raw database JSON object into the browser response (`...result`). The validator checks required fields and the nested question object's exact keys, but does not reject all unexpected top-level database response keys. Replace this with an explicit response projection/allowlist before any activation so accidental internal fields cannot be exposed.
+7. The proposed SQL functions currently lock the game session row, then attempt/question rows, but do not lock the relevant class and student rows in the approved global order. They also read active/class-membership state without locking and revalidating it. Reconcile this game-specific protocol with the approved class-before-student lock order and transfer/deactivation concurrency rules before execution.
+8. The Edge Function uses a service-role client. It must remain server-only, and the actual RPC/table ACLs must be tested to prove the function path has only the intended authority. Service-role bypasses RLS; it is not a least-privilege application role.
+9. The two new scoring RPCs do not yet exist in the live function inventory. Their SQL schema/function drafts are wrapped in block comments and outside the migrations directory; they are not approved migrations.
+10. No end-to-end test has been run against a deployed Edge Function or database implementation.
+
+**Decision:** keep both readiness flags unset. Do not deploy or enable this scaffold until schema/functions, response projection, locking order, limiter, abuse response, role permissions, game client integration, and isolated tests are approved and complete.
+
+### 18.3 Question generator and scoring-contract observations
+
+The Number Challenge question generator:
+- Uses Web Crypto for production randomness and permits deterministic random injection for tests.
+- Produces 15 questions with four distinct options and a server-held correct-choice index.
+- Includes semantic tests for the generated question types and 200 deterministic seeds.
+- The scoring contract derives the max score from a server-owned catalogue, with Number Challenge v1 at 41 and no global fallback.
+- The game-specific score validation rejects non-integer, unsafe, negative and over-maximum scores rather than clamping.
+- The SQL proposal mirrors the Number Challenge streak/final bonus logic and the one-point-per-correct rule, but those SQL routines remain unexecuted and unverified.
+
+The pure Deno test files exist for request validation, scoring contract, and question generation. Their presence is not proof that the current local checkout has run them or that the SQL/database behavior has passed integration, concurrency or failure tests. Previous CI evidence documented in the integration proposal must be checked against its exact commit before relying on it.
+
+### 18.4 Implementation gates added by this review
+
+Before any Gateway deployment:
+1. Keep both scaffolds fail-closed.
+2. Implement and test durable rate limits and abuse handling.
+3. Settle the session-token threat model and ensure token secrecy/no logging.
+4. Project only explicit safe response fields; never spread unfiltered database JSON into public responses.
+5. Align game session/attempt/class/student locking with the approved global lock order and prove race behavior.
+6. Create the scoring schema and functions only in an approved disposable database first; verify grants, function owners, RLS, and answer-key secrecy.
+7. Add dedicated student-access Gateway unit/contract tests and end-to-end response compatibility tests.
+8. Find and migrate every caller in classroom, game-site and other client repositories before revoking direct RPC access.
+9. Reconcile current API Data API exposure and actual route reachability.
+10. Obtain separate approval before any hosted function, database, secret, frontend or deployment change.
+
+This static Gateway review changed no code, SQL, grants, secrets, feature flags, or deployment settings.
