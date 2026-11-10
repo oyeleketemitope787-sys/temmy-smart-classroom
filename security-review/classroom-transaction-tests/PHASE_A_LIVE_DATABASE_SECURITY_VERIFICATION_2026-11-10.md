@@ -713,3 +713,30 @@ Remaining expected scaffold-only findings:
 Both are intentionally retained while the student-access Gateway has no active RPC path and returns 503 even if its first readiness flag is set. Do not remove the hard stop or add active use of the import/map merely to silence lint.
 
 The redundant-variable cleanup is a verified narrow nonfunctional change. The two remaining lint warnings are documented intentional scaffold artifacts; lint is not fully clean. Final post-cleanup unit tests, type-check, formatting check, and diff review remain to be run before any local commit.
+
+
+## 26. Final post-cleanup verification (user-run, 2026-11-10)
+
+Following the narrow deletion of the unused `questionCount` local, the user ran the combined final checks:
+
+```bash
+deno test \
+  supabase/functions/game-result-gateway/validation_test.ts \
+  supabase/functions/game-result-gateway/scoring-contract_test.ts \
+  supabase/functions/game-result-gateway/question-generator_test.ts && \
+deno check \
+  supabase/functions/game-result-gateway/index.ts \
+  supabase/functions/student-access-gateway/index.ts && \
+deno fmt --check \
+  supabase/functions/game-result-gateway \
+  supabase/functions/student-access-gateway
+```
+
+**Observed results:**
+- Unit tests: `ok | 34 passed | 0 failed (183ms)`.
+- Deno check: both Gateway entrypoints checked without diagnostics/errors.
+- Deno formatting check: `Checked 8 files` without formatting diffs.
+
+Lint was rerun after the cleanup and has exactly two remaining findings, both intentionally unused artifacts in the fail-closed student-access scaffold: `createClient` and `RPC_BY_ACTION`. No new lint findings remain in game-result-gateway.
+
+At this checkpoint, the local source edits consist of Deno formatting across the eight Gateway files and removal of the redundant `questionCount` local. The complete diff still requires a final review with whitespace ignored, plus a final status check, before any decision to commit. Both Gateway safety stops remain unchanged. No SQL/database changes, secrets, deployments, or hosted configuration changes have occurred.
