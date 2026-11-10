@@ -590,3 +590,20 @@ Breakdown:
 This is local pure-function/unit-test evidence only. It does not test the Edge Function runtime handler, HTTP/CORS behaviour, Supabase RPC reachability, SQL function implementation, RLS/ACL effectiveness, rate limiting, locking/concurrency, replay behaviour in PostgreSQL, or deployed configuration. The student-access Gateway has no dedicated test suite in the reviewed tree.
 
 No database, Git checkout or hosted configuration was modified by this test command.
+
+
+## 20. Local Deno type-check result (user-run, 2026-11-10)
+
+The user ran:
+
+```bash
+deno check \
+  supabase/functions/game-result-gateway/index.ts \
+  supabase/functions/student-access-gateway/index.ts
+```
+
+**Observed result:** Deno reported `Check` for both entrypoints and returned to the shell prompt with no diagnostics or errors.
+
+This confirms local Deno type/module checking completed for the two Gateway entrypoints. It is not a live Edge Function deployment or runtime test and does not verify database connectivity, RPC grants, CORS behaviour, HTTP status contracts, rate limiting, or transaction safety.
+
+No source files, database objects, secrets, or hosted configuration were modified by this check.
