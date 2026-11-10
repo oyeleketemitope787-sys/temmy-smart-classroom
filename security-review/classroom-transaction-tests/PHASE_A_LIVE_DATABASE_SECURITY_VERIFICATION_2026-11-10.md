@@ -631,3 +631,30 @@ Assessment:
 - The lint command exited with findings; lint is not clean at this checkpoint.
 
 No source changes were made in response to this lint output. Any lint cleanup must preserve the student Gateway's fail-closed behaviour. No deployment, SQL, grants, secrets, or hosted configuration changed.
+
+
+## 22. Local Deno formatting check (user-run, 2026-11-10)
+
+The user ran:
+
+```bash
+deno fmt --check \
+  supabase/functions/game-result-gateway \
+  supabase/functions/student-access-gateway
+```
+
+**Observed result:** Deno reported `Found 8 not formatted files in 8 files`.
+
+The formatter displayed style-only diffs across:
+- `game-result-gateway/validation.ts`
+- `game-result-gateway/validation_test.ts`
+- `game-result-gateway/question-generator.ts`
+- `game-result-gateway/scoring-contract_test.ts`
+- `game-result-gateway/question-generator_test.ts`
+- `student-access-gateway/index.ts`
+- `game-result-gateway/scoring-contract.ts`
+- `game-result-gateway/index.ts`
+
+The shown differences are formatting changes such as line wrapping, indentation and import layout. The command used `--check`, so it did not write changes.
+
+**Checkpoint outcome:** formatting check did not pass; 8 files need formatting. No source file was modified. Before a future formatting write, sync the local review branch with the newer report commits on origin and reconfirm branch/status. Any formatter write must remain on `security-review/student-login-hardening` and must preserve both Gateway fail-closed stops. No deployment, SQL, grants, secrets, or hosted configuration changed.
