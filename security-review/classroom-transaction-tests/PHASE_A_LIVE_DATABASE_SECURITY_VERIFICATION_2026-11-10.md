@@ -683,3 +683,16 @@ deno check \
 This confirms that formatting preserved the existing tested pure-function behavior and both entrypoints still type-check. It does not provide database/HTTP/Edge runtime/concurrency or deployed-configuration evidence.
 
 The formatting changes remain local and uncommitted at this point. No database, secret, deployment or hosted configuration was changed.
+
+
+## 24. Post-format lint recheck (user-run, 2026-11-10)
+
+The user reran Deno lint after formatting all eight Gateway files.
+
+**Observed result:** 8 files checked; the same 3 `no-unused-vars` findings remain, and no new lint findings were introduced.
+
+1. `game-result-gateway/scoring-contract.ts:130` — unused local `questionCount` initialized from `value.question_count`. The validation already checks `value.question_count` directly, so this local is redundant and may be removed as a narrow cleanup.
+2. `student-access-gateway/index.ts:14` — unused `createClient` import. Intentionally retained as part of the planned but inactive RPC implementation; the handler must remain fail-closed.
+3. `student-access-gateway/index.ts:157` — unused `RPC_BY_ACTION` map. Intentionally retained with the same inactive scaffold; do not activate RPC execution to silence lint.
+
+The two student Gateway findings are expected scaffolding artifacts and should remain until a complete, separately reviewed implementation is ready. The only proposed code cleanup at this stage is deletion of the redundant `questionCount` local; no code has yet been changed in response to this lint run.
