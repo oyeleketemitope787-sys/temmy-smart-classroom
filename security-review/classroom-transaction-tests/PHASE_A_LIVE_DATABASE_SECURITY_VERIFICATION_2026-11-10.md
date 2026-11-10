@@ -567,3 +567,26 @@ Before any Gateway deployment:
 10. Obtain separate approval before any hosted function, database, secret, frontend or deployment change.
 
 This static Gateway review changed no code, SQL, grants, secrets, feature flags, or deployment settings.
+
+
+## 19. Local Deno unit-test result (user-run, 2026-11-10)
+
+The user ran the following command from the Ubuntu WSL checkout on `security-review/student-login-hardening`:
+
+```bash
+deno test \
+  supabase/functions/game-result-gateway/validation_test.ts \
+  supabase/functions/game-result-gateway/scoring-contract_test.ts \
+  supabase/functions/game-result-gateway/question-generator_test.ts
+```
+
+**Observed result:** `ok | 34 passed | 0 failed (206ms)`
+
+Breakdown:
+- Request validation: 15 passed.
+- Scoring contract and scoring arithmetic: 16 passed.
+- Question generation: 3 passed, including semantic validation across 200 deterministic runs.
+
+This is local pure-function/unit-test evidence only. It does not test the Edge Function runtime handler, HTTP/CORS behaviour, Supabase RPC reachability, SQL function implementation, RLS/ACL effectiveness, rate limiting, locking/concurrency, replay behaviour in PostgreSQL, or deployed configuration. The student-access Gateway has no dedicated test suite in the reviewed tree.
+
+No database, Git checkout or hosted configuration was modified by this test command.
