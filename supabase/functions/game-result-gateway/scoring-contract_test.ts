@@ -147,6 +147,38 @@ Deno.test("rejects result catalogue mismatch and answer-key leakage", () => {
   assert(!leakedKey.ok, "the response must not expose the answer key");
 });
 
+Deno.test("rejects unexpected top-level database response fields", () => {
+  const inProgress = {
+    ok: true,
+    status: "in_progress",
+    game_id: "grade3-temmy-number-challenge",
+    mode: "practice",
+    question_count: 15,
+    questions_answered: 0,
+    correct_count: 0,
+    lives_remaining: 3,
+    score: 0,
+    max_score: 41,
+    score_rule_version: "number-challenge-streak-v1",
+    question: {
+      question_index: 0,
+      prompt: "100 ___ 200",
+      options: ["<", ">", "=", "+"],
+      hint: null,
+    },
+  };
+  const leakedInternalId = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    { ...inProgress, attempt_id: "internal-attempt-id" },
+  );
+  const leakedAnswerKey = validateCentralAttemptResponse(
+    "grade3-temmy-number-challenge",
+    { ...inProgress, student_id: "internal-student-id" },
+  );
+  assert(!leakedInternalId.ok, "unexpected attempt IDs must be rejected");
+  assert(!leakedAnswerKey.ok, "unexpected identity fields must be rejected");
+});
+
 Deno.test("completed awards must exactly match the verified score", () => {
   const checked = validateCentralAttemptResponse(
     "grade3-temmy-number-challenge",
