@@ -19,44 +19,77 @@ The existing product scoring contract is retained:
 
 These are design decisions, not evidence that the proposed SQL routines exist in the live database.
 
-## 2. Required correction A — consistent lock order and membership revalidation
+## 2. Required correction A — approved global lock order, request idempotency, and membership revalidation
 
 ### Problem
 
-The current SQL draft locks the game-session row first and reads class/student active state and membership without locking those rows. This conflicts with the classroom transaction review's global **class-before-student** lock order and leaves a race with student transfer or class/student deactivation.
+The classroom transaction review approves this global lock order for sensitive transactions:
 
-### Required transaction protocol
+1. Idempotency request row.
+2. Relevant class row(s), sorted by stable UUID.
+3. Student row.
+4. Operation-specific activity, original transaction, or reward rows.
+5. Writes.
 
-Both `begin_game_attempt` and `record_game_attempt_answer` must use one documented lock order compatible with every existing classroom transaction:
+The current game SQL draft has no request-idempotency table or request ID in either RPC contract. It locks the game-session row first, then attempt/question rows, and reads class/student active state and membership without locking those rows. The previous game-specific correction list omitted the globally required idempotency row. Merely moving class/student locks ahead of the session would therefore still leave the design inconsistent with the approved global rule.
 
-1. Resolve the candidate session/student/class identifiers without treating that read as authoritative.
-2. Lock the class row first (`FOR UPDATE`).
-3. Lock the student row second (`FOR UPDATE`).
-4. Lock the game-session row third (`FOR UPDATE`).
-5. Lock the attempt row fourth (`FOR UPDATE`), if it exists.
-6. Lock the current attempt-question row fifth (`FOR UPDATE`), when needed.
+### Required request-idempotency contract
 
-After acquiring locks, re-read and validate the relationships and state. In particular:
+Before changing the SQL functions, the request contract must be extended with a caller-generated UUID `request_id` for each logical start or answer operation. The caller must reuse the same ID when retrying that operation after a timeout or uncertain network result, and generate a new ID for a genuinely new operation.
 
-- The session must still reference the same student and class discovered during lookup.
-- The student's current `class_id` must still equal the session's `class_id`.
-- The class and student must still be active.
-- The session's game ID must match the request; expiry and `used_at` must be checked while the session is locked.
-- The attempt must belong to that session and retain the same game, mode, rule version, and expected sequence.
-- If any identifier or relationship changed between lookup and lock acquisition, fail closed and do not mutate score or ledger state.
+A proposed durable table, subject to schema review, is `public.game_scoring_idempotency_requests`. It should have a unique request ID, operation/action, a canonical request fingerprint, a completion state, a safe stored response/outcome, and timestamps/retention metadata. It must not store the raw session token, answer key, or other unnecessary secrets. The fingerprint must bind the request ID to the operation and all security-relevant request inputs, including the session credential, game, mode or question/choice indexes. The canonical encoding and hashing primitive must be selected and verified in the disposable database; the existing audit specifically flags unverified SHA-256 helper availability and canonical encoding.
 
-The exact SQL implementation must be checked against the existing approved lock-order specification and every transaction that can transfer/deactivate a student or class. If any existing path uses a different order, stop and reconcile the global order before writing migrations. Do not introduce a local exception that can deadlock.
+The idempotency row must not have foreign keys that cause it to acquire class, student, or session locks before the approved order. A request ID is only a retry-correlation key; it is not proof of student identity or session authorization.
 
-### Required race tests
+Required semantics:
+
+- Create-or-find the idempotency row and lock it first. A concurrent reuse of the same request ID must serialize on this row.
+- If the stored operation or request fingerprint differs, reject key reuse without changing game state.
+- If the row already contains a committed outcome for the identical request, return that stored outcome without reapplying scoring, session consumption, or ledger writes.
+- For a new request, persist its final safe outcome in the same transaction as the game-state mutation. A transaction rollback must roll back both the game mutation and the idempotency outcome so a legitimate retry can safely try again.
+- A repeated identical answer submitted with a different request ID must still be protected by the existing question-row/attempt-state idempotency rule. A changed answer for an already answered question remains a conflict.
+- Retention, cleanup, maximum key age, and behavior for durable rejected outcomes require explicit design and operational review. Do not silently delete keys while a retry may still be valid.
+
+### Required transaction lock protocol
+
+Both `begin_game_attempt` and `record_game_attempt_answer` must follow this sequence, compatible with the approved global lock order:
+
+1. Validate the request envelope and create/find then lock its idempotency request row (`FOR UPDATE`). Verify the operation and canonical request fingerprint. Do not treat the request ID as authentication.
+2. Perform a non-locking lookup of the candidate session's student and class identifiers. This lookup is discovery only, not authorization.
+3. Lock all relevant class row(s) in stable UUID order (`FOR UPDATE`). For this game flow, the candidate session's class is the initial target; if a transition can involve old and new classes, lock both in sorted order as required by the existing transfer protocol.
+4. Lock the student row (`FOR UPDATE`).
+5. Lock the game-session row (`FOR UPDATE`).
+6. Re-read and revalidate the session/student/class relationships and state while the rows are locked.
+7. Lock the attempt row (`FOR UPDATE`), if it exists.
+8. Lock the relevant attempt-question row (`FOR UPDATE`), when needed.
+9. Perform scoring, answer/attempt/session writes, and any point-ledger insert atomically. No later code path may acquire a class or student lock after an operation-specific lock.
+
+After acquiring locks, verify at minimum:
+
+- The session still references the same student and class discovered during lookup.
+- The student's current `class_id` still equals the session's `class_id`.
+- The class and student are still active.
+- The session's game ID matches the request; expiry and `used_at` are checked while the session is locked.
+- The attempt belongs to that session and retains the same game, mode, scoring-rule version, and expected sequence.
+- The scoring-rule version is immutable once referenced by an attempt. Prefer append-only versioned catalogue rows so scoring does not need to lock a mutable catalogue row out of order.
+- If any identifier or relationship changed between lookup and lock acquisition, fail closed with no score, attempt, session, or ledger mutation.
+
+The exact PostgreSQL lock modes, implicit foreign-key locks, trigger behavior, and interactions with every transfer/deactivation/reward transaction must be checked against the target database version. In particular, the point-ledger insert and its foreign keys/triggers must not introduce a reverse lock dependency. If the global order cannot be preserved, stop and revise the global design rather than introducing a game-specific exception.
+
+### Required race and idempotency tests
 
 - Student transfer races with attempt start.
 - Student transfer races with answer submission.
 - Class deactivation races with start and answer.
 - Student deactivation races with start and answer.
-- Two simultaneous starts for the same session.
-- Two simultaneous submissions for the same question, both identical and conflicting.
-- Final answer races with replay/finalization.
-- Confirm no duplicate point transaction and no partial attempt/session mutation.
+- Same request ID and same payload concurrently: one execution; all callers receive the same committed outcome.
+- Same request ID with a different action or payload: reject key reuse; no game mutation.
+- Different request IDs for the same start/session: at most one attempt; same game/mode resumes the existing attempt; incompatible mode/game conflicts.
+- Two different request IDs submit the same answer concurrently: one scoring mutation; the other receives the stored duplicate-answer outcome.
+- Two different request IDs submit conflicting choices for one question: one wins; the other conflicts without mutation.
+- Final answer races with retry/replay/finalization.
+- Inject rollback after each write boundary; verify no partial answer, attempt, session, idempotency, or point-ledger state.
+- Confirm no duplicate point transaction, no deadlock, and no partial attempt/session mutation.
 
 ## 3. Required correction B — strict public response projection
 
@@ -169,8 +202,11 @@ Use a disposable local/CI PostgreSQL + Supabase-compatible environment only. Do 
 - Non-bonus game: game-specific maximum (e.g. 16/20 awards 16, not a global cap).
 - Reject invalid/negative/non-integer/over-maximum score states; never clamp.
 
-### C. Atomicity and replay
-- Inject failures between answer update, attempt completion, ledger insert, and session consumption; assert complete rollback.
+### C. Atomicity, request idempotency, and replay
+- Verify request-ID uniqueness, canonical fingerprint binding, same-key/same-payload replay, and same-key/different-payload rejection.
+- Run concurrent duplicate requests with the same request ID; assert one execution and one stored outcome.
+- Run identical-answer retries with different request IDs; assert question/attempt-level idempotency still prevents a second score mutation.
+- Inject failures between answer update, attempt completion, ledger insert, session consumption, and idempotency outcome persistence; assert complete rollback.
 - Repeat an identical answer after simulated timeout; return the stored result and award once.
 - Submit a conflicting duplicate; reject with no mutation.
 - Submit out-of-order, wrong-game, wrong-mode, expired, consumed, malformed-token, and invalid-choice requests; no mutation.
@@ -194,6 +230,14 @@ Use a disposable local/CI PostgreSQL + Supabase-compatible environment only. Do 
 - Compare exact request/response shapes with current frontend expectations.
 - Migrate callers behind the Gateway in a controlled, separately approved plan.
 - Keep legacy direct RPC permissions until migration coverage is proven; then review revocation separately.
+
+### Design decisions still required before SQL implementation
+
+- Confirm the public request contract can carry a stable `request_id` on both start and answer operations, including every client retry path.
+- Approve the idempotency table schema, fingerprint canonicalization/hash implementation, stored outcome shape, retention window, cleanup behavior, and durable rejection semantics.
+- Confirm whether every sensitive mutation path that touches the same student/class resources observes the same global lock order, including ledger triggers and foreign-key effects.
+- Verify that the chosen idempotency-row creation/locking method serializes concurrent first use without acquiring class/student/session locks first.
+- Do not treat the existing unique `student_game_attempts.session_id` or `student_game_attempt_questions(attempt_id, question_index)` constraints as substitutes for the globally required request-idempotency row. They protect game-level uniqueness/replay, but they do not provide request-level idempotency at the first lock position.
 
 ## 8. Work sequence and approval gates
 
