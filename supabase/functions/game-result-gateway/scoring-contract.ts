@@ -81,6 +81,13 @@ function hasExactKeys(
     allowed.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
 
+function hasOnlyKeys(
+  value: Record<string, unknown>,
+  allowed: string[],
+): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
+
 /**
  * Validate the complete database response before returning it to a game client.
  * In-progress responses must contain exactly one public question and no answer
@@ -122,6 +129,29 @@ export function validateCentralAttemptResponse(
 
   const status = value.status;
   if (status !== "in_progress" && status !== "completed") {
+    return { ok: false, reason: "invalid_response" };
+  }
+
+  const commonResponseKeys = [
+    "ok",
+    "status",
+    "game_id",
+    "mode",
+    "question_count",
+    "questions_answered",
+    "correct_count",
+    "lives_remaining",
+    "score",
+    "max_score",
+    "score_rule_version",
+  ];
+  const allowedResponseKeys = status === "completed"
+    ? [...commonResponseKeys, "points_awarded"]
+    : [...commonResponseKeys, "question", "points_awarded"];
+  if (
+    value.ok !== true ||
+    !hasOnlyKeys(value, allowedResponseKeys)
+  ) {
     return { ok: false, reason: "invalid_response" };
   }
 
