@@ -220,7 +220,18 @@ Deno.serve(async (req: Request) => {
     }
 
     return jsonResponse(200, {
-      ...result,
+      ok: true,
+      status: "completed",
+      game_id: verified.result.game_id,
+      mode: validated.mode,
+      question_count: validated.questionCount,
+      questions_answered: validated.questionsAnswered,
+      correct_count: validated.correctCount,
+      lives_remaining: validated.livesRemaining,
+      score: verified.result.score,
+      max_score: verified.result.max_score,
+      points_awarded: verified.result.points_awarded,
+      score_rule_version: verified.result.score_rule_version,
       score_display: {
         ...buildCentralScoreDisplay(verified.result),
         mode: validated.mode,
@@ -234,8 +245,25 @@ Deno.serve(async (req: Request) => {
 
   // While playing, display the validated running score and game-specific
   // maximum. Do not display an award until the final transaction commits.
+  const question = result.question as Record<string, unknown>;
   return jsonResponse(200, {
-    ...result,
+    ok: true,
+    status: "in_progress",
+    game_id: validated.rule.gameId,
+    mode: validated.mode,
+    question_count: validated.questionCount,
+    questions_answered: validated.questionsAnswered,
+    correct_count: validated.correctCount,
+    lives_remaining: validated.livesRemaining,
+    score: validated.score,
+    max_score: validated.maxScore,
+    score_rule_version: validated.rule.ruleVersion,
+    question: {
+      question_index: question.question_index,
+      prompt: question.prompt,
+      options: question.options,
+      hint: question.hint,
+    },
     score_display: {
       score_label: String(validated.score) + "/" + String(validated.maxScore),
       max_score: validated.maxScore,
