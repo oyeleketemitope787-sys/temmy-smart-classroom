@@ -10,7 +10,7 @@
 The existing product scoring contract is retained:
 
 - Correctness is derived from the private answer key stored for the attempt.
-- Browser requests contain only action, session token, game ID, mode (start), and question/choice indexes (answer).
+- The planned browser request contract contains only action, a per-operation `request_id`, session token, game ID, mode (start), and question/choice indexes (answer). The current Gateway validator/RPC signatures do not yet accept `request_id`; this is a required future contract change, not an implemented feature.
 - Scores, maximum scores, student/teacher identity, points, and correctness are never trusted from the browser.
 - Number Challenge v1 remains 15 questions with a maximum score of 41, including its existing streak and final-question bonuses.
 - A completed attempt awards exactly its verified score once. A zero-score completion records the attempt but creates no zero-point ledger row, consistent with the current schema proposal.
