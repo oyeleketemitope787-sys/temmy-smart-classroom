@@ -7,6 +7,14 @@
 
 ## 1. Decisions carried forward
 
+The user has approved the following request-idempotency design decisions for detailed specification:
+
+- The browser client generates a fresh UUID `request_id` for each logical start or answer operation and reuses that same ID for retries of that operation.
+- A committed deterministic outcome is stored and returned for an identical retry; it is never applied twice.
+- Idempotency records have an explicit retention/cleanup policy. A 30-day minimum retention is proposed for review, but the final duration must be at least as long as the supported client retry window and must be approved before implementation.
+
+These are approved design directions. They do not mean that the request-ID contract, table, or database behavior has been implemented.
+
 The existing product scoring contract is retained:
 
 - Correctness is derived from the private answer key stored for the attempt.
@@ -231,10 +239,114 @@ Use a disposable local/CI PostgreSQL + Supabase-compatible environment only. Do 
 - Migrate callers behind the Gateway in a controlled, separately approved plan.
 - Keep legacy direct RPC permissions until migration coverage is proven; then review revocation separately.
 
+### 2.1 Proposed idempotency table contract (design only)
+
+Proposed relation: `public.game_scoring_idempotency_requests`.
+
+The table is deliberately independent of student, class, session, attempt, question, and point-ledger foreign keys. This prevents its insert/lookup path from taking implicit locks on those business rows before the approved global lock order.
+
+| Column | Proposed type | Purpose / constraint |
+|---|---|---|
+| `request_id` | `uuid` | Primary key; client-generated per logical operation. |
+| `operation` | `text` | Allowlisted operation such as `begin_attempt` or `submit_answer`; CHECK constraint. |
+| `fingerprint` | `bytea` | Fixed-length keyed digest of the canonical request; never raw request data. |
+| `fingerprint_key_version` | `smallint` | Identifies the server-side HMAC key version used to calculate the digest. |
+| `outcome_state` | `text` | Only committed terminal states such as `completed` or `rejected`; CHECK constraint. |
+| `outcome_code` | `text` | Stable internal result code; no raw database error text. |
+| `response_schema_version` | `smallint` | Version of the safe public response projection. |
+| `response_payload` | `jsonb` | Allowlisted safe response/outcome only; no IDs or secrets not required by the client. |
+| `created_at` | `timestamptz` | Server-generated creation time. |
+| `completed_at` | `timestamptz` | Set when a deterministic terminal outcome is committed. |
+| `expires_at` | `timestamptz` | Cleanup eligibility; never earlier than the supported retry horizon. |
+
+Required constraints and indexes:
+
+- Primary key on `request_id`.
+- CHECK constraint restricting `operation` and `outcome_state` to documented values.
+- CHECK constraints requiring the fingerprint to have the expected digest length and terminal rows to have `completed_at` and a response schema version.
+- CHECK constraint and/or trigger ensuring `expires_at` is later than `created_at`; application policy must enforce the approved retention minimum.
+- Index on `expires_at` for bounded cleanup batches. The primary key supports request lookup.
+- No business-table foreign keys, no browser-role table privileges, and no direct client access.
+- Do not store the raw session token, access code, answer, answer key, student/class/session/attempt identifiers, or full request body in this table. The safe response payload must follow the Gateway's explicit response allowlist.
+
+The exact column types, constraints, table owner, RLS, grants, and index definitions must be validated against the actual disposable schema before a migration is drafted.
+
+### 2.2 Canonical request fingerprint
+
+The fingerprint must distinguish every security-relevant input while avoiding storage of raw credentials.
+
+Proposed algorithm: HMAC-SHA-256 using a server-held secret, with an explicit key version. The HMAC key must be available only to the trusted server-side scoring path, never to the browser, and must not be embedded in source control or returned by RPCs. Secret storage/rotation is an implementation gate; do not assume an existing secret or vault integration is configured.
+
+Canonical input must be a versioned, unambiguous, typed encoding—not ad hoc string concatenation and not unspecified JSON serialization. It must include:
+
+- A fixed domain separator and canonicalization version.
+- Operation name.
+- Request UUID.
+- Session credential bytes (or a separately derived keyed session-token digest, provided the design proves equivalent binding).
+- Game ID.
+- Start mode for `begin_attempt`.
+- Question index and choice index for `submit_answer`.
+
+Use explicit field ordering, type tags, and length-prefixing (or another formally specified unambiguous encoding). Normalize only fields whose semantics are explicitly identical; do not silently coerce values such as strings to numbers. Reject malformed types before fingerprinting.
+
+Key rotation must preserve replay verification for every retained record. Store the key version with each row and retain the corresponding verification key until all records using it have expired and been safely purged. If a key is compromised, define an explicit invalidation/recovery procedure; never silently recompute old fingerprints with a new key.
+
+**Open implementation gate:** verify the selected PostgreSQL/runtime HMAC implementation and extension availability in a disposable environment. The existing review has not established that `pgcrypto` or a particular digest helper is installed. Do not add an extension to shared TEST or production as part of this design task.
+
+### 2.3 Insert, lock, replay, and outcome semantics
+
+The intended first-use algorithm is:
+
+1. Validate the HTTP/request envelope and enforce cheap ingress limits before database work.
+2. Compute the canonical fingerprint in the trusted server path.
+3. Attempt to insert the request row with `request_id`, operation, fingerprint, key version, and timestamps using a uniqueness-safe insert that does not update an existing row.
+4. Select that row by primary key `FOR UPDATE`. A concurrent first use of the same UUID must wait on the unique-key conflict/row lock and then observe the committed row.
+5. Compare operation, fingerprint, and key version semantics. If the same UUID is bound to a different operation or payload, return a generic key-reuse conflict and do not touch game state.
+6. If a terminal outcome already exists for the exact same request, return its stored safe outcome immediately without taking class/student/session/attempt/question locks or repeating any mutation.
+7. If this transaction inserted a new row, continue to the approved class/student/session/attempt/question lock order, perform authorization and the operation, then write the terminal safe outcome in the same transaction as all scoring changes.
+
+The exact SQL pattern for insert-on-conflict followed by row locking must be proven under the target PostgreSQL version with concurrent integration tests. Do not use an `ON CONFLICT DO UPDATE` shortcut unless its trigger/write side effects and lock behavior have been explicitly reviewed; the preferred design is no-op conflict handling followed by a separate locked read.
+
+Transaction outcome policy:
+
+- Successful start/answer results are terminal and stored.
+- Deterministic business rejections that should remain stable for that request (for example, expired/consumed session, incompatible mode, conflicting duplicate answer, or request-key mismatch) may be stored as safe terminal outcomes only after the design defines their exact codes and response schema. Do not persist detailed authorization diagnostics.
+- Transient database errors, timeouts, deadlocks, internal exceptions, unavailable dependencies, and unexpected failures must raise/abort so the entire transaction—including a newly inserted idempotency row—rolls back. The client may retry the same request ID.
+- Do not commit a durable `processing` row in the first version. Because idempotency row and game mutation share one transaction, an uncommitted row is not a durable stuck-work state; concurrent requests wait for commit/rollback. If future asynchronous processing is introduced, it needs a separate lease/recovery design.
+- A stored terminal response must be a safe, versioned public outcome. The Gateway must still validate and project it through the current response allowlist; do not return raw JSONB directly.
+- A retry using the same ID and same fingerprint returns the original outcome, even if the session has since expired or been consumed. A genuinely new operation uses a new ID and is authorized against current state.
+- A retry using the same ID with a different fingerprint never changes the original row or game state.
+
+### 2.4 Retention and cleanup policy
+
+Proposed starting policy for review:
+
+- Retain terminal idempotency records for **at least 30 days** after completion, and longer if any supported client retry/recovery window, offline-client behavior, support workflow, or audit requirement exceeds 30 days.
+- The final configured retention must be approved by product/operations and documented in the client retry contract before implementation.
+- Cleanup may delete only terminal rows whose `expires_at` is in the past and whose retention window has fully elapsed. Cleanup must be a privileged, bounded batch job with monitoring; it must not run in a browser path.
+- Cleanup must not delete in-progress/uncommitted work (there should be no committed processing state), records under active transaction locks, or records still inside the supported retry horizon.
+- Define maximum accepted age for a newly presented request ID separately from record retention. An old ID with no existing row must not be allowed to create an indefinitely retained record; reject it only under a documented server policy.
+- Record counts, cleanup failures, oldest retained expiry, and HMAC key-version coverage should be observable without logging raw request data or credentials.
+- Never reuse a request UUID intentionally. After record expiry/deletion, an old replay must still be rejected by session/attempt/question state and must never award twice.
+
+### 2.5 Required database and API contract changes
+
+These changes are future work, not implemented:
+
+- Add `request_id` to the start and answer request validators and TypeScript request types; require a valid UUID.
+- Pass `request_id` to both scoring RPCs and ensure the same logical operation reuses it on client retries.
+- Inventory every client and network retry path. Generate a new UUID only when the user initiates a new logical operation; preserve the ID across timeout, reconnect, and retry.
+- Define safe response payloads and stable outcome codes for completed, in-progress, duplicate, and deterministic rejected outcomes.
+- Add the idempotency table and RPC logic only in a disposable local/CI PostgreSQL environment after schema and secret handling are approved.
+- Ensure no browser role can read or write the idempotency table; only the intended backend execution role can access it.
+- Keep the Gateway feature flags default-deny until all database, ACL, concurrency, rate-limit, and client compatibility gates pass.
+
 ### Design decisions still required before SQL implementation
 
-- Confirm the public request contract can carry a stable `request_id` on both start and answer operations, including every client retry path.
-- Approve the idempotency table schema, fingerprint canonicalization/hash implementation, stored outcome shape, retention window, cleanup behavior, and durable rejection semantics.
+- Confirm the final request-ID retry lifecycle and client storage behavior, including reload/offline scenarios.
+- Approve the HMAC key storage and rotation mechanism, canonical encoding version, and the verified implementation location (Edge Function or database). The secret must not be supplied by the browser.
+- Approve the exact safe terminal outcome codes and response schema versions, including which deterministic rejections are persisted.
+- Approve the final retention duration (30 days is a proposed minimum, not yet a production setting), maximum age for first-seen IDs, cleanup cadence, and operational owner.
 - Confirm whether every sensitive mutation path that touches the same student/class resources observes the same global lock order, including ledger triggers and foreign-key effects.
 - Verify that the chosen idempotency-row creation/locking method serializes concurrent first use without acquiring class/student/session locks first.
 - Do not treat the existing unique `student_game_attempts.session_id` or `student_game_attempt_questions(attempt_id, question_index)` constraints as substitutes for the globally required request-idempotency row. They protect game-level uniqueness/replay, but they do not provide request-level idempotency at the first lock position.
