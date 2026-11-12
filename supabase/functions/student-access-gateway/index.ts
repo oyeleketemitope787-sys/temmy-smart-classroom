@@ -11,7 +11,6 @@
  * Keep this file on security-review/student-login-hardening only.
  * Never place a service-role key or HMAC secret in browser code or logs.
  */
-import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = new Set([
   "https://classroom.stgloriousschool.org",
@@ -154,7 +153,7 @@ function validate(body: RequestBody):
   }
 }
 
-const RPC_BY_ACTION: Record<Action, string> = {
+const _RPC_BY_ACTION: Record<Action, string> = {
   login: "student_portal_login",
   point_history: "get_student_point_history",
   live_activities: "get_student_live_activities",
