@@ -108,7 +108,7 @@ jobs:
           test "$counted" -eq 6 && test "$cooldown_blocked" -eq 14
 
           psql -v ON_ERROR_STOP=1 -c "
-            DO \\$check\\$
+            DO \$check\$
             DECLARE source_count integer; code_count integer;
             BEGIN
               SELECT failure_count INTO source_count
@@ -122,7 +122,7 @@ jobs:
                   source_count, code_count;
               END IF;
             END
-            \\$check\\$;"
+            \$check\$;"
 
       - name: Run three simultaneous logins against the two-session limit
         shell: bash
