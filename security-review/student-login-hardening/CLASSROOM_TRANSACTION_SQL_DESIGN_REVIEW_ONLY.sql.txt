@@ -172,6 +172,14 @@ C. POINT LEDGER INVARIANTS
 - Every applicable ledger entry must carry (or be unambiguously linked to) student,
   class, and academic-period attribution. Never infer historical class attribution
   from the student's current class.
+- A student transferred from one class to another (for example, Class 5 to
+  Class 6) is enrolled as a new member of the receiving class and starts with
+  zero aggregate points and zero spendable balance there, even when the transfer
+  occurs during the same academic year and the receiving class has a different
+  teacher. Points earned in the previous class end with that class.
+- Previous-class points, achievements, transactions, and leadership appointments
+  remain attached to the previous class and its teacher's historical records.
+  They must not be transferred, carried forward, or counted in the receiving class.
 - Each new class/academic-year period starts with its own aggregate points,
   spendable balance, achievements, and leadership appointments; no points or
   active leadership appointments roll forward from a previous period.
