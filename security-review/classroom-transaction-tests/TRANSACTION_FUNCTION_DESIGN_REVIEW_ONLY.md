@@ -84,17 +84,18 @@ Because the request claim and business mutation share one transaction, a concurr
 ### 3.3 Rejected outcomes and rollback
 
 A database exception aborts the transaction, including an inserted idempotency row and any audit event. Therefore:
-- For expected business rejections that should be replayable (e.g. above cap, insufficient funds, out of stock), return a structured rejection and commit its request result without applying business mutations.
-- For unexpected internal failures, raise/rollback; no success audit or partial business change may survive.
-- Rejected-attempt telemetry requiring independent durability must use a separate safe logging mechanism. Do not claim an insert in a rolled-back transaction persists.
+- Expected business rejections must be handled as structured outcomes, not raised as exceptions after the request claim. Complete the request as rejected and commit a safe rejection audit without applying business mutations. This includes above-cap awards, invalid ownership/active-state business outcomes, insufficient funds and out-of-stock results, subject to the operation contract.
+- Same request key and same payload replays the stored rejection. Same key with a different actor, operation or payload is rejected.
+- Unexpected internal/system failures must raise and roll back the request claim, audit and any partial business writes. Never catch all exceptions and convert them into durable business rejections.
+- Error/result codes must be stable and safe for the Gateway/UI; raw SQL diagnostics are not exposed.
 
-The exact list of durable versus retryable rejections must be defined in the function contract.
+The expected-rejection set and retryable infrastructure-conflict set must be enumerated per operation before implementation.
 
 ## 4. Balance serialization and global lock order
 
 ### 4.1 One stable per-student mutex
 
-All operations that can change a student's ledger balance must lock the same stable student row before reading the ledger balance. The approved global order now requires the relevant class row to be locked first.
+All operations that can change a student's ledger balance must lock the same stable student row before reading the ledger balance. The approved global order requires the relevant class row to be locked first.
 
 ### 4.2 Approved global order
 
@@ -126,19 +127,17 @@ After acquiring the class and student locks, calculate COALESCE(SUM(points), 0) 
 
 ### 5.1 award_points
 
-Inputs: actor teacher, student, positive integer amount, reason, request UUID.
+Inputs: verified gateway actor teacher, student, positive integer amount, reason, request UUID.
 
 Algorithm:
-1. Claim request and validate actor/student/active class ownership.
-2. Require amount > 0 and integral (integer-typed parameter).
-3. Read the configured `maximum_teacher_award` from the protected config table.
-4. If amount exceeds the configured maximum, return `award_limit_exceeded`; do not write ledger.
-5. Lock the student row and calculate current ledger balance.
-6. Insert exactly one positive ledger row with server-controlled action/source values.
-7. Persist request result containing transaction ID, awarded amount, and resulting balance.
-8. Insert success audit event; commit all together.
+1. Claim/lock the request row and bind actor, operation and canonical payload. A completed success or rejection replays its stored result; changed payload/actor/operation is rejected.
+2. Validate basic typed input. For a student target, perform a preliminary non-locking lookup of its class ID; lock the relevant class row, then lock the student row, re-read class membership and revalidate it. If membership changed, return a retryable conflict. Validate active state and teacher ownership only while the required locks are held.
+3. Read `maximum_teacher_award` from protected authoritative configuration. Default is 50 points per individual manual teacher award. Only an authorised school/system administrator may change it; teachers and client roles cannot.
+4. If amount exceeds the configured maximum, complete the request with a stable structured `award_limit_exceeded` rejection and safe rejection audit, commit the request result, and write no points-ledger row. Never truncate the amount.
+5. For an approved normal award, calculate the ledger balance while holding the common class/student locks, then insert exactly one positive ledger row with server-controlled action/source values.
+6. Persist the completed success result and success audit in the same transaction.
 
-The fixture's seed value 100 is test data only. It is not a production cap recommendation.
+Expected business rejections are committed as durable idempotent outcomes without business mutations; unexpected internal/system errors abort and roll back. An exceptional award above the ordinary cap is not an alternate flag on this ordinary function: it requires a separate authorised and audited override workflow whose authority and approval contract remain open. The previous synthetic fixture seed of 100 is obsolete and must be changed to 50 before any test execution.
 
 ### 5.2 deduct_points
 
@@ -255,6 +254,9 @@ Deactivation blocks new purchases but must not delete purchase history. The fixt
 - Verify completed request replay never repeats ledger/purchase/stock changes.
 
 ## 8. Fixture corrections and implementation gates
+
+- Update the synthetic award-cap seed from 100 to 50 before any disposable execution; verify no stale 20/100 assumptions remain in seed, smoke, edge-case, or concurrency tests.
+- Add tests for durable above-cap rejection/replay, changed-payload key reuse, administrator-only cap changes, and concurrent award versus class transfer/ownership change.
 
 Before function SQL is drafted:
 - Use namespaced test roles (`temmy_ctest_*`) and refuse pre-existing role collisions.
