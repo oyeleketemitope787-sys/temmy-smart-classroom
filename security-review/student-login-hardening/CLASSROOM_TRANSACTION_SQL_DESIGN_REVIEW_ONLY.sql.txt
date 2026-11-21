@@ -172,6 +172,15 @@ C. POINT LEDGER INVARIANTS
 - Every applicable ledger entry must carry (or be unambiguously linked to) student,
   class, and academic-period attribution. Never infer historical class attribution
   from the student's current class.
+- Each new class/academic-year period starts with its own aggregate points,
+  spendable balance, achievements, and leadership appointments; no points or
+  active leadership appointments roll forward from a previous period.
+- Previous-period points, achievements, transactions, and leadership appointments
+  remain accessible as historical records but are excluded from new-period totals,
+  rankings, achievement qualification, and leadership eligibility.
+- Leadership positions start afresh in each new class/academic-year period. Students
+  must qualify again through that period's milestones. Prior appointments remain
+  historical and are not active appointments in the new period.
 - A cached aggregate/balance summary is optional and non-authoritative; it must be
   reconcilable from ledger entries.
 - Never accept a client-calculated balance as authoritative.
