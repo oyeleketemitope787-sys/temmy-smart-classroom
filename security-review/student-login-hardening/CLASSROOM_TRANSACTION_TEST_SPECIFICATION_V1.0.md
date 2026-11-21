@@ -1,6 +1,6 @@
 # Classroom Transaction Test Specification v1.0
 
-**Status:** Approved business rules; review-only test specification  
+**Status:** Approved business rules; review-only test specification (marketplace policy clarified 2026-11-21)  
 **Branch:** `security-review/student-login-hardening`  
 **Scope:** Trusted teacher point transactions, activity scoring, marketplace purchases, idempotency, authorization, auditability, and concurrency.  
 **Environment:** Disposable PostgreSQL CI/local database only. No hosted Supabase connection.  
@@ -53,8 +53,11 @@ The existing game platform is retired from this plan. Classroom security and lau
 
 ### 2.5 Marketplace purchases
 
-- Each student's purchase is processed independently; a failure for one student does not roll back another student's successful purchase.
-- Each individual student's purchase, points deduction, purchase-history row, and finite-stock decrement (when applicable) must be atomic.
+- **Governing policy: independent per-student outcomes.** A multi-student selection is a batch of independently committed student purchase operations, not one all-or-nothing database transaction. A failure for one student must never roll back another student's successful purchase.
+- Each individual student's purchase, points deduction, purchase-history row, finite-stock decrement (when applicable), and that student's completed idempotency outcome must be atomic: all commit together or none of that student's purchase effects commit.
+- The batch response must contain one stable, independently identifiable outcome per requested student. Successful students remain successful even when other students are rejected; retries must reproduce each student's original outcome without reprocessing completed purchases.
+- A shared reward-stock lock/conditional decrement must prevent overselling across concurrent requests. Stock contention is resolved per student: students who obtain available units may succeed; students who cannot obtain a unit receive an out_of_stock outcome, without affecting already committed purchases.
+- The implementation may use one database transaction per student or an equivalent savepoint/isolated subtransaction design, but it must demonstrate the same independent commit/rollback semantics. A single exception that aborts the entire multi-student request is non-compliant.
 - A student with insufficient points is rejected without a points deduction, purchase row, or stock decrement.
 - A student may not be charged twice for a retried request. Each per-student purchase uses a stable idempotency key and payload binding.
 - Reward must belong to the acting teacher and be active at the time of purchase.
@@ -132,8 +135,11 @@ The test harness must model the trusted Gateway identity boundary. A client must
 - Concurrent score changes serialize and leave a consistent activity record and ledger.
 
 ### Marketplace
-- Each selected student receives an independent outcome.
-- One student's insufficient balance does not cancel another student's successful purchase.
+- Each selected student receives one independent, stable outcome, including in a mixed batch containing successes and failures.
+- A successful student's purchase remains committed when another selected student has insufficient balance, invalid ownership/student state, an unavailable reward, or encounters out-of-stock stock.
+- A failed student's operation creates no debit, purchase-history row, or stock decrement; it does not cancel or reverse another student's successful operation.
+- A retry of the same batch reproduces each student's stored outcome and does not repeat any completed student's debit, purchase row, or stock decrement.
+- Concurrent batches competing for limited stock never oversell; each student receives a deterministic purchased or out_of_stock result based on the serialized stock allocation.
 - Successful purchase deducts points and writes purchase history atomically.
 - Failed purchase does not deduct points or decrement stock.
 - `NULL` stock permits purchases without decrement.
@@ -170,6 +176,11 @@ The test harness must model the trusted Gateway identity boundary. A client must
 - Whether the deployed system permits negative point transactions and any legacy transaction types beyond those seen in the reviewed frontend.
 
 ## 8. Approval record
+
+Marketplace policy decision recorded 2026-11-21:
+- The user explicitly adopted **independent per-student purchases** as the governing marketplace policy.
+- This decision supersedes any earlier all-or-nothing batch direction or interpretation. It does not change the approved stock model: NULL remains unlimited, zero remains out of stock, and finite stock is decremented atomically for each successful student's purchase.
+- A mixed batch may therefore contain both committed purchases and rejected student outcomes. Each student's debit, purchase history, applicable stock decrement, and idempotency result remain atomic at that student's boundary.
 
 The user approved all three final business-rule recommendations on 2026-11-09:
 - configurable maximum for positive whole-number teacher awards;
