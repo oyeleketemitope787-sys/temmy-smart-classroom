@@ -40,7 +40,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 3. `marketplace_rewards`, `purchases`, `transaction_requests` and `transaction_audit` are proposed test structures, not claims about production schema.
 4. No `UNIQUE(activity_id, student_id)` constraint is present.
 5. `NULL` reward stock means unlimited stock; finite stock is non-negative.
-6. The fixture seeds a maximum teacher award of 100 points solely as a test value. The production maximum remains undecided.
+6. The fixture currently contains a stale 100-point maximum-award seed. This conflicts with the user-approved 50-point default (2026-11-21) and must be corrected to 50, then all seed/smoke/edge references reconciled, before any disposable execution. Do not run the fixture in its current state.
 7. Point transactions use signed values: positive credits and negative debits.
 8. Browser test roles have no direct table writes. The gateway test role has no direct table grants; narrow function EXECUTE grants are defined in the separate drafts and still require ACL verification.
 9. Role names are namespaced as `temmy_ctest_*` to avoid colliding with standard Supabase roles or other local roles.
@@ -64,6 +64,8 @@ Before any SQL is executed in a disposable test database:
 - Verify SECURITY DEFINER role-context behaviour, function owner, fixed `search_path` and function ACLs.
 - Finalize stable result/error codes and durable rejected-request semantics.
 - Revise all transaction drafts to implement TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md and review lock order/concurrency behaviour.
+- Reconcile the stale 100-point fixture seed to the approved 50-point manual-award default and verify no stale 20/100 test assumptions remain.
+- Add administrator-only award-cap configuration tests and durable above-cap rejection/replay tests.
 - Review and validate the test-only failure injector so each failpoint occurs after the intended preceding mutation.
 - Only after static review should the suite be run against synthetic data in a fresh disposable local/CI PostgreSQL database.
 
