@@ -62,6 +62,44 @@ Existing logical records:
 - class_activities
 - student_activity_records
 
+New logical records/relationships required by the approved achievement and leadership model:
+- academic_periods:
+    period_id, academic_year, start_date, end_date, status
+  Purpose: define the class/academic-year boundary for point totals, achievements,
+  leadership, and purchase attribution.
+- student_class_periods:
+    membership_id, student_id, class_id, period_id, joined_at, left_at, status
+  Purpose: preserve class membership history; do not infer historical membership
+  from a student's current class.
+- achievement_definitions:
+    achievement_id, code, threshold, display_name, image_reference, active
+  Purpose: configurable definitions for Bronze (50+), Silver (100+), Gold (150+),
+  and Champion (500+) thresholds.
+- student_achievements:
+    achievement_record_id, student_id, class_id, period_id, achievement_id,
+    achieved_at, event_sequence
+  Purpose: durable milestone record. The server/database timestamp is authoritative;
+  event_sequence provides deterministic ordering when timestamps are identical.
+- class_leadership_settings:
+    setting_id, class_id, period_id, position_code, display_title, position_order,
+    eligibility_rule, active
+  Purpose: teacher-configurable leadership titles/order, including the default
+  Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2 roles.
+- leadership_appointments:
+    appointment_id, student_id, class_id, period_id, setting_id, achievement_id,
+    appointed_at, event_sequence, status, effective_from, effective_to
+  Purpose: preserve automatic appointments and their historical class/period scope.
+- reward_images:
+    image_id, storage_reference, content_type, file_size, uploaded_by, created_at
+  Purpose: controlled teacher-uploaded reward imagery; store references/metadata,
+  not image binary in reward rows.
+- avatar_library and student_avatar_selections:
+    approved avatar catalogue and each student's selected avatar reference.
+  Students select from the approved library; student uploads are not allowed.
+- point summaries, if later required for performance:
+    any cached aggregate/balance must be rebuildable and reconciled from the
+    authoritative ledger; it is never independently editable or authoritative.
+
 Additional logical records, subject to schema reconciliation:
 - transaction_requests:
     request_id (unique idempotency key),
@@ -111,9 +149,17 @@ C. POINT LEDGER INVARIANTS
 - Positive points represent credits; negative points represent debits/reversals.
   Confirm exact existing conventions and action_type/source values before
   implementation.
-- Balance = sum of signed ledger points for the student, under the authoritative
-  ledger scope. Confirm whether the current scope is student-wide or
-  teacher/class-scoped before production implementation.
+- Current spendable balance = sum of signed ledger entries for the student within
+  the authoritative class/academic-period scope. Confirm exact deployed conventions
+  before production implementation.
+- Aggregate points earned are a separate earned-only measure: qualifying positive
+  earning entries contribute; marketplace purchases and ordinary deductions do not
+  reduce the aggregate. Do not calculate achievement from spendable balance.
+- Every applicable ledger entry must carry (or be unambiguously linked to) student,
+  class, and academic-period attribution. Never infer historical class attribution
+  from the student's current class.
+- A cached aggregate/balance summary is optional and non-authoritative; it must be
+  reconcilable from ledger entries.
 - Never accept a client-calculated balance as authoritative.
 - No zero-value transaction is written for a no-op.
 - Reversal is a compensating entry linked to the original transaction; the
@@ -210,6 +256,9 @@ E5. purchase_reward_for_student(actor, student, reward, request_id)
   without another debit, purchase row, or stock decrement.
 - Multi-student processing is independent: one student's failure does not roll
   back another student's already committed purchase.
+- Student self-purchases and teacher-initiated individual/group purchases use the
+  same trusted per-student purchase operation and the selected student's own balance.
+- Marketplace purchase debits affect spendable balance, not earned-only aggregate.
 
 F. LOCKING AND DEADLOCK CONTROL
 -------------------------------
@@ -275,6 +324,30 @@ game scoring fixture/workflow. Include:
   tests;
 - duplicate activity submission tests without a new uniqueness constraint;
 - no hosted credentials or network access to Supabase.
+
+K. APPROVED ACHIEVEMENT AND LEADERSHIP RULES
+---------------------------------------------
+- Aggregate points are earned-only. Marketplace spending and ordinary deductions
+  do not reduce aggregate points; they affect current spendable balance only.
+- A formal reversal/correction of an incorrectly awarded earning is distinct from
+  an ordinary deduction. Its effect on earned-only aggregate must be explicitly
+  decided before implementation.
+- Achievement thresholds: Bronze 50+, Silver 100+, Gold 150+, Champion 500+.
+- The Class Champion ranking title belongs to the student with the highest
+  aggregate points in the class/academic period even when that score is below 500;
+  this ranking title is distinct from the 500+ Champion achievement level.
+- At each reward-level milestone, the first student to reach that level becomes
+  or retains Classroom Captain. The next three qualifying students fill the
+  Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2 positions.
+- Teachers may edit prefect hierarchy titles/order through class-period settings.
+- Database/server-recorded milestone timestamp determines who reached a level
+  first. A deterministic database-generated event sequence resolves identical
+  timestamps. Browser clocks are never authoritative.
+- Achievement gifts are separate from achievement levels. Reaching a level does
+  not automatically grant a gift or debit points; redemption is a marketplace
+  purchase using current spendable balance.
+- Teachers may upload controlled reward images. Students select only from the
+  approved avatar library and cannot upload avatars.
 
 J. OPEN DESIGN GATES BEFORE SQL BECOMES EXECUTABLE
 -------------------------------------------------
