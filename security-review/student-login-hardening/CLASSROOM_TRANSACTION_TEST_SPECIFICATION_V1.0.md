@@ -75,8 +75,8 @@ The existing game platform is retired from this plan. Classroom security and lau
 - A successful purchase therefore reduces current point balance only. It does not reduce aggregate points earned, revoke an already-earned achievement level, or retroactively change a leadership appointment.
 - A formal reversal/correction of an incorrectly awarded earning reduces both current spendable balance and aggregate points earned. It is a correction of the original earning, not an ordinary deduction.
 - If that correction takes the student's aggregate below an achievement threshold, retain the historical achievement record but mark it no longer currently valid for that class/academic period. Do not delete the record.
-- If the correction invalidates the aggregate milestone underpinning a leadership appointment, retain the appointment history but mark the appointment inactive/ended with an effective end time. Do not erase the historical appointment.
-- The succession/reassignment rule for any vacated leadership position after a correction remains an implementation decision and must be explicitly specified before it is automated.
+- If a formal correction reduces the aggregate below the milestone that originally qualified a student for a leadership position, the previously appointed leader retains that leadership position. Do not automatically transfer the post or appoint a successor because of the correction.
+- Preserve the appointment as an active leadership appointment and retain its original historical milestone/appointment details. The correction is recorded in the points and achievement history, but it does not remove the leader from the post.
 - Ordinary deductions (including disciplinary deductions) reduce current spendable balance only and do not reduce aggregate points earned.
 - On progression to a new class/academic year, the new period starts with its own aggregate and spendable balance. Previous-period achievements and transactions remain historical and do not roll over.
 
@@ -166,8 +166,8 @@ The test harness must model the trusted Gateway identity boundary. A client must
 - Second undo of the same original transaction is rejected/idempotently returns the first result.
 - Undo of an incorrectly awarded earning removes the erroneous amount from both current spendable balance and aggregate points earned; it is recorded as a compensating ledger entry linked to the original earning.
 - If the corrected aggregate falls below an achievement threshold, the achievement remains in history but is marked no longer currently valid; it is not deleted.
-- If the correction invalidates the milestone underpinning a leadership appointment, preserve the appointment history and mark it inactive/ended; test that no historical record is erased.
-- Do not automate leadership succession/reassignment after such a correction until its rule is explicitly approved.
+- If a formal correction reduces the aggregate below the milestone that originally qualified a student for a leadership position, the previously appointed leader retains that post. The appointment remains active; do not automatically transfer the post or appoint a successor because of the correction.
+- Verify that the correction is reflected in points/achievement history while the leader's appointment and leadership status remain intact.
 - Undo is rejected completely when the student has spent enough points that full reversal would make the balance negative; no partial reversal or negative balance is allowed.
 - Ordinary disciplinary/behaviour deductions do not reduce aggregate points earned.
 - Concurrent undo attempts create at most one reversal.
