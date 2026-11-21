@@ -84,7 +84,10 @@ The existing game platform is retired from this plan. Classroom security and lau
 - Achievement thresholds are Bronze: 50+, Silver: 100+, Gold: 150+, and Champion: 500+ aggregate points.
 - Achievement progression is based on aggregate points, never current spendable balance. Once earned in the relevant class/academic year, a level remains earned for that period even after points are spent.
 - Separately, the **Class Champion title** identifies the student with the highest aggregate points in the class/academic-year ranking. The highest-ranked student may hold this title even when their aggregate is below 500; the 500+ threshold remains the Champion achievement-level milestone.
-- Where students are tied for the highest aggregate, the tie-breaking rule must be teacher-configurable or explicitly defined before implementation; do not invent one in the implementation.
+- If multiple students are tied for the highest aggregate points, recognise them as Class Champions for that class/academic year.
+- The teacher administers a live task to distinguish the final 1st, 2nd, and 3rd positions among the tied students. The live-task result determines the order of these awards; the tie-break is teacher-administered and must be recorded with the class/period result.
+- The top three students from that tie-break receive Champion recognition as 1st, 2nd, and 3rd position awards. All three are recognised as Champions; the position labels distinguish their award placements.
+- The live-task tie-break ranks the Class Champion awards only. It does not alter aggregate points earned, the 500+ Champion achievement threshold, or milestone-based leadership appointments.
 
 #### Leadership appointments
 - Leadership is linked to aggregate points and achievement milestones, not current point balance.
@@ -160,6 +163,13 @@ The test harness must model the trusted Gateway identity boundary. A client must
 - Deduction above balance deducts only the remaining balance.
 - Deduction at zero balance returns no-op and creates no zero-value transaction.
 - Concurrent deductions never produce a negative balance or over-deduct.
+
+### Class Champion ranking and tie-break
+- A single student with the highest aggregate points receives the 1st-position Class Champion award.
+- If multiple students tie at the highest aggregate, the teacher administers a live task to distinguish 1st, 2nd, and 3rd positions.
+- Verify the top three receive Champion recognition with distinct 1st, 2nd, and 3rd position awards.
+- Verify the live-task result is recorded and does not change aggregate points, achievement thresholds, or leadership appointments.
+- Do not use browser timestamps or arbitrary database ordering to decide the live-task ranking.
 
 ### Undo
 - Full undo succeeds when the full reversal is affordable.
