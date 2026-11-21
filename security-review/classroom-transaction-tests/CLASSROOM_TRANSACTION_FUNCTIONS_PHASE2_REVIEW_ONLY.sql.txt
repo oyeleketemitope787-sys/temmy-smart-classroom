@@ -2,7 +2,10 @@
 CLASSROOM TRANSACTION FUNCTIONS — DISPOSABLE TEST ONLY
 Version: 0.2 — undo and activity score adjustment
 
-STATUS: REVIEW DRAFT. NOT EXECUTED. NOT A SUPABASE MIGRATION.
+STATUS: SUPERSEDED REVIEW DRAFT. NOT EXECUTED. NOT A SUPABASE MIGRATION.
+
+SUPERSESSION / EXECUTION BLOCK (2026-11-21): This draft has not yet been reconciled with the approved 50-point manual-award cap, durable idempotent expected rejections, or the global request -> class row(s) -> student row -> operation-specific row lock order. It is review-only and MUST NOT be installed or executed, even in the disposable fixture, until those changes are implemented and statically re-reviewed. The current function body is not evidence of compliance with the approved rules.
+
 Requires the synthetic fixture schema and Phase 1 function draft to be reviewed
 and installed in a fresh disposable PostgreSQL database. Never run against a
 hosted/shared database.
