@@ -159,6 +159,14 @@ C. POINT LEDGER INVARIANTS
   current spendable balance and aggregate points earned. It corrects the original
   earning and must be linked to that original ledger entry; it is not an ordinary
   deduction. Ordinary disciplinary deductions reduce current balance only.
+- If this correction takes aggregate points below an achievement threshold, retain
+  the achievement record for history but mark it no longer currently valid for the
+  class/academic period; never delete the historical record.
+- If the correction invalidates the milestone underpinning a leadership appointment,
+  preserve the appointment record and mark it inactive/ended with an effective end
+  time. Historical appointments remain queryable.
+- The rule for filling or reassigning a leadership position vacated by such a
+  correction remains open and must be explicitly approved before automation.
 - Every applicable ledger entry must carry (or be unambiguously linked to) student,
   class, and academic-period attribution. Never infer historical class attribution
   from the student's current class.
@@ -228,6 +236,12 @@ E3. reverse_transaction(actor, original_transaction_id, request_id)
 - When the original transaction is an incorrectly awarded earning, the compensating
   entry reduces both current spendable balance and aggregate points earned. This
   correction must not be classified as an ordinary disciplinary deduction.
+- Re-evaluate achievement validity after the correction: if the resulting aggregate
+  is below the threshold, retain the achievement row but mark it no longer currently
+  valid; do not delete history.
+- If the correction invalidates the achievement milestone underpinning a leadership
+  appointment, retain the appointment row and mark it inactive/ended with an
+  effective end time. The successor/reassignment rule remains open pending approval.
 - When reversing another eligible transaction type, apply the explicitly defined
   semantics for that operation; do not assume every reversal changes earned aggregate.
 - Enforce unique original_transaction_id in reversal records/ledger linkage.
