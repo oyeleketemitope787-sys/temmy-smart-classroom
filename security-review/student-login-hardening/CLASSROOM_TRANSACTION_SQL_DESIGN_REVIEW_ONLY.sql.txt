@@ -506,3 +506,30 @@ Until all gates pass, status remains NO-GO for hosted SQL or deployment.
 --                notes, request_id)
 -- purchase_reward_for_student(actor_teacher_id, student_id, reward_id,
 --                             request_id)
+
+
+K. APPROVED TEACHER AWARD CORRECTIONS — 2026-11-21 (DESIGN ONLY)
+-----------------------------------------------------------------
+- Default maximum: 50 points per individual manual teacher award. The
+  authoritative configuration is administrator-controlled; teachers cannot
+  change it. Do not use historical 20- or 100-point values as policy.
+- Above-cap ordinary awards return a clear structured rejection, never a
+  truncated amount, and create no ledger transaction. Exceptional awards
+  require a separate authorised and audited override workflow; its authority,
+  scope and approval path remain an implementation gate.
+- Expected business rejections (including above-cap awards) are durably
+  idempotent: commit the claimed request with actor/operation/payload binding,
+  rejected status/result and safe rejection audit, but no business mutation.
+  Same-key/same-payload retries return that stored rejection. Key reuse with
+  a changed actor, operation or payload is rejected. Unexpected internal
+  failures still abort and roll back; do not catch all exceptions as rejections.
+- Award lock order: request row -> relevant class row(s), sorted by UUID ->
+  student row -> operation-specific rows -> writes. A non-locking preliminary
+  student-to-class lookup must be revalidated after class and student locks.
+  Changed membership returns a retryable conflict, not an award.
+- Award-limit configuration must be protected and administrator-only, with
+  audited changes and concurrency-safe reads/updates. Client/teacher roles
+  cannot write it.
+- The previous synthetic fixture seed of 100 is stale; revise it to 50 before
+  disposable execution. No fixture or production SQL is authorised to run by
+  this documentation update.
