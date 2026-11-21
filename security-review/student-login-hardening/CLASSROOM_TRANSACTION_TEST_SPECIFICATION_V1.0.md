@@ -65,6 +65,42 @@ The existing game platform is retired from this plan. Classroom security and lau
 - Stock model: `NULL` means unlimited stock; a non-negative finite value means limited stock. A finite stock decrement and the purchase must occur atomically. If stock is zero, reject without charging points. Concurrent purchases must not oversell.
 - For a multi-student selection, return an independent result for each student (e.g. purchased, insufficient_balance, out_of_stock, reward_unavailable, invalid_student, or retry_result). Do not use all-or-nothing batch semantics.
 
+### 2.6 Marketplace, achievement levels, student rewards, avatars, and class leadership
+
+#### Separate point measures
+- Maintain two distinct class- and academic-year-scoped measures:
+  - **Aggregate points earned:** cumulative qualifying points earned in the relevant class and academic year. This drives achievement levels, class ranking, and leadership eligibility. Marketplace spending does not reduce aggregate points.
+  - **Current point balance:** the spendable balance derived from qualifying ledger transactions (earned points less spending and other valid deductions). Purchases are limited by this available balance.
+- A successful purchase reduces current point balance only. It does not reduce aggregate points earned, revoke an already-earned achievement level, or retroactively change a leadership appointment.
+- On progression to a new class/academic year, the new period starts with its own aggregate and spendable balance. Previous-period achievements and transactions remain historical and do not roll over.
+
+#### Achievement levels and Champion
+- Achievement thresholds are Bronze: 50+, Silver: 100+, Gold: 150+, and Champion: 500+ aggregate points.
+- Achievement progression is based on aggregate points, never current spendable balance. Once earned in the relevant class/academic year, a level remains earned for that period even after points are spent.
+- Separately, the **Class Champion title** identifies the student with the highest aggregate points in the class/academic-year ranking. The highest-ranked student may hold this title even when their aggregate is below 500; the 500+ threshold remains the Champion achievement-level milestone.
+- Where students are tied for the highest aggregate, the tie-breaking rule must be teacher-configurable or explicitly defined before implementation; do not invent one in the implementation.
+
+#### Leadership appointments
+- Leadership is linked to aggregate points and achievement milestones, not current point balance.
+- At each reward-level milestone, the first student to reach that level becomes or retains Classroom Captain.
+- The next three qualifying students are appointed in sequence to the prefect positions: Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2.
+- Teachers can edit the prefect hierarchy/titles for their class. The system automatically records and displays appointments when the applicable milestone/eligibility is reached.
+- Leadership appointments are scoped to the relevant class and academic year and retain historical records. Spending points does not remove an appointment.
+- The precise handling of ties or simultaneous milestone attainment must be deterministic and specified before implementation; do not use client-side timing as the authority.
+
+#### Gifts, images, and avatars
+- Teachers create and manage marketplace rewards/gifts, set their point prices, and may attach a suitable uploaded image or select an available icon.
+- Reward-level achievement and marketplace gift redemption are separate concepts: earning a level does not itself debit points. A gift purchase uses the student's current point balance and follows the independent per-student purchase rules in section 2.5.
+- Students may select an avatar only from the approved in-platform avatar library through their student portal. Student avatar uploads are not permitted.
+- Avatar selection has no effect on points, achievement levels, rankings, or leadership.
+- Teacher-uploaded reward images and the student avatar library must use controlled file types, size limits, and safe storage/access rules.
+
+#### Purchase routes
+- A student may purchase an available reward for themselves through their own student portal.
+- A teacher may initiate a purchase for one selected student or a selected group, but may not bypass the selected student's current point balance.
+- For teacher-initiated group purchases, each student is evaluated independently: students with sufficient balances may succeed, while students without sufficient balances receive an individual rejection and explanation. One student's rejection does not cancel another student's successful purchase.
+- Student self-purchases and teacher-initiated purchases must use the same trusted transaction, stock, authorization, idempotency, and audit controls.
+
 ## 3. Shared transaction and security requirements
 
 1. **Trusted identity:** Teacher identity comes from verified server-side authentication context. Never accept client-selected teacher identity as authority.
@@ -186,5 +222,13 @@ The user approved all three final business-rule recommendations on 2026-11-09:
 - configurable maximum for positive whole-number teacher awards;
 - unlimited/finite stock with atomic stock and purchase handling, deactivation preserving history;
 - preserve existing duplicate activity submission behaviour pending verification, with tests and no new uniqueness constraint.
+
+Additional Classroom reward and leadership decisions recorded 2026-11-21:
+- The user approved separate aggregate-points-earned and current-point-balance measures. Aggregate points govern achievement levels, class ranking, and leadership; current balance governs purchases. Spending does not reduce aggregate achievement.
+- Reward thresholds are Bronze 50+, Silver 100+, Gold 150+, and Champion 500+.
+- The Class Champion title belongs to the highest aggregate-point student in the class/academic-year ranking, even if the highest score is below 500. This ranking title is distinct from the 500+ Champion achievement level.
+- The first student to reach each reward-level milestone becomes or retains Classroom Captain; the next three qualifying students receive the Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2 positions. Teachers may edit the prefect hierarchy/titles. Appointments should appear automatically and remain tied to aggregate points.
+- Teachers may upload suitable images for rewards. Students may select avatars only from the approved library; student avatar uploads are not allowed.
+- Students may purchase for themselves; teachers may purchase for one student or a group, always using each selected student's own current balance and preserving independent per-student outcomes.
 
 This document is a test specification only. It is not a production schema or migration.
