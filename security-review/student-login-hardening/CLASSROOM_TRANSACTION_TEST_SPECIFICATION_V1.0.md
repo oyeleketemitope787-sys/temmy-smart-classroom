@@ -96,6 +96,9 @@ The existing game platform is retired from this plan. Classroom security and lau
 - Milestone ordering is determined by the database's server-recorded achievement timestamp, not a browser clock. If timestamps are identical, use a deterministic database-generated sequence/ordering value as the tie-breaker.
 - Teachers can edit the prefect hierarchy/titles for their class. The system automatically records and displays appointments when the applicable milestone/eligibility is reached.
 - Leadership appointments are scoped to the relevant class and academic year and retain historical records. Spending points does not remove an appointment.
+- A student may hold only one leadership position in a class during an academic year. Reaching additional reward-level milestones does not automatically assign that student another position.
+- When a student who already holds a leadership position reaches another milestone, the next qualifying student in the milestone order is considered for the available position. Do not duplicate leadership positions for the same student within that class/academic year.
+- A teacher may deliberately change an appointment; any manual change must preserve the appointment history and record who made the change and when.
 - The precise handling of ties or simultaneous milestone attainment must be deterministic and specified before implementation; do not use client-side timing as the authority.
 
 #### Gifts, images, and avatars
@@ -163,6 +166,12 @@ The test harness must model the trusted Gateway identity boundary. A client must
 - Deduction above balance deducts only the remaining balance.
 - Deduction at zero balance returns no-op and creates no zero-value transaction.
 - Concurrent deductions never produce a negative balance or over-deduct.
+
+### Leadership position uniqueness
+- Verify one student cannot automatically hold more than one leadership position in the same class and academic year.
+- When an existing leader reaches another reward-level milestone, verify no second position is assigned to that student and the next qualifying student is considered for the available position.
+- Verify leadership position uniqueness is scoped to class and academic year; historical appointments in previous periods remain intact.
+- Verify a teacher's deliberate manual appointment change records the change and preserves prior appointment history.
 
 ### Class Champion ranking and tie-break
 - A single student with the highest aggregate points receives the 1st-position Class Champion award.
