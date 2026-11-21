@@ -34,11 +34,9 @@ The current functions raise exceptions for expected business outcomes such as in
 
 Consequently, the same request ID can be retried after a rejection as if it were a new request, and the rejection is not durably recorded. This is already acknowledged in the individual drafts but remains an API/business contract gap.
 
-**Required decision:** Choose one explicit contract before implementation:
-- Expected business rejections return a structured result and commit a rejected request record (and safe rejection audit) without applying business mutations; or
-- Rejections remain exceptions and retryable, with no durable rejection audit/idempotency claim.
+**Decision approved 2026-11-21:** Use durable idempotent outcomes for expected business rejections. Return a stable structured rejection and commit the request's rejected status/result plus a safe rejection audit, without applying a business mutation. Same-key/same-payload retries return the stored rejection; changed actor, operation or payload is rejected. Unexpected internal/system failures still raise and roll back. Never catch every exception and convert it into a committed rejection.
 
-If choosing the first option, ensure unexpected database/system failures still abort and roll back. Do not catch every exception and turn it into a committed rejection.
+**Remaining verification:** Enumerate expected business rejections versus retryable infrastructure conflicts for each operation; prove replay and rollback semantics in the disposable fixture.
 
 ### F4 — Class and student administration lock ordering must be reconciled in the drafts
 
@@ -88,3 +86,16 @@ Do not execute any draft until:
 ## 5. Safety status
 
 No SQL was run during this review. No triggers were created. No hosted Supabase project, shared database, main branch or cloud-test branch was changed. These findings do not authorize any deployment or hosted database operation.
+
+
+## 6. Approved Teacher Manual Award Corrections — 2026-11-21
+
+The user approved the corrections identified in the manual-award review:
+- 50 points is the default maximum for an individual manual teacher award; the limit is protected and administrator-controlled. Teachers cannot change it.
+- Above-cap ordinary awards are clearly rejected, never silently truncated, and produce no points-ledger mutation. Exceptional awards require a separate authorised and audited override workflow; its authority and approval contract remain open.
+- Expected business rejections use durable idempotency: request status/result and safe rejection audit commit without business mutation. Identical retries replay the rejection; changed actor/operation/payload is rejected. Unexpected system failures still roll back.
+- All award operations follow request -> sorted class row(s) -> student row -> operation-specific rows -> writes. Preliminary membership reads are revalidated after locks; changed membership is a retryable conflict.
+- Award configuration changes are administrator-only, protected, audited and concurrency-safe.
+
+The synthetic fixture's old 100-point seed is stale and must be changed to 50 before execution. The test specification and design documents must not be mistaken for evidence that the fixture seed has already been changed. The function drafts, fixture seed, smoke/edge tests and concurrency tests remain unexecuted and must be reconciled together before a fresh disposable run.
+
