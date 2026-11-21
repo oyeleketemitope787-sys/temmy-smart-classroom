@@ -73,7 +73,8 @@ The existing game platform is retired from this plan. Classroom security and lau
   - **Current point balance:** the spendable balance derived from qualifying ledger transactions (earned points less spending and other valid deductions). Purchases are limited by this available balance.
 - Aggregate points use an **earned-only** rule: qualifying positive points earned in the class/academic-year period contribute to aggregate achievement. Marketplace spending and ordinary deductions (including disciplinary deductions) reduce current point balance but do not reduce aggregate points earned.
 - A successful purchase therefore reduces current point balance only. It does not reduce aggregate points earned, revoke an already-earned achievement level, or retroactively change a leadership appointment.
-- Treatment of a formal reversal/correction of an incorrectly awarded earning must be explicitly defined before implementation; it must not be silently treated as an ordinary deduction.
+- A formal reversal/correction of an incorrectly awarded earning reduces both current spendable balance and aggregate points earned. It is a correction of the original earning, not an ordinary deduction.
+- Ordinary deductions (including disciplinary deductions) reduce current spendable balance only and do not reduce aggregate points earned.
 - On progression to a new class/academic year, the new period starts with its own aggregate and spendable balance. Previous-period achievements and transactions remain historical and do not roll over.
 
 #### Achievement levels and Champion
@@ -160,7 +161,9 @@ The test harness must model the trusted Gateway identity boundary. A client must
 ### Undo
 - Full undo succeeds when the full reversal is affordable.
 - Second undo of the same original transaction is rejected/idempotently returns the first result.
-- Undo is rejected completely when the student has spent enough points that full reversal would make the balance negative.
+- Undo of an incorrectly awarded earning removes the erroneous amount from both current spendable balance and aggregate points earned; it is recorded as a compensating ledger entry linked to the original earning.
+- Undo is rejected completely when the student has spent enough points that full reversal would make the balance negative; no partial reversal or negative balance is allowed.
+- Ordinary disciplinary/behaviour deductions do not reduce aggregate points earned.
 - Concurrent undo attempts create at most one reversal.
 - Original ledger row remains unchanged.
 
