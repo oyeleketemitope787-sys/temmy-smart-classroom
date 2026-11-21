@@ -403,6 +403,39 @@ K. APPROVED ACHIEVEMENT AND LEADERSHIP RULES
 - Teachers may upload controlled reward images. Students select only from the
   approved avatar library and cannot upload avatars.
 
+
+L. STUDENT WITHDRAWAL, SOFT DELETION, AND SAME-CLASS RE-ENROLMENT
+-------------------------------------------------------------------
+- Same-class temporary absence/withdrawal does not reset the student's
+  class-period record when the original record remains. On return, resume the
+  same student record and preserve its aggregate points, spendable balance,
+  achievements, ledger history, and applicable leadership history.
+- Deactivation is reversible: reactivation restores the same student record
+  and its preserved history. Do not create a duplicate student.
+- Soft deletion is recoverable only within the configured retention/recovery
+  policy. If the original record remains recoverable, restore that same record
+  after identity and class-period checks; do not create a replacement record.
+- A user-interface action labelled "delete" must not be treated as proof of
+  permanent erasure. The application and database lifecycle must distinguish
+  deactivation, recoverable soft deletion, and legally authorised permanent
+  deletion.
+- If the student record and associated history have been permanently erased
+  under the applicable retention/deletion process and cannot lawfully be
+  recovered, a later enrolment creates a new student record with zero
+  aggregate points and zero spendable balance for that new enrolment. Do not
+  reconstruct erased scores or history.
+- Before creating a new record on re-enrolment, check for a recoverable
+  original using the approved identity-resolution process. Prevent duplicate
+  active membership and preserve an audit event for restoration or new
+  enrolment.
+- This continuity rule applies only to return to the same class/period. It
+  does not override the separately approved class-transfer rule: a receiving
+  class starts at zero, while the former class's points, achievements,
+  transactions, and leadership history remain attached to the former class.
+- Exact retention duration, identity matching procedure, and legal erasure
+  workflow remain implementation gates; this review document does not invent
+  a retention period or authorise permanent deletion.
+
 J. OPEN DESIGN GATES BEFORE SQL BECOMES EXECUTABLE
 -------------------------------------------------
 1. Verify deployed marketplace_rewards/purchases schemas and purchase RPC.
