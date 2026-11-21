@@ -170,9 +170,9 @@ CREATE TABLE classroom_test.transaction_config (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Test-only cap value; not a production recommendation.
+-- Synthetic fixture default aligned with approved manual-award policy: 50 points.
 INSERT INTO classroom_test.transaction_config(config_key, integer_value)
-VALUES ('maximum_teacher_award', 100);
+VALUES ('maximum_teacher_award', 50);
 
 RESET ROLE;
 
