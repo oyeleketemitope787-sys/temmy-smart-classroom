@@ -129,17 +129,15 @@ Required tests must cover an award at the configured limit, one above the limit,
 
 This is a design approval only. It does not authorize schema changes, SQL execution, configuration writes, grants/revokes, migrations, or deployment.
 
-## 12. Initial system-wide award maximum — approved
+## 12. Manual teacher award maximum — superseded decision
 
-**Approval date:** 2026-11-09
+The 2026-11-09 approval of 20 points per individual award is **superseded** by the later explicit approval on 2026-11-21.
 
-- The initial system-wide maximum is **20 points per individual student award**.
-- The same 20-point limit applies to every teacher.
-- For an award action applied to multiple selected students, the limit is evaluated independently for each student's individual award; the limit is not a combined batch total.
-- A request to award more than 20 points to an individual student must be rejected in full. It must not be truncated or partially awarded.
-- An authorized system administrator may change the configured system-wide maximum later, subject to the administrator authorization, validation, attribution, and audit requirements in Section 11.
-- Teachers cannot set or override the maximum.
+- Default maximum: **50 points per individual manual teacher award**.
+- An authorised school administrator or authorised system administrator controls the configured limit. Teachers cannot change it.
+- A request above the configured limit is rejected in full with a clear structured result; it is never silently truncated and no points are credited.
+- Exceptional awards above the ordinary configured limit require a separate authorised process and audit record. The authority, scope and approval workflow remain an implementation gate.
+- This manual-award cap does not apply to activity scores or other separately approved earning sources.
+- The fixture's configuration seed must be 50 before any disposable test execution.
 
-The numeric value and per-student interpretation are approved business rules. The exact administrator role/permission model remains an implementation gate. The synthetic SQL fixture currently uses a test maximum of 100 and must be aligned to 20 before any future test execution; no fixture or database has been changed by this approval.
-
-This is a design approval only. It does not authorize SQL execution, configuration writes, schema changes, grants/revokes, migrations, Edge Function deployment, or application changes.
+This later decision supersedes the 20-point policy and every older 100-point fixture value. This remains a design approval only; it does not authorise production SQL, hosted execution, grants/revokes, migrations, or deployment.
