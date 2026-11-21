@@ -155,6 +155,10 @@ C. POINT LEDGER INVARIANTS
 - Aggregate points earned are a separate earned-only measure: qualifying positive
   earning entries contribute; marketplace purchases and ordinary deductions do not
   reduce the aggregate. Do not calculate achievement from spendable balance.
+- A formal reversal/correction of an incorrectly awarded earning reduces both the
+  current spendable balance and aggregate points earned. It corrects the original
+  earning and must be linked to that original ledger entry; it is not an ordinary
+  deduction. Ordinary disciplinary deductions reduce current balance only.
 - Every applicable ledger entry must carry (or be unambiguously linked to) student,
   class, and academic-period attribution. Never infer historical class attribution
   from the student's current class.
@@ -221,6 +225,11 @@ E3. reverse_transaction(actor, original_transaction_id, request_id)
 - If the full reversal would make available balance negative, reject completely:
   no partial reversal and no ledger entry.
 - Otherwise append one compensating entry linked to original transaction.
+- When the original transaction is an incorrectly awarded earning, the compensating
+  entry reduces both current spendable balance and aggregate points earned. This
+  correction must not be classified as an ordinary disciplinary deduction.
+- When reversing another eligible transaction type, apply the explicitly defined
+  semantics for that operation; do not assume every reversal changes earned aggregate.
 - Enforce unique original_transaction_id in reversal records/ledger linkage.
 - Save result and success audit atomically.
 
@@ -329,9 +338,11 @@ K. APPROVED ACHIEVEMENT AND LEADERSHIP RULES
 ---------------------------------------------
 - Aggregate points are earned-only. Marketplace spending and ordinary deductions
   do not reduce aggregate points; they affect current spendable balance only.
-- A formal reversal/correction of an incorrectly awarded earning is distinct from
-  an ordinary deduction. Its effect on earned-only aggregate must be explicitly
-  decided before implementation.
+- A formal reversal/correction of an incorrectly awarded earning reduces both
+  current spendable balance and aggregate points earned; it corrects the original
+  earning and is not an ordinary deduction.
+- Ordinary deductions, including disciplinary deductions, reduce current spendable
+  balance only and leave aggregate points earned unchanged.
 - Achievement thresholds: Bronze 50+, Silver 100+, Gold 150+, Champion 500+.
 - The Class Champion ranking title belongs to the student with the highest
   aggregate points in the class/academic period even when that score is below 500;
