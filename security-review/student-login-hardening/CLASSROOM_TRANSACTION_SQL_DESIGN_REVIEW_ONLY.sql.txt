@@ -374,6 +374,9 @@ K. APPROVED ACHIEVEMENT AND LEADERSHIP RULES
   or retains Classroom Captain. The next three qualifying students fill the
   Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2 positions.
 - Teachers may edit prefect hierarchy titles/order through class-period settings.
+- Enforce at most one active leadership position per student within a class and academic year. Reaching another reward-level milestone does not automatically assign the same student a second position.
+- If a student who already holds a position reaches another milestone, consider the next qualifying student in the milestone order for the available position.
+- A teacher may deliberately change an appointment; preserve the prior appointment history and record the actor and effective time of the manual change.
 - Database/server-recorded milestone timestamp determines who reached a level
   first. A deterministic database-generated event sequence resolves identical
   timestamps. Browser clocks are never authoritative.
