@@ -79,6 +79,9 @@ The existing game platform is retired from this plan. Classroom security and lau
 - Preserve the appointment as an active leadership appointment and retain its original historical milestone/appointment details. The correction is recorded in the points and achievement history, but it does not remove the leader from the post.
 - Ordinary deductions (including disciplinary deductions) reduce current spendable balance only and do not reduce aggregate points earned.
 - On progression to a new class/academic year, the new period starts with its own aggregate and spendable balance. Previous-period achievements and transactions remain historical and do not roll over.
+- Previous-period leadership appointments remain in the historical record and remain viewable as history; they do not carry forward as active appointments into the new class/academic year.
+- Leadership positions for each new class/academic year start afresh. Students must qualify again through the new period's milestones.
+- Previous-period points, achievements, and leadership history must remain accessible without being counted toward the new period's totals or appointments.
 
 #### Achievement levels and Champion
 - Achievement thresholds are Bronze: 50+, Silver: 100+, Gold: 150+, and Champion: 500+ aggregate points.
@@ -166,6 +169,13 @@ The test harness must model the trusted Gateway identity boundary. A client must
 - Deduction above balance deducts only the remaining balance.
 - Deduction at zero balance returns no-op and creates no zero-value transaction.
 - Concurrent deductions never produce a negative balance or over-deduct.
+
+### Academic-year and class transition
+- Verify a new class/academic-year period starts with its own aggregate points and spendable balance; no previous-period points roll over.
+- Verify previous-period points, achievements, transactions, and leadership appointments remain accessible as historical records.
+- Verify previous-period leadership appointments are not active appointments in the new period.
+- Verify leadership positions start afresh in the new period and students must qualify again through its milestones.
+- Verify historical records are not included in new-period balances, rankings, achievements, or leadership eligibility.
 
 ### Leadership position uniqueness
 - Verify one student cannot automatically hold more than one leadership position in the same class and academic year.
