@@ -71,7 +71,9 @@ The existing game platform is retired from this plan. Classroom security and lau
 - Maintain two distinct class- and academic-year-scoped measures:
   - **Aggregate points earned:** cumulative qualifying points earned in the relevant class and academic year. This drives achievement levels, class ranking, and leadership eligibility. Marketplace spending does not reduce aggregate points.
   - **Current point balance:** the spendable balance derived from qualifying ledger transactions (earned points less spending and other valid deductions). Purchases are limited by this available balance.
-- A successful purchase reduces current point balance only. It does not reduce aggregate points earned, revoke an already-earned achievement level, or retroactively change a leadership appointment.
+- Aggregate points use an **earned-only** rule: qualifying positive points earned in the class/academic-year period contribute to aggregate achievement. Marketplace spending and ordinary deductions (including disciplinary deductions) reduce current point balance but do not reduce aggregate points earned.
+- A successful purchase therefore reduces current point balance only. It does not reduce aggregate points earned, revoke an already-earned achievement level, or retroactively change a leadership appointment.
+- Treatment of a formal reversal/correction of an incorrectly awarded earning must be explicitly defined before implementation; it must not be silently treated as an ordinary deduction.
 - On progression to a new class/academic year, the new period starts with its own aggregate and spendable balance. Previous-period achievements and transactions remain historical and do not roll over.
 
 #### Achievement levels and Champion
@@ -84,13 +86,14 @@ The existing game platform is retired from this plan. Classroom security and lau
 - Leadership is linked to aggregate points and achievement milestones, not current point balance.
 - At each reward-level milestone, the first student to reach that level becomes or retains Classroom Captain.
 - The next three qualifying students are appointed in sequence to the prefect positions: Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2.
+- Milestone ordering is determined by the database's server-recorded achievement timestamp, not a browser clock. If timestamps are identical, use a deterministic database-generated sequence/ordering value as the tie-breaker.
 - Teachers can edit the prefect hierarchy/titles for their class. The system automatically records and displays appointments when the applicable milestone/eligibility is reached.
 - Leadership appointments are scoped to the relevant class and academic year and retain historical records. Spending points does not remove an appointment.
 - The precise handling of ties or simultaneous milestone attainment must be deterministic and specified before implementation; do not use client-side timing as the authority.
 
 #### Gifts, images, and avatars
 - Teachers create and manage marketplace rewards/gifts, set their point prices, and may attach a suitable uploaded image or select an available icon.
-- Reward-level achievement and marketplace gift redemption are separate concepts: earning a level does not itself debit points. A gift purchase uses the student's current point balance and follows the independent per-student purchase rules in section 2.5.
+- Reward-level achievement and marketplace gift redemption are separate concepts: earning a level does not automatically grant or debit a gift. A gift purchase uses the student's current point balance and follows the independent per-student purchase rules in section 2.5.
 - Students may select an avatar only from the approved in-platform avatar library through their student portal. Student avatar uploads are not permitted.
 - Avatar selection has no effect on points, achievement levels, rankings, or leadership.
 - Teacher-uploaded reward images and the student avatar library must use controlled file types, size limits, and safe storage/access rules.
@@ -224,7 +227,7 @@ The user approved all three final business-rule recommendations on 2026-11-09:
 - preserve existing duplicate activity submission behaviour pending verification, with tests and no new uniqueness constraint.
 
 Additional Classroom reward and leadership decisions recorded 2026-11-21:
-- The user approved separate aggregate-points-earned and current-point-balance measures. Aggregate points govern achievement levels, class ranking, and leadership; current balance governs purchases. Spending does not reduce aggregate achievement.
+- The user approved separate aggregate-points-earned and current-point-balance measures. Aggregate points govern achievement levels, class ranking, and leadership; current balance governs purchases. The aggregate rule is earned-only: marketplace spending and ordinary deductions do not reduce aggregate points.
 - Reward thresholds are Bronze 50+, Silver 100+, Gold 150+, and Champion 500+.
 - The Class Champion title belongs to the highest aggregate-point student in the class/academic-year ranking, even if the highest score is below 500. This ranking title is distinct from the 500+ Champion achievement level.
 - The first student to reach each reward-level milestone becomes or retains Classroom Captain; the next three qualifying students receive the Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2 positions. Teachers may edit the prefect hierarchy/titles. Appointments should appear automatically and remain tied to aggregate points.
