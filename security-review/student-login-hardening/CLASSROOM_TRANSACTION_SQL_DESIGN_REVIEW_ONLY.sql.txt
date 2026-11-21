@@ -162,11 +162,13 @@ C. POINT LEDGER INVARIANTS
 - If this correction takes aggregate points below an achievement threshold, retain
   the achievement record for history but mark it no longer currently valid for the
   class/academic period; never delete the historical record.
-- If the correction invalidates the milestone underpinning a leadership appointment,
-  preserve the appointment record and mark it inactive/ended with an effective end
-  time. Historical appointments remain queryable.
-- The rule for filling or reassigning a leadership position vacated by such a
-  correction remains open and must be explicitly approved before automation.
+- If a formal correction reduces the aggregate below the milestone that
+  originally qualified a student for a leadership position, the previously
+  appointed leader retains that post. Do not automatically transfer the post
+  or appoint a successor because of the correction.
+- Preserve the appointment as an active leadership appointment with its original
+  milestone/appointment details. Record the points and achievement correction,
+  but do not remove the leader from the post.
 - Every applicable ledger entry must carry (or be unambiguously linked to) student,
   class, and academic-period attribution. Never infer historical class attribution
   from the student's current class.
@@ -239,9 +241,11 @@ E3. reverse_transaction(actor, original_transaction_id, request_id)
 - Re-evaluate achievement validity after the correction: if the resulting aggregate
   is below the threshold, retain the achievement row but mark it no longer currently
   valid; do not delete history.
-- If the correction invalidates the achievement milestone underpinning a leadership
-  appointment, retain the appointment row and mark it inactive/ended with an
-  effective end time. The successor/reassignment rule remains open pending approval.
+- If the correction reduces the aggregate below the milestone that originally
+  qualified the student for a leadership position, the previously appointed
+  leader retains that post. Keep the leadership appointment active and preserve
+  its original milestone/appointment details; do not automatically transfer the
+  post or appoint a successor because of the correction.
 - When reversing another eligible transaction type, apply the explicitly defined
   semantics for that operation; do not assume every reversal changes earned aggregate.
 - Enforce unique original_transaction_id in reversal records/ledger linkage.
