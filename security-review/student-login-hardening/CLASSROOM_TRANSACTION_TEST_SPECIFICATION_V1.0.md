@@ -106,6 +106,17 @@ The existing game platform is retired from this plan. Classroom security and lau
 - A teacher may deliberately change an appointment; any manual change must preserve the appointment history and record who made the change and when.
 - The precise handling of ties or simultaneous milestone attainment must be deterministic and specified before implementation; do not use client-side timing as the authority.
 
+
+#### Student withdrawal, absence, and re-enrolment in the same class
+
+- A student who temporarily leaves or is absent but whose original student record remains associated with the same class/academic period resumes from that same record. Their existing aggregate points, spendable balance, achievements, transactions, and applicable leadership history are preserved; do not create a duplicate student record.
+- If the student is deactivated, reactivation must restore the same student record and its preserved class-period history.
+- If the student record is soft-deleted but remains within the approved recovery/retention window, restore that same record and its preserved history after verifying identity and class-period eligibility. Do not create a second record while a recoverable original exists.
+- A UI action labelled “delete” must not be assumed to mean permanent erasure. The implementation must distinguish deactivation, recoverable soft deletion, and legally authorised permanent deletion.
+- If the record and associated history have been permanently erased under the applicable retention/deletion process and cannot lawfully be recovered, a later re-enrolment creates a new student record and starts at zero aggregate points and zero spendable balance for the new enrolment. Do not reconstruct or invent erased scores.
+- This same-class continuity rule does not override the separate class-transfer rule: moving to another class/teacher starts a new class membership with zero points in the receiving class; the previous class history remains with the previous class.
+- Re-enrolment must verify whether a recoverable original exists before creating a new record, and must preserve auditability of the restore or new-enrolment decision.
+
 #### Gifts, images, and avatars
 - Teachers create and manage marketplace rewards/gifts, set their point prices, and may attach a suitable uploaded image or select an available icon.
 - Reward-level achievement and marketplace gift redemption are separate concepts: earning a level does not automatically grant or debit a gift. A gift purchase uses the student's current point balance and follows the independent per-student purchase rules in section 2.5.
@@ -118,6 +129,16 @@ The existing game platform is retired from this plan. Classroom security and lau
 - A teacher may initiate a purchase for one selected student or a selected group, but may not bypass the selected student's current point balance.
 - For teacher-initiated group purchases, each student is evaluated independently: students with sufficient balances may succeed, while students without sufficient balances receive an individual rejection and explanation. One student's rejection does not cancel another student's successful purchase.
 - Student self-purchases and teacher-initiated purchases must use the same trusted transaction, stock, authorization, idempotency, and audit controls.
+
+
+### Student withdrawal and re-enrolment continuity
+- A student who returns to the same class while their record remains present continues from the same record with unchanged class-period aggregate, spendable balance, achievements, and history.
+- Deactivating and reactivating a student restores the same record and history; no duplicate is created.
+- Soft-deleting and restoring a student within the permitted recovery window restores the same record and history.
+- Re-enrolment checks for a recoverable original before creating a new student record.
+- Permanent erasure followed by re-enrolment creates a new record with zero aggregate and zero spendable balance; erased history is not reconstructed.
+- A class transfer remains distinct: the receiving class starts at zero while the former class history remains preserved there.
+- Restore/new-enrolment actions are authorised, auditable, and do not permit identity collision or duplicate active membership.
 
 ## 3. Shared transaction and security requirements
 
