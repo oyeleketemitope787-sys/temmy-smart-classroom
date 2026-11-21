@@ -223,8 +223,8 @@ E. OPERATION ALGORITHMS
 E1. award_points(actor, student, amount, reason, request_id)
 - Require trusted actor and valid active class ownership.
 - Require amount to be a positive integer.
-- Read configured maximum from authoritative server-side configuration.
-- Reject amount above maximum; never silently truncate an award.
+- Read the configured maximum from authoritative server-side configuration (default 50 points per individual manual teacher award; administrator-controlled).
+- Reject an amount above the configured maximum with a clear error; never silently truncate. An exceptional above-limit award must pass a separately authorised override workflow and produce an audit record.
 - Claim idempotency key.
 - Insert one positive ledger row with server-derived teacher identity and
   validated action/source classification.
@@ -288,6 +288,7 @@ E5. purchase_reward_for_student(actor, student, reward, request_id)
   separate per-student requests and aggregate independent outcomes.
 - Lock/validate reward and student/balance rows in a consistent lock order.
 - Verify reward belongs to actor and is active.
+- Lock the reward row and read its authoritative price before evaluating the purchase. If this is the first successful purchase, atomically commit the purchase and permanently lock the price against future edits. A failed purchase must not lock the price. After price lock, a price change is rejected; a different price requires a new reward item. Concurrent price edits and purchases must serialize against this same reward lock.
 - If stock is finite, require stock > 0 and decrement exactly once.
   NULL stock means unlimited and is not decremented.
 - Serialize student's balance and require balance >= reward price.
@@ -436,19 +437,60 @@ L. STUDENT WITHDRAWAL, SOFT DELETION, AND SAME-CLASS RE-ENROLMENT
   workflow remain implementation gates; this review document does not invent
   a retention period or authorise permanent deletion.
 
+
+I. CLASSROOM RULES — VERSIONED CLASS POLICY (DESIGN ONLY)
+---------------------------------------------------------
+- Classroom Rules are managed independently for each class by the teacher
+  authorised to manage that class. Cross-class or cross-teacher edits require
+  a separately authorised administrative permission.
+- Teachers may create, edit, reorder, publish, and remove draft rules. A rule
+  may contain a title, explanatory text, and optional illustration. Uploaded
+  media must follow controlled file-type, size, and storage rules.
+- Draft edits do not change the currently published rules.
+- Publishing creates an immutable versioned snapshot for the class. Editing
+  already-published rules creates a new version; it never overwrites the
+  previously published version.
+- On first login, and whenever a new version is published for the student's
+  current class, the student portal must present the current rules and require
+  acknowledgement before allowing access to the normal student portal.
+- A student who has acknowledged the current published version is not asked
+  to acknowledge that same version again on every login. The student may
+  reopen and read the current rules at any time.
+- A class transfer evaluates the student against the receiving class's current
+  published version and acknowledgement state.
+- Acknowledgement must be verified and recorded server-side with the student,
+  class, published version, and server timestamp. A browser flag or
+  client-supplied timestamp is not authoritative. The login gate must not be
+  bypassable by manipulating frontend state or calling portal operations
+  directly.
+- Preserve every published version and previous acknowledgement for audit.
+  Publishing a new version does not erase or rewrite acknowledgements of
+  earlier versions.
+- Reading or acknowledging rules has no automatic points, reward, or
+  disciplinary transaction effect.
+- Proposed logical records (names illustrative, not deployed schema):
+  classroom_rules (class/owner policy container),
+  classroom_rule_versions (immutable published version snapshots),
+  classroom_rule_items (ordered rule content within a version),
+  student_rule_acknowledgements (student/class/version/server timestamp).
+- Final schema, retention, permission matrix, media handling, and exact
+  student login integration remain implementation gates. This section is
+  design-only and does not authorise a migration or frontend change.
+
 J. OPEN DESIGN GATES BEFORE SQL BECOMES EXECUTABLE
 -------------------------------------------------
-1. Verify deployed marketplace_rewards/purchases schemas and purchase RPC.
+1. Verify deployed marketplace_rewards/purchases schemas and purchase RPC; design and test the atomic first-purchase price lock.
 2. Verify current point ledger conventions, scope, constraints, triggers, and
    all legitimate writers/callers.
 3. Verify activity scoring fields, bounds, duplicate submission semantics,
    and deployed callers.
-4. Decide configured maximum award and who may change it.
+4. Finalize the 50-point default manual-award cap, administrator configuration, and separately authorised exceptional-award workflow.
 5. Finalize trusted Gateway-to-database actor identity and connection role.
 6. Finalize request idempotency schema, recovery semantics, and audit retention.
 7. Review exact lock order against actual schema and trigger behaviour.
 8. Build and pass isolated PostgreSQL tests.
-9. Obtain explicit approval for any exact production migration, function,
+10. Finalize Classroom Rules publication/versioning schema, teacher ownership checks, server-verified acknowledgement gate, and audit retention.
+11. Obtain explicit approval for any exact production migration, function,
    grant, deployment, or frontend change.
 
 Until all gates pass, status remains NO-GO for hosted SQL or deployment.
