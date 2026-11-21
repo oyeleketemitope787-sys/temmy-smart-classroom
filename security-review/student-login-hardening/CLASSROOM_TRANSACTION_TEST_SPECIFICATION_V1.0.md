@@ -18,8 +18,10 @@ The existing game platform is retired from this plan. Classroom security and lau
 
 - Only an authenticated teacher who owns the student's active class may award or deduct points.
 - Awards are positive whole numbers.
-- A configurable maximum award amount must be enforced by the trusted transaction layer. The configuration value and its operational owner must be decided before production implementation; no fixed numeric cap is invented by this specification.
-- A request above the configured maximum is rejected without a ledger write.
+- The default maximum for one individual manual teacher award is **50 points**. An authorised school administrator or authorised system administrator controls the configured limit; teachers may award up to the current limit but cannot change it.
+- A manual award above the configured limit is rejected with a clear explanation and no ledger write. The system must never silently truncate the requested amount.
+- An exceptional award above the normal limit requires a separately authorised, auditable override process. Its authority, scope, and approval workflow must be specified before implementation.
+- This cap applies only to individual manual teacher awards, not activity scores or other separately approved earning sources.
 - The server derives the acting teacher identity from the trusted authenticated request context; it must not trust a teacher ID supplied by the browser.
 - Award and deduction requests are idempotent. Replaying the same request ID and same payload returns the recorded outcome; reusing the request ID with a different payload is rejected.
 
@@ -61,6 +63,9 @@ The existing game platform is retired from this plan. Classroom security and lau
 - A student with insufficient points is rejected without a points deduction, purchase row, or stock decrement.
 - A student may not be charged twice for a retried request. Each per-student purchase uses a stable idempotency key and payload binding.
 - Reward must belong to the acting teacher and be active at the time of purchase.
+- Before the first successful purchase, the teacher may edit the reward's points price. After the first successful purchase, the points price is permanently locked for that reward, including after deactivation; a different price requires creating a new reward item.
+- Failed or rejected purchase attempts do not lock the price. The first successful purchase and the price-lock transition must be atomic with purchase processing so concurrent edits/purchases cannot produce inconsistent prices.
+- Other permitted reward details (for example description, image, and stock) may remain editable under their own validation rules; price is the specifically locked field.
 - A deactivated reward is unavailable for new purchases, but its purchase history and historical reward description/name remain preserved.
 - Stock model: `NULL` means unlimited stock; a non-negative finite value means limited stock. A finite stock decrement and the purchase must occur atomically. If stock is zero, reject without charging points. Concurrent purchases must not oversell.
 - For a multi-student selection, return an independent result for each student (e.g. purchased, insufficient_balance, out_of_stock, reward_unavailable, invalid_student, or retry_result). Do not use all-or-nothing batch semantics.
@@ -139,6 +144,21 @@ The existing game platform is retired from this plan. Classroom security and lau
 - Permanent erasure followed by re-enrolment creates a new record with zero aggregate and zero spendable balance; erased history is not reconstructed.
 - A class transfer remains distinct: the receiving class starts at zero while the former class history remains preserved there.
 - Restore/new-enrolment actions are authorised, auditable, and do not permit identity collision or duplicate active membership.
+
+
+### Classroom Rules
+- Each classroom teacher manages a separate set of rules for each class they teach; a teacher must not edit another teacher's class rules without an explicitly authorised role.
+- A teacher can create, edit, reorder, publish, and remove draft rules. Each rule may contain a title, explanatory text, and optional illustration subject to controlled upload validation.
+- Draft changes do not alter the currently published version seen by students.
+- Publishing creates an immutable, versioned snapshot. Editing published rules creates a new version; it does not overwrite the prior published version.
+- A student must see and acknowledge the current published version before entering the normal student portal on first login and whenever a new version is published.
+- A student who has acknowledged the current version is not repeatedly blocked by the same version on later logins.
+- Students can reopen and read the current rules at any time.
+- A class change causes the student to be evaluated against the receiving class's current rules and acknowledgement state.
+- Acknowledgement is verified and recorded server-side with student, class, published version, and timestamp. A browser-only flag or client-supplied acknowledgement is not authoritative.
+- Prior published versions and student acknowledgements remain available for audit; publishing a new version does not erase earlier acknowledgements.
+- Acknowledging rules is separate from points: it must not automatically award or deduct points.
+- Test concurrent publish/acknowledgement, version replacement, class transfer, teacher ownership, unauthorised access, and attempts to bypass the login gate.
 
 ## 3. Shared transaction and security requirements
 
@@ -237,6 +257,10 @@ The test harness must model the trusted Gateway identity boundary. A client must
 - Concurrent score changes serialize and leave a consistent activity record and ledger.
 
 ### Marketplace
+- The reward price is editable before the first successful purchase and becomes permanently locked after that first success.
+- Failed purchase attempts do not lock the price.
+- Concurrent first purchases and price edits serialize so every successful purchase uses one authoritative price and the price-lock transition cannot be bypassed.
+- After price lock, attempted price changes are rejected; a new price requires a new reward item.
 - Each selected student receives one independent, stable outcome, including in a mixed batch containing successes and failures.
 - A successful student's purchase remains committed when another selected student has insufficient balance, invalid ownership/student state, an unavailable reward, or encounters out-of-stock stock.
 - A failed student's operation creates no debit, purchase-history row, or stock decrement; it does not cancel or reverse another student's successful operation.
@@ -270,7 +294,8 @@ The test harness must model the trusted Gateway identity boundary. A client must
 
 ## 7. Known unresolved implementation inputs
 
-- Configured maximum teacher award amount and who may change it.
+- Exact exceptional-award override authority, workflow, and limits above the 50-point default.
+- Classroom Rules presentation details, allowed image formats/limits, and final teacher/administrator permission matrix.
 - Verified deployed definitions/columns/constraints for marketplace rewards and purchases.
 - Exact current duplicate activity submission semantics and all deployed callers.
 - Trusted Gateway-to-database identity propagation and role model.
@@ -298,3 +323,9 @@ Additional Classroom reward and leadership decisions recorded 2026-11-21:
 - Students may purchase for themselves; teachers may purchase for one student or a group, always using each selected student's own current balance and preserving independent per-student outcomes.
 
 This document is a test specification only. It is not a production schema or migration.
+
+
+Additional approved decisions recorded 2026-11-21:
+- Individual manual teacher awards have a default maximum of 50 points. An authorised school or system administrator controls the configured limit; teachers cannot change it. Above-limit requests are rejected, never silently truncated. Exceptional awards require a separate authorised and audited override. This cap does not apply to activity scores or other separately approved earning sources.
+- Marketplace reward price is editable only before the first successful purchase. After that purchase, the price is locked permanently for that reward; a different price requires a new reward item. Failed purchases do not lock the price, and the lock must be concurrency-safe.
+- Classroom Rules are teacher-managed separately for each class. Students acknowledge the current published rules at first login and whenever a new version is published, before entering the normal student portal. Published versions and prior acknowledgements are preserved; students can revisit the current rules at any time. Acknowledgement is server-verified and has no automatic points effect.
