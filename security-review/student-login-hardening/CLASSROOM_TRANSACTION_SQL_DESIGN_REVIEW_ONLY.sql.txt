@@ -362,9 +362,14 @@ K. APPROVED ACHIEVEMENT AND LEADERSHIP RULES
 - Ordinary deductions, including disciplinary deductions, reduce current spendable
   balance only and leave aggregate points earned unchanged.
 - Achievement thresholds: Bronze 50+, Silver 100+, Gold 150+, Champion 500+.
-- The Class Champion ranking title belongs to the student with the highest
-  aggregate points in the class/academic period even when that score is below 500;
-  this ranking title is distinct from the 500+ Champion achievement level.
+- The Class Champion ranking title belongs to the student or students with the
+  highest aggregate points in the class/academic period, even when that score is
+  below 500; this ranking title is distinct from the 500+ Champion achievement level.
+- If multiple students tie at the highest aggregate, the teacher administers a
+  live task to distinguish the final 1st, 2nd, and 3rd positions. The top three
+  receive Champion recognition as 1st-, 2nd-, and 3rd-position awards. The live-task
+  result is recorded as the award-ranking outcome and does not alter ledger points,
+  achievement thresholds, or milestone-based leadership appointments.
 - At each reward-level milestone, the first student to reach that level becomes
   or retains Classroom Captain. The next three qualifying students fill the
   Disciplinary Prefect, Sanitary Prefect 1, and Sanitary Prefect 2 positions.
