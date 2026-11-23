@@ -45,7 +45,7 @@ SELECT classroom_test.purchase_reward_for_student(
 COMMIT;
 ```
 
-Use distinct request UUIDs unless the scenario explicitly tests a duplicate request. For a deliberately rejected call, capture the error and end/roll back that transaction before inspecting state from a separate administrator session. The current drafts roll back the idempotency claim on expected business exceptions.
+Use distinct request UUIDs unless the scenario explicitly tests a duplicate request. For an expected business rejection, capture the returned structured result and verify that the rejected request row and one safe rejection-audit row commit, while no business mutation occurs. Do not roll back an expected rejection. For retryable conflicts or unexpected failures, capture the SQLSTATE and verify that the request claim and all operation writes roll back.
 
 ## Scenario 1 — Last item, two different students
 
