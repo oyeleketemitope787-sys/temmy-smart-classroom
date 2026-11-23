@@ -5,7 +5,7 @@ Never run against Supabase, production, cloud-test, or any shared database.
 
 Prerequisites:
 - Fresh disposable PostgreSQL database.
-- Fixture schema and Phase 1–3 function drafts installed.
+- Fixture schema and V2 helper foundation and V2 Phase 1–3 function drafts installed.
 - Run as database administrator in that disposable database.
 - These checks are read-only catalog/privilege assertions. They do not attempt
   to mutate fixture rows or change grants.
@@ -40,11 +40,12 @@ DECLARE
     'classroom_test.purchase_reward_for_student(uuid,uuid,uuid,uuid)'::regprocedure
   ];
   v_helper_functions regprocedure[] := ARRAY[
-    'classroom_test._assert_gateway_context()'::regprocedure,
-    'classroom_test._canonical_hash(text[])'::regprocedure,
-    'classroom_test._claim_request(uuid,uuid,text,text)'::regprocedure,
-    'classroom_test._finish_request(uuid,jsonb)'::regprocedure,
-    'classroom_test._lock_student_and_get_balance(uuid,uuid)'::regprocedure
+    'classroom_test._v2_assert_gateway_context()'::regprocedure,
+    'classroom_test._v2_canonical_hash(text[])'::regprocedure,
+    'classroom_test._v2_claim_request(uuid,uuid,text,text)'::regprocedure,
+    'classroom_test._v2_finish_request(uuid,text,jsonb)'::regprocedure,
+    'classroom_test._v2_write_audit(uuid,uuid,text,uuid,text,jsonb)'::regprocedure,
+    'classroom_test._v2_lock_student_context(uuid,uuid)'::regprocedure
   ];
 BEGIN
   IF to_regclass('classroom_test.point_transactions') IS NULL
@@ -190,7 +191,7 @@ A single NOTICE reports that ACL checks passed. Any failed expectation raises
 an exception identifying the privilege or function that violated the model.
 
 REVIEW LIMITATIONS
-1. This test assumes the fixture and Phase 1–3 drafts were installed exactly
+1. This test assumes the fixture and V2 helper foundation and V2 Phase 1–3 drafts were installed exactly
    as reviewed. It does not grant/revoke privileges.
 2. Function-level ACLs are tested; runtime identity propagation through nested
    SECURITY DEFINER functions is not proven by catalog inspection.
