@@ -114,6 +114,9 @@ The V2 drafts implement the agreed shape for request claiming/replay, durable ex
 
 **This is not a pass/final review.** The following remain open and release-blocking:
 
+The current V2 edge-case draft now includes above-cap durable rejection/replay, marketplace rejection audit counts, zero-balance no-op audit/replay, already-reversed award rejection, changed-payload conflict, and downward activity-score clamping. The V2 award function now reads the protected maximum-award configuration row FOR SHARE so an administrator update cannot race the cap decision. These are static design changes only; no test has been run.
+
+
 1. Static review of every V2 function against the exact fixture DDL, including PostgreSQL syntax, nullability, constraint and type compatibility.
 2. Verify the `current_setting('role')` behaviour through the complete nested SECURITY DEFINER call chain on the pinned PostgreSQL 16 image. Do not rely on the test identity guard until proven.
 3. Verify `pg_catalog.sha256(bytea)` availability and exact canonical hash output on the pinned image.
