@@ -40,7 +40,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 3. `marketplace_rewards`, `purchases`, `transaction_requests` and `transaction_audit` are proposed test structures, not claims about production schema.
 4. No `UNIQUE(activity_id, student_id)` constraint is present.
 5. `NULL` reward stock means unlimited stock; finite stock is non-negative.
-6. The fixture currently contains a stale 100-point maximum-award seed. This conflicts with the user-approved 50-point default (2026-11-21) and must be corrected to 50, then all seed/smoke/edge references reconciled, before any disposable execution. Do not run the fixture in its current state.
+6. The fixture configuration is seeded with a 50-point maximum_teacher_award. The inspected seed file contains 50-point opening balances and no 100-point award-cap seed. The previous stale-100-point warning was inaccurate for these files; a repository-wide search and test reconciliation are still required before execution. Do not run the fixture until the function drafts and tests are reconciled.
 7. Point transactions use signed values: positive credits and negative debits.
 8. Browser test roles have no direct table writes. The gateway test role has no direct table grants; narrow function EXECUTE grants are defined in the separate drafts and still require ACL verification.
 9. Role names are namespaced as `temmy_ctest_*` to avoid colliding with standard Supabase roles or other local roles.
@@ -52,7 +52,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 
 Phase 1–3 function drafts cover teacher awards, deductions, full award reversal, activity score adjustment and one-student marketplace purchase. The deterministic synthetic seed, successful-path smoke test, initial edge-case checks, ACL assertions, concurrency protocol and atomicity/failure-injection protocol are also drafted.
 
-**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. A static review has identified remaining implementation gates: rejected-request audit/idempotency, no-op audit semantics, and revising the existing SQL drafts to implement the approved class-before-student lock order; see STATIC_REVIEW_FINDINGS_V1.md. No production or hosted database changes have been made.
+**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. A static review has identified remaining implementation gates: durable rejected-request audit/idempotency, implementing the approved zero-balance no-op audit event, and revising the existing SQL drafts to implement the approved class-before-student lock order; see STATIC_REVIEW_FINDINGS_V1.md and TRANSACTION_RECONCILIATION_GATE_2026-11-23.md. No production or hosted database changes have been made.
 
 ## Next gates
 
