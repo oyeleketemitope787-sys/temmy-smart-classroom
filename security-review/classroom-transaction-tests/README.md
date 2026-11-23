@@ -44,7 +44,7 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 3. `marketplace_rewards`, `purchases`, `transaction_requests` and `transaction_audit` are proposed test structures, not claims about production schema.
 4. No `UNIQUE(activity_id, student_id)` constraint is present.
 5. `NULL` reward stock means unlimited stock; finite stock is non-negative.
-6. The fixture configuration is seeded with a 50-point maximum_teacher_award. The inspected seed file contains 50-point opening balances and no 100-point award-cap seed. The previous stale-100-point warning was inaccurate for these files; a repository-wide search and test reconciliation are still required before execution. Do not run the fixture until the function drafts and tests are reconciled.
+6. The fixture configuration is seeded with a 50-point maximum_teacher_award. The inspected seed file contains 50-point opening balances and no 100-point award-cap seed. The earlier stale-100-point warning was inaccurate for the current fixture and seed; retain a repository-wide scan for stale award-cap assumptions and distinguish unrelated activity maximum-score values. Do not run the fixture until the function drafts and tests are reconciled.
 7. Point transactions use signed values: positive credits and negative debits.
 8. Browser test roles have no direct table writes. The gateway test role has no direct table grants; narrow function EXECUTE grants are defined in the separate drafts and still require ACL verification.
 9. Role names are namespaced as `temmy_ctest_*` to avoid colliding with standard Supabase roles or other local roles.
@@ -68,7 +68,7 @@ Before any SQL is executed in a disposable test database:
 - Verify SECURITY DEFINER role-context behaviour, function owner, fixed `search_path` and function ACLs.
 - Verify the V2 stable result/error codes and durable rejected-request semantics against the caller contract.
 - Statically review all V2 transaction drafts against TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md and review lock order/concurrency behaviour.
-- Reconcile the stale 100-point fixture seed to the approved 50-point manual-award default and verify no stale 20/100 test assumptions remain.
+- Scan the repository for stale manual-award cap assumptions; preserve unrelated activity maximum-score values and reconcile any true conflicts with the approved 50-point default.
 - Add administrator-only award-cap configuration tests and durable above-cap rejection/replay tests.
 - Review and validate the test-only failure injector so each failpoint occurs after the intended preceding mutation.
 - Only after static review should the suite be run against synthetic data in a fresh disposable local/CI PostgreSQL database.
