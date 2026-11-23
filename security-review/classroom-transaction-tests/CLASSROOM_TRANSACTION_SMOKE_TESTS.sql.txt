@@ -6,7 +6,7 @@ cloud-test, or any shared database.
 Prerequisites in a fresh disposable database:
 1. CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql
 2. CLASSROOM_TRANSACTION_TEST_SEED.sql.txt
-3. Phase 1, Phase 2 and Phase 3 review-only function drafts
+3. V2 helper foundation and V2 Phase 1, Phase 2 and Phase 3 review-only function drafts
 4. Test role/ACL setup verified independently
 
 This script runs successful-path checks inside one transaction and ROLLBACKs
