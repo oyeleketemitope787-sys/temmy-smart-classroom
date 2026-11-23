@@ -3,7 +3,7 @@
 **Status:** Approved business/security design  
 **Approval date:** 2026-11-09  
 **Scope:** Temmy Smart Classroom trusted transaction layer and future Temmy Gateway integration  
-**Implementation status:** Not implemented; review documentation only
+**Implementation status:** V2 SQL review drafts added 2026-11-23; not executed or runtime-verified
 
 ## 1. Purpose
 
@@ -141,3 +141,12 @@ The 2026-11-09 approval of 20 points per individual award is **superseded** by t
 - The fixture's configuration seed must be 50 before any disposable test execution.
 
 This later decision supersedes the 20-point policy and every older 100-point fixture value. This remains a design approval only; it does not authorise production SQL, hosted execution, grants/revokes, migrations, or deployment.
+
+
+## 13. V2 review implementation checkpoint — 2026-11-23
+
+The V2 review-only function drafts now implement the policy shape for the five approved operations: award, deduction, full award reversal, activity scoring and one-student marketplace purchase. Expected business rejections are represented as structured results and are finalized with a durable `rejected` request row and one safe rejection audit. Retryable stale-membership/infrastructure conflicts remain exceptions. A zero-balance deduction is completed as a no-op with one audit event and no ledger row.
+
+The updated edge-case draft covers above-cap rejection/replay, marketplace rejection outcomes, zero-balance no-op replay, already-reversed rejection, changed-payload key conflict and activity downward clamping.
+
+**This checkpoint is not evidence that the implementation passes.** SQL syntax, PostgreSQL 16 runtime behaviour, nested SECURITY DEFINER role context, effective ACLs, concurrency and failure-injection atomicity remain unverified. The V2 files are not migrations and must not be executed until the complete static review is finished and the user explicitly approves a fresh isolated disposable PostgreSQL test run.
