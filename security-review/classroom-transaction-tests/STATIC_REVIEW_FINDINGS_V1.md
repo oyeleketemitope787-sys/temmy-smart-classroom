@@ -171,3 +171,17 @@ schema is not evidence of compatibility with the live Classroom database.
 8. Run syntax, smoke, edge, ACL, concurrency and failure-injection tests only after separate explicit approval in a fresh isolated PostgreSQL 16 container.
 
 No V2 SQL has been executed or syntax-tested. No production/hosted database, `main`, `cloud-test`, or SGIS container has been changed.
+
+
+### Follow-up static coverage — 2026-11-23
+
+Two additional review-only regression files have been added:
+
+- `CLASSROOM_TRANSACTION_IDEMPOTENCY_REVERSAL_TESTS.sql.txt` checks that a durable cap rejection remains the stored result after the configuration changes, that a new request UUID re-evaluates the changed cap, that actor and operation reuse conflicts are independently rejected, and that an insufficient-balance full reversal creates no reversal ledger row.
+- `CLASSROOM_TRANSACTION_RUNTIME_DENIAL_TESTS.sql.txt` attempts direct DML as the synthetic anon, authenticated and gateway roles and expects privilege denial.
+
+These additions address the corresponding static test-coverage gaps; they do not establish that the tests compile or pass. The runtime-denial probes are not a substitute for the separate nested SECURITY DEFINER role-context test. Audit-insert and request-finalization failure injection is also still only specified in the atomicity plan, not implemented or executed.
+
+The older V1 finding in section 6 referring to a stale 100-point fixture seed is historical and superseded: the current V2 fixture configuration row is 50, as confirmed by the 2026-11-23 fixture/seed reconciliation above. Do not treat the historical V1 note as a current fixture defect.
+
+**Current boundary:** all V2 function drafts and all test SQL remain unexecuted. The next meaningful technical gate is a careful static review of the new test scripts and the remaining PostgreSQL 16 role/hash assumptions, followed—only with explicit user approval—by isolated disposable PostgreSQL 16 verification.
