@@ -1,0 +1,198 @@
+/*
+CLASSROOM TRANSACTION FUNCTIONS — V2 REVIEW FOUNDATION
+Shared helpers only; no business entrypoints.
+REVIEW ONLY — NOT EXECUTED — NOT A MIGRATION.
+Synthetic classroom_test fixture only; PostgreSQL 16 disposable environment.
+Never run against SGIS, Supabase, production, cloud-test, or shared databases.
+*/
+BEGIN;
+DO $guard$
+BEGIN
+  IF to_regclass('classroom_test.teacher_profiles') IS NULL
+     OR to_regclass('classroom_test.classes') IS NULL
+     OR to_regclass('classroom_test.students') IS NULL
+     OR to_regclass('classroom_test.transaction_requests') IS NULL
+     OR to_regclass('classroom_test.transaction_audit') IS NULL
+     OR to_regclass('classroom_test.point_transactions') IS NULL THEN
+    RAISE EXCEPTION 'Required classroom_test fixture is missing; aborting';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='temmy_ctest_gateway')
+     OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='temmy_ctest_data_owner') THEN
+    RAISE EXCEPTION 'Namespaced disposable test roles are missing; aborting';
+  END IF;
+END $guard$;
+SET ROLE temmy_ctest_data_owner;
+
+-- Invoker helper; called from a SECURITY DEFINER entrypoint. Runtime role-GUC
+-- behaviour is an explicit PostgreSQL 16 verification gate.
+CREATE OR REPLACE FUNCTION classroom_test._v2_assert_gateway_context()
+RETURNS void LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+BEGIN
+  IF current_setting('role',true) IS DISTINCT FROM 'temmy_ctest_gateway' THEN
+    RAISE EXCEPTION USING ERRCODE='42501', MESSAGE='trusted_gateway_role_required';
+  END IF;
+END $fn$;
+
+-- PostgreSQL 16 built-in pg_catalog.sha256(bytea) is a pinned dependency.
+CREATE OR REPLACE FUNCTION classroom_test._v2_canonical_hash(p_fields text[])
+RETURNS text LANGUAGE sql IMMUTABLE STRICT SET search_path=pg_catalog AS $fn$
+  SELECT pg_catalog.encode(
+    pg_catalog.sha256(pg_catalog.convert_to(
+      pg_catalog.jsonb_build_array(VARIADIC p_fields)::text,'UTF8')), 'hex')
+$fn$;
+
+-- New key => claimed=true. Exact completed/rejected retry => stored result.
+-- Changed actor, operation or payload is a key-reuse conflict, not a business
+-- rejection. A committed processing row is an invariant failure.
+CREATE OR REPLACE FUNCTION classroom_test._v2_claim_request(
+  p_request_id uuid,p_actor_teacher_id uuid,p_operation text,p_payload_hash text)
+RETURNS jsonb LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+DECLARE v_inserted integer; v_existing classroom_test.transaction_requests%ROWTYPE;
+BEGIN
+  PERFORM classroom_test._v2_assert_gateway_context();
+  IF p_request_id IS NULL OR p_actor_teacher_id IS NULL OR p_operation IS NULL
+     OR p_payload_hash IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE='22004', MESSAGE='missing_request_identity';
+  END IF;
+  INSERT INTO classroom_test.transaction_requests
+    (request_id,actor_teacher_id,operation,payload_hash,status)
+  VALUES (p_request_id,p_actor_teacher_id,p_operation,p_payload_hash,'processing')
+  ON CONFLICT (request_id) DO NOTHING;
+  GET DIAGNOSTICS v_inserted=ROW_COUNT;
+  IF v_inserted=1 THEN
+    RETURN jsonb_build_object('claimed',true,'replayed',false);
+  END IF;
+  SELECT * INTO v_existing FROM classroom_test.transaction_requests
+   WHERE request_id=p_request_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='request_claim_retry';
+  END IF;
+  IF v_existing.actor_teacher_id IS DISTINCT FROM p_actor_teacher_id
+     OR v_existing.operation IS DISTINCT FROM p_operation
+     OR v_existing.payload_hash IS DISTINCT FROM p_payload_hash THEN
+    RAISE EXCEPTION USING ERRCODE='22023',
+      MESSAGE='idempotency_key_reused_with_different_payload';
+  END IF;
+  IF v_existing.status IN ('completed','rejected') THEN
+    IF v_existing.result_payload IS NULL THEN
+      RAISE EXCEPTION USING ERRCODE='55000', MESSAGE='request_result_missing';
+    END IF;
+    RETURN jsonb_build_object('claimed',false,'replayed',true,
+                              'result',v_existing.result_payload);
+  END IF;
+  RAISE EXCEPTION USING ERRCODE='55000',
+    MESSAGE='request_in_unexpected_processing_state';
+END $fn$;
+
+-- Expected business rejection is finalized as status='rejected'; unexpected
+-- failures are never caught and converted into durable rejections.
+CREATE OR REPLACE FUNCTION classroom_test._v2_finish_request(
+  p_request_id uuid,p_status text,p_result jsonb)
+RETURNS void LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+BEGIN
+  IF p_status NOT IN ('completed','rejected') OR p_result IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='invalid_request_final_state';
+  END IF;
+  UPDATE classroom_test.transaction_requests
+     SET status=p_status,result_payload=p_result,completed_at=pg_catalog.now()
+   WHERE request_id=p_request_id AND status='processing';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE='55000', MESSAGE='request_completion_failed';
+  END IF;
+END $fn$;
+
+-- Mandatory audit write: caller must let any failure abort the whole transaction.
+CREATE OR REPLACE FUNCTION classroom_test._v2_write_audit(
+  p_request_id uuid,p_actor_teacher_id uuid,p_operation text,
+  p_target_student_id uuid,p_outcome text,p_safe_metadata jsonb)
+RETURNS void LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+BEGIN
+  IF p_outcome NOT IN ('success','rejected','no_op') THEN
+    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='invalid_audit_outcome';
+  END IF;
+  INSERT INTO classroom_test.transaction_audit
+    (request_id,actor_teacher_id,operation,target_student_id,outcome,safe_metadata)
+  VALUES (p_request_id,p_actor_teacher_id,p_operation,p_target_student_id,
+          p_outcome,COALESCE(p_safe_metadata,'{}'::jsonb));
+END $fn$;
+
+-- Request must already be claimed. Discover class without a lock, lock class
+-- FOR SHARE, lock student FOR UPDATE, then re-read membership. Stale membership
+-- is retryable (40001), so the request claim rolls back.
+-- Stable ownership/inactive outcomes are returned for durable rejection.
+CREATE OR REPLACE FUNCTION classroom_test._v2_lock_student_context(
+  p_student_id uuid,p_actor_teacher_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+DECLARE
+  v_initial_class_id uuid;
+  v_class classroom_test.classes%ROWTYPE;
+  v_student classroom_test.students%ROWTYPE;
+  v_balance bigint;
+BEGIN
+  PERFORM classroom_test._v2_assert_gateway_context();
+  SELECT s.class_id INTO v_initial_class_id
+    FROM classroom_test.students s WHERE s.id=p_student_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('status','rejected','code','student_not_found');
+  END IF;
+
+  SELECT c.* INTO v_class FROM classroom_test.classes c
+   WHERE c.id=v_initial_class_id FOR SHARE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='student_class_changed_retry';
+  END IF;
+
+  SELECT s.* INTO v_student FROM classroom_test.students s
+   WHERE s.id=p_student_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='student_membership_changed_retry';
+  END IF;
+  IF v_student.class_id IS DISTINCT FROM v_initial_class_id THEN
+    RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='student_class_changed_retry';
+  END IF;
+  IF NOT v_student.active THEN
+    RETURN jsonb_build_object('status','rejected','code','student_inactive',
+                              'class_id',v_initial_class_id);
+  END IF;
+  IF NOT v_class.active THEN
+    RETURN jsonb_build_object('status','rejected','code','class_inactive',
+                              'class_id',v_initial_class_id);
+  END IF;
+  IF v_class.teacher_id IS DISTINCT FROM p_actor_teacher_id THEN
+    RETURN jsonb_build_object('status','rejected',
+      'code','student_not_owned_by_teacher','class_id',v_initial_class_id);
+  END IF;
+
+  SELECT COALESCE(pg_catalog.sum(pt.points),0)::bigint INTO v_balance
+    FROM classroom_test.point_transactions pt WHERE pt.student_id=p_student_id;
+  RETURN jsonb_build_object('status','ok','class_id',v_initial_class_id,
+                            'student_id',p_student_id,'balance',v_balance);
+END $fn$;
+
+-- No helper is a client/gateway API. The common function owner can call them
+-- from future SECURITY DEFINER entrypoints.
+REVOKE ALL ON FUNCTION classroom_test._v2_assert_gateway_context() FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._v2_canonical_hash(text[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._v2_claim_request(uuid,uuid,text,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._v2_finish_request(uuid,text,jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._v2_write_audit(uuid,uuid,text,uuid,text,jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._v2_lock_student_context(uuid,uuid) FROM PUBLIC;
+RESET ROLE;
+COMMIT;
+
+/*
+OPEN VERIFICATION GATES — NOT TESTED:
+1. Confirm current_setting('role') inside the SECURITY DEFINER -> invoker helper
+   chain on PostgreSQL 16; do not rely on this check until proven.
+2. Confirm pg_catalog.sha256(bytea) exists on the exact PostgreSQL 16 image.
+3. Verify FOR SHARE class locking against class administration updates and
+   inspect implicit FK/trigger lock edges.
+4. Implement all five entrypoints using request -> class -> student ->
+   operation-specific rows -> business/result/audit writes.
+5. Expected business rejections must finalize status='rejected', write one
+   safe rejection audit, and return normally. Do not raise for expected outcomes.
+6. Zero-balance deduction must complete with no ledger row and exactly one
+   lightweight no_op audit. Same-key replay must not duplicate it.
+7. Audit failures and unexpected errors must propagate and roll back.
+8. This file has not been executed, syntax-tested, or ACL/concurrency-tested.
+*/
