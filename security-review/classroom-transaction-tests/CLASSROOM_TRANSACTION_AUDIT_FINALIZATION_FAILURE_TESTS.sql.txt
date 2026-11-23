@@ -1,0 +1,148 @@
+/*
+AUDIT / REQUEST-FINALIZATION FAILURE INJECTION — V2
+REVIEW DRAFT. NOT EXECUTED. SYNTHETIC / DISPOSABLE ONLY.
+Requires fixture schema, seed, V2 foundation and V2 Phase 1–3 drafts.
+Run only in a fresh isolated PostgreSQL 16 disposable database.
+Never run against Supabase, production, cloud-test or shared databases.
+*/
+BEGIN;
+
+-- Test-only failpoint. It is inert unless a session-local value explicitly
+-- selects one of the two named failure locations below.
+SET ROLE temmy_ctest_data_owner;
+CREATE OR REPLACE FUNCTION classroom_test._v2_test_failpoint()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path=pg_catalog
+AS $fn$
+DECLARE v_failpoint text;
+BEGIN
+ v_failpoint:=pg_catalog.current_setting('temmy_test.failpoint',true);
+ IF TG_TABLE_NAME='transaction_audit'
+    AND TG_OP='INSERT'
+    AND v_failpoint='audit_insert' THEN
+  RAISE EXCEPTION USING ERRCODE='P0001',
+   MESSAGE='test_failpoint_audit_insert';
+ END IF;
+ IF TG_TABLE_NAME='transaction_requests'
+    AND TG_OP='UPDATE'
+    AND OLD.status='processing'
+    AND NEW.status IN ('completed','rejected')
+    AND v_failpoint='request_finalize' THEN
+  RAISE EXCEPTION USING ERRCODE='P0001',
+   MESSAGE='test_failpoint_request_finalize';
+ END IF;
+ RETURN NEW;
+END
+$fn$;
+
+CREATE TRIGGER temmy_test_fail_audit_insert
+BEFORE INSERT ON classroom_test.transaction_audit
+FOR EACH ROW EXECUTE FUNCTION classroom_test._v2_test_failpoint();
+
+CREATE TRIGGER temmy_test_fail_request_finalize
+BEFORE UPDATE ON classroom_test.transaction_requests
+FOR EACH ROW EXECUTE FUNCTION classroom_test._v2_test_failpoint();
+RESET ROLE;
+
+-- Case 1: business ledger insert happens, then success-audit insert fails.
+-- Catch outside the function call's subtransaction and verify every earlier
+-- write (including the request claim) has rolled back.
+SET LOCAL ROLE temmy_ctest_gateway;
+SET LOCAL temmy_test.failpoint='audit_insert';
+DO $test$
+DECLARE v_failed boolean:=false; v_state text; v_message text;
+ v_ledger_before integer; v_ledger_after integer;
+ v_balance_before bigint; v_balance_after bigint;
+BEGIN
+ SELECT count(*)::integer,COALESCE(sum(points),0)::bigint
+  INTO v_ledger_before,v_balance_before
+  FROM classroom_test.point_transactions
+  WHERE student_id='30000000-0000-4000-8000-000000000001'
+    AND action_name='Teacher award';
+ BEGIN
+  PERFORM classroom_test.award_points(
+   '10000000-0000-4000-8000-000000000001',
+   '30000000-0000-4000-8000-000000000001',7,'Audit failpoint',
+   '83000000-0000-4000-8000-000000000001');
+ EXCEPTION WHEN OTHERS THEN
+  GET STACKED DIAGNOSTICS v_state=RETURNED_SQLSTATE,v_message=MESSAGE_TEXT;
+  IF v_state<>'P0001' OR v_message<>'test_failpoint_audit_insert' THEN RAISE; END IF;
+  v_failed:=true;
+ END;
+ IF NOT v_failed THEN RAISE EXCEPTION 'Audit failpoint did not fire'; END IF;
+
+ SELECT count(*)::integer,COALESCE(sum(points),0)::bigint
+  INTO v_ledger_after,v_balance_after
+  FROM classroom_test.point_transactions
+  WHERE student_id='30000000-0000-4000-8000-000000000001'
+    AND action_name='Teacher award';
+ IF v_ledger_after<>v_ledger_before OR v_balance_after<>v_balance_before THEN
+  RAISE EXCEPTION 'Ledger mutation survived audit failure';
+ END IF;
+ IF EXISTS (SELECT 1 FROM classroom_test.transaction_requests
+             WHERE request_id='83000000-0000-4000-8000-000000000001')
+    OR EXISTS (SELECT 1 FROM classroom_test.transaction_audit
+             WHERE request_id='83000000-0000-4000-8000-000000000001') THEN
+  RAISE EXCEPTION 'Request claim or audit survived audit failure';
+ END IF;
+END $test$;
+
+-- Case 2: ledger and audit writes happen, then request finalization fails.
+SET LOCAL temmy_test.failpoint='request_finalize';
+DO $test$
+DECLARE v_failed boolean:=false; v_state text; v_message text;
+ v_ledger_before integer; v_ledger_after integer;
+ v_balance_before bigint; v_balance_after bigint;
+BEGIN
+ SELECT count(*)::integer,COALESCE(sum(points),0)::bigint
+  INTO v_ledger_before,v_balance_before
+  FROM classroom_test.point_transactions
+  WHERE student_id='30000000-0000-4000-8000-000000000001'
+    AND action_name='Teacher award';
+ BEGIN
+  PERFORM classroom_test.award_points(
+   '10000000-0000-4000-8000-000000000001',
+   '30000000-0000-4000-8000-000000000001',9,'Finalize failpoint',
+   '83000000-0000-4000-8000-000000000002');
+ EXCEPTION WHEN OTHERS THEN
+  GET STACKED DIAGNOSTICS v_state=RETURNED_SQLSTATE,v_message=MESSAGE_TEXT;
+  IF v_state<>'P0001' OR v_message<>'test_failpoint_request_finalize' THEN RAISE; END IF;
+  v_failed:=true;
+ END;
+ IF NOT v_failed THEN RAISE EXCEPTION 'Request-finalization failpoint did not fire'; END IF;
+
+ SELECT count(*)::integer,COALESCE(sum(points),0)::bigint
+  INTO v_ledger_after,v_balance_after
+  FROM classroom_test.point_transactions
+  WHERE student_id='30000000-0000-4000-8000-000000000001'
+    AND action_name='Teacher award';
+ IF v_ledger_after<>v_ledger_before OR v_balance_after<>v_balance_before THEN
+  RAISE EXCEPTION 'Ledger mutation survived request-finalization failure';
+ END IF;
+ IF EXISTS (SELECT 1 FROM classroom_test.transaction_requests
+             WHERE request_id='83000000-0000-4000-8000-000000000002')
+    OR EXISTS (SELECT 1 FROM classroom_test.transaction_audit
+             WHERE request_id='83000000-0000-4000-8000-000000000002') THEN
+  RAISE EXCEPTION 'Request claim or audit survived finalization failure';
+ END IF;
+END $test$;
+
+RESET ROLE;
+ROLLBACK;
+
+/*
+EXPECTED:
+- Both named failpoints fire at the intended final write boundary.
+- Audit-insert failure rolls back the preceding ledger write and request claim.
+- Request-finalization failure rolls back ledger, audit and request claim.
+- The transaction rollback removes test-only triggers and trigger function.
+- No production function or trigger contains a test failpoint.
+
+LIMITATION:
+These two cases prove only award-operation audit/finalization rollback when
+executed. Extend the same harness to deduction, reversal, activity scoring and
+marketplace purchase, plus operation-specific intermediate-write failpoints.
+NOT EXECUTED. No atomicity result is claimed.
+*/
