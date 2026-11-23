@@ -1,7 +1,7 @@
 # Transaction Function Design — Review Only
 
 **Status:** Design review; not executable SQL  
-**Version:** 0.1  
+**Version:** 0.2 (V2 reconciliation)  
 **Branch:** `security-review/student-login-hardening`  
 **Depends on:** Test Specification v1.0, Trusted Actor Identity Design, synthetic fixture schema v0.2
 
@@ -137,7 +137,7 @@ Algorithm:
 5. For an approved normal award, calculate the ledger balance while holding the common class/student locks, then insert exactly one positive ledger row with server-controlled action/source values.
 6. Persist the completed success result and success audit in the same transaction.
 
-Expected business rejections are committed as durable idempotent outcomes without business mutations; unexpected internal/system errors abort and roll back. An exceptional award above the ordinary cap is not an alternate flag on this ordinary function: it requires a separate authorised and audited override workflow whose authority and approval contract remain open. The previous synthetic fixture seed of 100 is obsolete and must be changed to 50 before any test execution.
+Expected business rejections are committed as durable idempotent outcomes without business mutations; unexpected internal/system errors abort and roll back. An exceptional award above the ordinary cap is not an alternate flag on this ordinary function: it requires a separate authorised and audited override workflow whose authority and approval contract remain open. The synthetic fixture schema seeds `maximum_teacher_award = 50`; the inspected seed contains 50-point opening balances and no 100-point award-cap seed. Keep the 50-point cap aligned across schema, functions and edge tests; do not confuse the activity maximum of 20 with the award cap.
 
 ### 5.2 deduct_points
 
@@ -160,8 +160,10 @@ The result must distinguish requested amount from actual deducted amount. An ide
 Inputs: actor teacher, original transaction ID, request UUID.
 
 Algorithm:
-1. Read original transaction to identify student; claim request and validate actor relationship.
-2. Lock student, then re-read and lock original transaction FOR UPDATE.
+1. Claim and bind the request before business-row locks.
+2. Read the original transaction without a lock only to discover its student; read that student's current class ID without a lock.
+3. Lock the current class, then the student, re-read membership and validate active state and teacher ownership.
+4. Lock and re-read the original transaction FOR UPDATE; verify its student still matches the discovered student.
 3. Confirm original is eligible for reversal and belongs to the permitted teacher/student context.
 4. Check the unique reversal link; if already reversed, return the prior reversal outcome or a stable already-reversed result.
 5. Calculate current balance under the student lock.
@@ -179,9 +181,11 @@ The eligibility rule for reversing negative deductions or other transaction type
 Inputs: actor teacher, activity record ID, new integer score, notes, request UUID.
 
 Algorithm:
-1. Read record's student ID without locking; claim request.
-2. Lock student row; re-read and lock activity record FOR UPDATE.
-3. Verify actor owns the active class; activity belongs to that class; record belongs to the activity/student relationship; score is between zero and activity max.
+1. Claim and bind the request before business-row locks.
+2. Read the activity record without a lock only to discover its student; read that student's current class ID without a lock.
+3. Lock the class, then the student, re-read membership and validate active state and teacher ownership.
+4. Lock and re-read the activity record FOR UPDATE, then lock the referenced activity FOR SHARE.
+5. Verify the record's teacher, student, activity relationship, activity class and active state; validate score against the activity maximum.
 4. Let old score be persisted `points_awarded`; delta = new score - old score.
 5. If delta > 0, insert +delta.
 6. If delta < 0, calculate available balance while holding student lock and deduct only min(abs(delta), balance). The activity record still stores the teacher-assigned new score.
@@ -199,9 +203,9 @@ Do not add a unique activity/student constraint. Do not change duplicate submiss
 Inputs: actor teacher, one student ID, one reward ID, request UUID.
 
 Algorithm:
-1. Claim request; validate student and reward ownership.
-2. Lock student row; then lock reward row FOR UPDATE.
-3. Revalidate active reward and active student/class.
+1. Claim and bind the request before business-row locks.
+2. Lock and validate the student's current class, then the student, using the shared class-before-student helper.
+3. Lock the teacher-owned reward row FOR UPDATE and validate its active state, stock and price while the lock is held.
 4. If finite stock is zero, return `out_of_stock` with no debit/purchase/decrement.
 5. Calculate authoritative student balance. If below reward price, return `insufficient_balance` with no debit/purchase/decrement.
 6. Insert one negative ledger row for reward price.
@@ -257,7 +261,7 @@ Deactivation blocks new purchases but must not delete purchase history. The fixt
 
 ## 8. Fixture corrections and implementation gates
 
-- Update the synthetic award-cap seed from 100 to 50 before any disposable execution; verify no stale 20/100 assumptions remain in seed, smoke, edge-case, or concurrency tests.
+- Verify repository-wide that no stale 20- or 100-point manual-award assumptions remain; preserve unrelated values such as the activity maximum score of 20.
 - Add tests for durable above-cap rejection/replay, changed-payload key reuse, administrator-only cap changes, and concurrent award versus class transfer/ownership change.
 
 Before the superseded function SQL is replaced by a new review draft:
