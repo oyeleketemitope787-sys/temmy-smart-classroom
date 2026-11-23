@@ -27,9 +27,12 @@ RESET ROLE;
 UPDATE classroom_test.transaction_config
    SET integer_value=100,updated_at=now()
  WHERE config_key='maximum_teacher_award';
-IF NOT FOUND THEN
- RAISE EXCEPTION 'Expected maximum_teacher_award configuration row';
-END IF;
+DO $config_check$
+BEGIN
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Expected maximum_teacher_award configuration row';
+ END IF;
+END $config_check$;
 
 SET LOCAL ROLE temmy_ctest_gateway;
 DO $test$
