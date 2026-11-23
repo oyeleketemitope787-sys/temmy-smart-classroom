@@ -1,0 +1,157 @@
+/*
+CLASSROOM TRANSACTION IDEMPOTENCY / REVERSAL REGRESSION TESTS — V2
+SYNTHETIC / DISPOSABLE ONLY. NOT EXECUTED.
+Requires fixture schema, seed, V2 helper foundation and V2 Phase 1–3 drafts.
+Never run against Supabase, production, cloud-test or shared databases.
+All fixture changes are rolled back.
+*/
+BEGIN;
+
+-- 1. A durable rejection remains rejected on same-key replay even when the
+-- underlying business condition changes. A new request key re-evaluates it.
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_result jsonb;
+BEGIN
+ v_result:=classroom_test.award_points(
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',51,'State-change replay',
+  '82000000-0000-4000-8000-000000000001');
+ IF v_result->>'status'<>'rejected'
+    OR v_result->>'code'<>'award_limit_exceeded' THEN
+   RAISE EXCEPTION 'Expected initial cap rejection, got %',v_result;
+ END IF;
+END $test$;
+
+RESET ROLE;
+UPDATE classroom_test.transaction_config
+   SET integer_value=100,updated_at=now()
+ WHERE config_key='maximum_teacher_award';
+IF NOT FOUND THEN
+ RAISE EXCEPTION 'Expected maximum_teacher_award configuration row';
+END IF;
+
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_replay jsonb; v_new_request jsonb;
+ v_actor_conflict boolean:=false; v_operation_conflict boolean:=false;
+BEGIN
+ v_replay:=classroom_test.award_points(
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',51,'State-change replay',
+  '82000000-0000-4000-8000-000000000001');
+ IF v_replay->>'replayed'<>'true'
+    OR v_replay->>'status'<>'rejected'
+    OR v_replay->>'code'<>'award_limit_exceeded' THEN
+   RAISE EXCEPTION 'Same-key rejection must replay unchanged after config change: %',v_replay;
+ END IF;
+
+ v_new_request:=classroom_test.award_points(
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',51,'State-change replay',
+  '82000000-0000-4000-8000-000000000002');
+ IF v_new_request->>'status'<>'awarded'
+    OR (v_new_request->>'awarded')::integer<>51 THEN
+   RAISE EXCEPTION 'New key should re-evaluate under changed cap: %',v_new_request;
+ END IF;
+
+ -- Reuse of the successful key by another actor must conflict, even if the
+ -- payload fields otherwise match.
+ BEGIN
+  PERFORM classroom_test.award_points(
+   '10000000-0000-4000-8000-000000000002',
+   '30000000-0000-4000-8000-000000000001',51,'State-change replay',
+   '82000000-0000-4000-8000-000000000002');
+ EXCEPTION WHEN SQLSTATE '22023' THEN
+  IF SQLERRM<>'idempotency_key_reused_with_different_payload' THEN RAISE; END IF;
+  v_actor_conflict:=true;
+ END;
+ IF NOT v_actor_conflict THEN
+  RAISE EXCEPTION 'Expected changed-actor idempotency conflict';
+ END IF;
+
+ -- Reuse of the same key under a different operation must also conflict.
+ BEGIN
+  PERFORM classroom_test.deduct_points(
+   '10000000-0000-4000-8000-000000000001',
+   '30000000-0000-4000-8000-000000000001',1,'Different operation',
+   '82000000-0000-4000-8000-000000000002');
+ EXCEPTION WHEN SQLSTATE '22023' THEN
+  IF SQLERRM<>'idempotency_key_reused_with_different_payload' THEN RAISE; END IF;
+  v_operation_conflict:=true;
+ END;
+ IF NOT v_operation_conflict THEN
+  RAISE EXCEPTION 'Expected changed-operation idempotency conflict';
+ END IF;
+END $test$;
+
+-- 2. Insufficient-balance full reversal: no reversal ledger row is permitted.
+RESET ROLE;
+INSERT INTO classroom_test.point_transactions
+ (id,student_id,teacher_id,points,action_name,action_type,reason,source)
+VALUES
+ ('62000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000001',
+  10,'Teacher award','positive','Insufficient reversal fixture','teacher'),
+ ('62000000-0000-4000-8000-000000000002',
+  '30000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000001',
+  -60,'Synthetic spend','negative','Set spendable balance to zero','test');
+
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_result jsonb;
+BEGIN
+ v_result:=classroom_test.reverse_transaction(
+  '10000000-0000-4000-8000-000000000001',
+  '62000000-0000-4000-8000-000000000001',
+  '82000000-0000-4000-8000-000000000003');
+ IF v_result->>'status'<>'rejected'
+    OR v_result->>'code'<>'undo_insufficient_balance_full_reversal_required' THEN
+  RAISE EXCEPTION 'Expected insufficient-balance reversal rejection, got %',v_result;
+ END IF;
+END $test$;
+
+RESET ROLE;
+DO $assertions$
+DECLARE v_reversal_rows integer; v_request_rows integer; v_audit_rows integer;
+BEGIN
+ SELECT count(*)::integer INTO v_reversal_rows
+  FROM classroom_test.point_transactions
+  WHERE reverses_transaction_id='62000000-0000-4000-8000-000000000001';
+ IF v_reversal_rows<>0 THEN
+  RAISE EXCEPTION 'Insufficient-balance reversal created % ledger rows',v_reversal_rows;
+ END IF;
+
+ SELECT count(*)::integer INTO v_request_rows
+  FROM classroom_test.transaction_requests
+  WHERE request_id='82000000-0000-4000-8000-000000000003'
+    AND status='rejected';
+ IF v_request_rows<>1 THEN
+  RAISE EXCEPTION 'Expected one durable rejected reversal request';
+ END IF;
+
+ SELECT count(*)::integer INTO v_audit_rows
+  FROM classroom_test.transaction_audit
+  WHERE request_id='82000000-0000-4000-8000-000000000003'
+    AND outcome='rejected';
+ IF v_audit_rows<>1 THEN
+  RAISE EXCEPTION 'Expected exactly one rejection audit for insufficient reversal';
+ END IF;
+END $assertions$;
+
+ROLLBACK;
+
+/*
+EXPECTED:
+- Same request key replays the original durable rejection after config changes.
+- A new request key re-evaluates the now-valid award and succeeds.
+- Changed actor and changed operation are independently rejected as key reuse.
+- Insufficient-balance full reversal creates no reversal ledger row and records
+  one durable rejection plus one safe rejection audit.
+- The enclosing test transaction rolls back all fixture/config changes.
+
+NOT EXECUTED. PostgreSQL 16 syntax, role-context and runtime behaviour remain
+unverified pending explicit approval for an isolated disposable test run.
+*/
