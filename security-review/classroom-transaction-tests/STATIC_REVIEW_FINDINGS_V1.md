@@ -99,3 +99,28 @@ The user approved the corrections identified in the manual-award review:
 
 The synthetic fixture's old 100-point seed is stale and must be changed to 50 before execution. The test specification and design documents must not be mistaken for evidence that the fixture seed has already been changed. The function drafts, fixture seed, smoke/edge tests and concurrency tests remain unexecuted and must be reconciled together before a fresh disposable run.
 
+
+
+## 7. V2 implementation reconciliation — 2026-11-23
+
+The V1 findings above are retained as historical findings against the superseded Phase 1–3 drafts. A V2 review-only implementation has since been added:
+
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_FOUNDATION_REVIEW_ONLY.sql.txt`
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_PHASE1_REVIEW_ONLY.sql.txt`
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_PHASE2_REVIEW_ONLY.sql.txt`
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_PHASE3_REVIEW_ONLY.sql.txt`
+
+The V2 drafts implement the agreed shape for request claiming/replay, durable expected rejection results and audits, zero-balance no-op audit, and class-before-student locking. The edge-case suite and supporting smoke/ACL/concurrency/atomicity documentation have been updated to refer to V2.
+
+**This is not a pass/final review.** The following remain open and release-blocking:
+
+1. Static review of every V2 function against the exact fixture DDL, including PostgreSQL syntax, nullability, constraint and type compatibility.
+2. Verify the `current_setting('role')` behaviour through the complete nested SECURITY DEFINER call chain on the pinned PostgreSQL 16 image. Do not rely on the test identity guard until proven.
+3. Verify `pg_catalog.sha256(bytea)` availability and exact canonical hash output on the pinned image.
+4. Verify class row-lock compatibility with class deactivation/ownership changes and all implicit FK/trigger lock edges.
+5. Verify function owner, fixed search_path, helper EXECUTE permissions, gateway entrypoint grants, and actual denied DML from client/gateway roles.
+6. Add explicit tests for changed-payload/actor/operation request-key reuse, rejection replay after underlying business state changes, inactive student/class, reversal insufficient balance/already reversed, activity downward clamp, and audit failure rollback.
+7. Correctly inventory and test all real activity/class/student/reward administration paths before considering production compatibility.
+8. Run syntax, smoke, edge, ACL, concurrency and failure-injection tests only after separate explicit approval in a fresh isolated PostgreSQL 16 container.
+
+No V2 SQL has been executed or syntax-tested. No production/hosted database, `main`, `cloud-test`, or SGIS container has been changed.
