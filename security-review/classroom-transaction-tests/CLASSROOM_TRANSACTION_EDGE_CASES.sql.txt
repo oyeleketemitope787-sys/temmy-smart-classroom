@@ -144,6 +144,74 @@ BEGIN
  END IF;
 END $test$;
 
+
+-- Additional reversal and payload-binding cases.
+-- The first successful reversal above has already reversed the seeded award.
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_result jsonb; v_conflict boolean:=false;
+BEGIN
+ v_result:=classroom_test.reverse_transaction(
+  '10000000-0000-4000-8000-000000000001',
+  '60000000-0000-4000-8000-000000000005',
+  '81000000-0000-4000-8000-000000000010');
+ IF v_result->>'code'<>'transaction_already_reversed' THEN
+   RAISE EXCEPTION 'Expected already-reversed rejection, got %',v_result;
+ END IF;
+
+ -- Same request UUID with changed payload must fail closed; it must not
+ -- replace the previously stored above-cap result or execute a new award.
+ BEGIN
+   PERFORM classroom_test.award_points(
+    '10000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000001',52,'Above cap',
+    '81000000-0000-4000-8000-000000000006');
+ EXCEPTION WHEN SQLSTATE '22023' THEN
+   IF SQLERRM<>'idempotency_key_reused_with_different_payload' THEN RAISE; END IF;
+   v_conflict:=true;
+ END;
+ IF NOT v_conflict THEN
+   RAISE EXCEPTION 'Expected changed-payload idempotency conflict';
+ END IF;
+END $test$;
+
+-- A downward score adjustment may assign a lower score while clamping the
+-- ledger debit to the available balance. Student Two starts at 5; add a
+-- synthetic activity record and spend 3 first, leaving 2.
+RESET ROLE;
+INSERT INTO classroom_test.student_activity_records
+ (id,activity_id,student_id,teacher_id,status,points_awarded,completed_at)
+VALUES
+ ('50000000-0000-4000-8000-000000000002',
+  '40000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000001',
+  'completed',4,now());
+INSERT INTO classroom_test.point_transactions
+ (id,student_id,teacher_id,points,action_name,action_type,reason,source)
+VALUES
+ ('60000000-0000-4000-8000-000000000007',
+  '30000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000001',
+  -3,'Synthetic balance reduction','negative','Leave 2 points','test');
+
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_result jsonb;
+BEGIN
+ v_result:=classroom_test.score_activity(
+  '10000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000002',0,'Clamp score decrease',
+  '81000000-0000-4000-8000-000000000011');
+ IF v_result->>'status'<>'scored'
+    OR (v_result->>'assigned_score')::integer<>0
+    OR (v_result->>'requested_delta')::integer<>-4
+    OR (v_result->>'actual_ledger_delta')::integer<>-2
+    OR (v_result->>'balance')::integer<>0 THEN
+   RAISE EXCEPTION 'Unexpected clamped activity score result: %',v_result;
+ END IF;
+END $test$;
+
 RESET ROLE;
 
 DO $assertions$
