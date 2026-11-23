@@ -1,0 +1,74 @@
+/*
+CLASSROOM TRANSACTION RUNTIME DML DENIAL TESTS
+REVIEW DRAFT. NOT EXECUTED. SYNTHETIC / DISPOSABLE ONLY.
+Requires the fixture schema and seed. Run as disposable database administrator.
+Never run against Supabase, production, cloud-test or shared databases.
+*/
+BEGIN;
+
+-- anon: schema/table access must not permit direct ledger writes.
+SET LOCAL ROLE temmy_ctest_anon;
+DO $test$
+DECLARE v_denied boolean:=false;
+BEGIN
+ BEGIN
+  INSERT INTO classroom_test.point_transactions
+   (student_id,teacher_id,points,action_name,action_type,source)
+  VALUES
+   ('30000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    1,'ACL probe','positive','test');
+ EXCEPTION WHEN insufficient_privilege THEN
+  v_denied:=true;
+ END;
+ IF NOT v_denied THEN RAISE EXCEPTION 'anon unexpectedly inserted a ledger row'; END IF;
+END $test$;
+
+-- authenticated: SELECT is intentionally allowed on selected reference
+-- tables, but direct protected writes must still be denied.
+RESET ROLE;
+SET LOCAL ROLE temmy_ctest_authenticated;
+DO $test$
+DECLARE v_denied boolean:=false;
+BEGIN
+ BEGIN
+  UPDATE classroom_test.students
+     SET active=false
+   WHERE id='30000000-0000-4000-8000-000000000001';
+ EXCEPTION WHEN insufficient_privilege THEN
+  v_denied:=true;
+ END;
+ IF NOT v_denied THEN RAISE EXCEPTION 'authenticated unexpectedly updated a student'; END IF;
+END $test$;
+
+-- Gateway: business entrypoint execution is its only write path; no direct
+-- table DML is granted to the gateway role.
+RESET ROLE;
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_denied boolean:=false;
+BEGIN
+ BEGIN
+  DELETE FROM classroom_test.point_transactions
+   WHERE id='60000000-0000-4000-8000-000000000001';
+ EXCEPTION WHEN insufficient_privilege THEN
+  v_denied:=true;
+ END;
+ IF NOT v_denied THEN RAISE EXCEPTION 'gateway unexpectedly deleted a ledger row'; END IF;
+END $test$;
+
+RESET ROLE;
+ROLLBACK;
+
+/*
+EXPECTED:
+- Each direct DML attempt raises insufficient_privilege and is caught.
+- No protected row is inserted, updated or deleted.
+- The disposable test transaction is rolled back.
+
+LIMITATION:
+This checks fixture role privileges at runtime. It does not prove the
+production Supabase Gateway identity propagation, RLS policy behaviour,
+nested SECURITY DEFINER context, or function execution grants.
+NOT EXECUTED; isolated PostgreSQL 16 verification remains pending.
+*/
