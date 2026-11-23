@@ -116,6 +116,50 @@ The V2 drafts implement the agreed shape for request claiming/replay, durable ex
 
 The current V2 edge-case draft now includes above-cap durable rejection/replay, marketplace rejection audit counts, zero-balance no-op audit/replay, already-reversed award rejection, changed-payload conflict, and downward activity-score clamping. The V2 award function now reads the protected maximum-award configuration row FOR SHARE so an administrator update cannot race the cap decision. These are static design changes only; no test has been run.
 
+### V2 fixture reconciliation — 2026-11-23
+
+The complete V2 foundation and Phase 1–3 drafts were compared against
+`CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql` and
+`CLASSROOM_TRANSACTION_TEST_SEED.sql.txt` on the review branch.
+
+- The referenced tables and columns in the V2 functions exist in the synthetic
+  fixture: request/audit/config tables, classes/students, signed point ledger,
+  activity records/activities, rewards and purchase snapshots.
+- The fixture's `transaction_config` row seeds
+  `maximum_teacher_award = 50`; the seed's opening ledger values are 50, 5,
+  50 and 50, with a separate 10-point teacher-award row for reversal.
+- The V2 helper's class `FOR SHARE` then student `FOR UPDATE` sequence
+  matches the approved high-level lock order. The V2 phase functions follow
+  the helper with original-transaction, activity-record/activity or reward
+  locks in their operation-specific paths.
+- The V2 award-cap lookup now uses `FOR SHARE`, so a concurrent protected
+  configuration update must serialize with the cap decision.
+- No definite fixture-column or seed-ID mismatch was found in this pass.
+
+This is a static schema comparison only. It does not prove that the scripts
+compile, that all lock interactions are deadlock-free, or that the helper's
+role-GUC and hash assumptions work on PostgreSQL 16. The fixture's synthetic
+schema is not evidence of compatibility with the live Classroom database.
+
+### Additional V2 correctness gates
+
+1. The ACL test currently verifies catalogue privileges but does not attempt
+   actual denied DML as anon/authenticated/gateway, nor a nested role-context
+   call. Add separate isolated-session runtime tests.
+2. Add durable-rejection replay tests after changing the underlying business
+   state, and verify a new request UUID re-evaluates the current state.
+3. Add same-request-ID tests for changed actor and changed operation, not only
+   changed payload.
+4. Add an explicit insufficient-balance full-reversal fixture case and assert
+   that no reversal ledger row is created.
+5. Inject failures at the audit and request-finalization writes and prove the
+   business mutation, audit and request claim roll back together.
+6. Pin the exact PostgreSQL 16 image digest/version and verify
+   `pg_catalog.sha256(bytea)` and `current_setting('role', true)` through
+   the nested SECURITY DEFINER call chain before trusting the functions.
+7. Inventory real Classroom class/student/activity/reward administration
+   paths and compare their row-lock modes with the synthetic global lock rule.
+
 
 1. Static review of every V2 function against the exact fixture DDL, including PostgreSQL syntax, nullability, constraint and type compatibility.
 2. Verify the `current_setting('role')` behaviour through the complete nested SECURITY DEFINER call chain on the pinned PostgreSQL 16 image. Do not rely on the test identity guard until proven.
