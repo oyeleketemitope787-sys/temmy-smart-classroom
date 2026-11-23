@@ -153,6 +153,17 @@ For every scenario, retain:
 
 Do not publish secrets, connection strings, access tokens or personal student data in test evidence.
 
-## 9. Current status
+## 9. Added review-only failpoint draft
 
-This is a test protocol only. No failpoint triggers have been created, no SQL has been run, and no atomicity claim has been validated. The SQL function drafts, smoke tests, edge-case tests, ACL assertions and concurrency protocol remain unexecuted until the disposable-environment gates above are satisfied.
+`CLASSROOM_TRANSACTION_AUDIT_FINALIZATION_FAILURE_TESTS.sql.txt` now defines a disposable-schema-only trigger failpoint and two award-operation cases:
+
+- Raise during the success-audit INSERT after the award ledger INSERT; assert the ledger mutation and request claim both roll back.
+- Raise during the request finalization UPDATE after the ledger and audit writes; assert all three writes, including the request claim, roll back.
+
+The failpoint is controlled by a session-local custom setting and is installed inside a transaction so the trigger objects are removed by the final rollback. It is not part of any V2 business function or production migration.
+
+This draft covers only the award operation's audit and finalization boundaries. It does not yet cover the intermediate-write failpoints for activity scoring and marketplace purchase, nor audit/finalization failures for deduction, reversal and purchase. Those remain required before claiming broad operation-family atomicity coverage.
+
+## 10. Current status
+
+This remains a test protocol and review-only draft. No failpoint triggers have been created in a database, no SQL has been run, and no atomicity claim has been validated. The new failpoint file has only been committed as text on the isolated review branch. The SQL function drafts, smoke tests, edge-case tests, ACL assertions and concurrency protocol remain unexecuted until the disposable-environment gates above are satisfied.
