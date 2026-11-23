@@ -1,0 +1,139 @@
+/*
+CLASSROOM TRANSACTION FUNCTIONS — V2 PHASE 3
+Operation: one-student marketplace purchase.
+REVIEW ONLY — NOT EXECUTED — NOT A MIGRATION.
+Requires synthetic fixture and V2 helper foundation/Phases 1–2.
+PostgreSQL 16 disposable database only.
+*/
+BEGIN;
+DO $guard$
+BEGIN
+ IF to_regprocedure('classroom_test._v2_claim_request(uuid,uuid,text,text)') IS NULL
+ OR to_regprocedure('classroom_test._v2_lock_student_context(uuid,uuid)') IS NULL
+ OR to_regclass('classroom_test.marketplace_rewards') IS NULL
+ OR to_regclass('classroom_test.purchases') IS NULL THEN
+   RAISE EXCEPTION 'V2 helper foundation or fixture missing; aborting';
+ END IF;
+END $guard$;
+SET ROLE temmy_ctest_data_owner;
+
+CREATE OR REPLACE FUNCTION classroom_test.purchase_reward_for_student(
+ p_actor_teacher_id uuid,p_student_id uuid,p_reward_id uuid,p_request_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE
+ v_hash text; v_claim jsonb; v_context jsonb;
+ v_reward classroom_test.marketplace_rewards%ROWTYPE;
+ v_balance bigint; v_purchase_id uuid; v_tx_id uuid;
+ v_result jsonb; v_code text;
+BEGIN
+ PERFORM classroom_test._v2_assert_gateway_context();
+ IF p_actor_teacher_id IS NULL OR p_student_id IS NULL
+    OR p_reward_id IS NULL OR p_request_id IS NULL THEN
+   RAISE EXCEPTION USING ERRCODE='22004', MESSAGE='purchase_request_required';
+ END IF;
+ v_hash:=classroom_test._v2_canonical_hash(ARRAY[
+   p_actor_teacher_id::text,p_student_id::text,p_reward_id::text]);
+ v_claim:=classroom_test._v2_claim_request(
+   p_request_id,p_actor_teacher_id,'purchase_reward_for_student',v_hash);
+ IF NOT (v_claim->>'claimed')::boolean THEN
+   RETURN (v_claim->'result') || jsonb_build_object('replayed',true);
+ END IF;
+
+ -- Common lock order: request -> class -> student -> reward.
+ v_context:=classroom_test._v2_lock_student_context(p_student_id,p_actor_teacher_id);
+ IF v_context->>'status'='rejected' THEN
+   v_code:=v_context->>'code';
+   v_result:=jsonb_build_object('ok',false,'operation','purchase_reward_for_student',
+     'status','rejected','code',v_code,'replayed',false);
+   PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+     'purchase_reward_for_student',p_student_id,'rejected',
+     jsonb_build_object('code',v_code));
+   PERFORM classroom_test._v2_finish_request(p_request_id,'rejected',v_result);
+   RETURN v_result;
+ END IF;
+ v_balance:=(v_context->>'balance')::bigint;
+
+ SELECT r.* INTO v_reward
+   FROM classroom_test.marketplace_rewards r
+  WHERE r.id=p_reward_id AND r.teacher_id=p_actor_teacher_id
+  FOR UPDATE;
+ IF NOT FOUND THEN
+   v_code:='reward_not_found_or_not_owned_by_teacher';
+ ELSIF NOT v_reward.active THEN
+   v_code:='reward_not_active';
+ ELSIF v_reward.stock IS NOT NULL AND v_reward.stock<=0 THEN
+   v_code:='reward_out_of_stock';
+ ELSIF v_balance<v_reward.price THEN
+   v_code:='insufficient_points';
+ ELSE
+   v_code:=NULL;
+ END IF;
+
+ IF v_code IS NOT NULL THEN
+   v_result:=jsonb_build_object('ok',false,'operation','purchase_reward_for_student',
+     'status','rejected','code',v_code,'replayed',false);
+   PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+     'purchase_reward_for_student',p_student_id,'rejected',
+     jsonb_build_object('code',v_code,'reward_id',p_reward_id));
+   PERFORM classroom_test._v2_finish_request(p_request_id,'rejected',v_result);
+   RETURN v_result;
+ END IF;
+
+ INSERT INTO classroom_test.point_transactions
+   (student_id,teacher_id,points,action_name,action_type,reason,source)
+ VALUES (p_student_id,p_actor_teacher_id,-v_reward.price,
+   'Marketplace purchase','marketplace_purchase',
+   'Purchase: '||v_reward.name,'marketplace')
+ RETURNING id INTO v_tx_id;
+
+ INSERT INTO classroom_test.purchases
+   (request_id,student_id,teacher_id,reward_id,reward_name_snapshot,points_spent)
+ VALUES (p_request_id,p_student_id,p_actor_teacher_id,v_reward.id,
+         v_reward.name,v_reward.price)
+ RETURNING id INTO v_purchase_id;
+
+ IF v_reward.stock IS NOT NULL THEN
+   UPDATE classroom_test.marketplace_rewards
+      SET stock=stock-1
+    WHERE id=v_reward.id AND teacher_id=p_actor_teacher_id
+      AND active AND stock>0;
+   IF NOT FOUND THEN
+     -- The row is locked already. This indicates an invariant/trigger issue,
+     -- not an expected stock rejection; abort and roll back the whole request.
+     RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='reward_stock_invariant_retry';
+   END IF;
+ END IF;
+
+ v_result:=jsonb_build_object('ok',true,'operation','purchase_reward_for_student',
+   'status','purchased','purchase_id',v_purchase_id,'transaction_id',v_tx_id,
+   'student_id',p_student_id,'reward_id',v_reward.id,
+   'reward_name',v_reward.name,'points_spent',v_reward.price,
+   'balance',v_balance-v_reward.price,
+   'remaining_stock',CASE WHEN v_reward.stock IS NULL THEN NULL ELSE v_reward.stock-1 END,
+   'replayed',false);
+ PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+   'purchase_reward_for_student',p_student_id,'success',
+   jsonb_build_object('purchase_id',v_purchase_id,'transaction_id',v_tx_id,
+     'reward_id',v_reward.id,'points_spent',v_reward.price,
+     'remaining_stock',CASE WHEN v_reward.stock IS NULL THEN NULL ELSE v_reward.stock-1 END));
+ PERFORM classroom_test._v2_finish_request(p_request_id,'completed',v_result);
+ RETURN v_result;
+END $fn$;
+
+REVOKE ALL ON FUNCTION classroom_test.purchase_reward_for_student(uuid,uuid,uuid,uuid)
+ FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION classroom_test.purchase_reward_for_student(uuid,uuid,uuid,uuid)
+ TO temmy_ctest_gateway;
+RESET ROLE;
+COMMIT;
+
+/*
+STATIC REVIEW NOTES — NOT EXECUTED:
+- Exactly one student per request; no batch purchase API.
+- Locks class/student through shared helper before locking reward.
+- NULL stock remains unlimited; finite stock decrements once under reward lock.
+- Inactive/foreign reward, empty stock and insufficient balance are durable,
+  audited rejections with no purchase, debit or stock mutation.
+- Purchase snapshot and debit/stock/audit/request result are atomic.
+- SQL, role context, ACL, concurrency and atomicity remain unverified.
+*/
