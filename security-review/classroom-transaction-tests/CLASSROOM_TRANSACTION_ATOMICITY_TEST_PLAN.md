@@ -117,11 +117,14 @@ Any partial state is a release-blocking failure. Do not repair partial test rows
 
 ## 6. Important distinction: successful-operation audit vs rejected-operation audit
 
-These tests cover atomic success auditing. A successful mutation and its success-audit record must commit in the same transaction.
+V2 uses two intentional transaction outcomes:
 
-A rejected operation that raises an exception rolls back ordinary inserts made in that same transaction. Therefore, a rejection-audit row cannot be made durable by inserting it immediately before raising an exception.
+- **Successful mutation:** business writes, success audit and completed request result commit together. Any later write/audit failure propagates and rolls back the entire operation.
+- **Expected business rejection:** no business mutation is applied; a structured rejection result, request status `rejected`, and one safe rejection-audit row commit together. The function returns normally rather than raising an exception.
 
-The current function drafts do not yet implement a durable rejected-request/audit path. Decide this separately before execution. Possible designs include a gateway-managed audit written in a separate controlled transaction, or a function contract that returns a structured rejection and commits a rejection record without applying business mutations. Do not claim rejected attempts are durably audited until that design is implemented and tested.
+An identical retry of a rejected request must replay the stored rejection without adding another audit row. A changed actor, operation or payload for the same request UUID is a key-binding conflict and must not execute. Retryable stale-membership, deadlock and serialization failures remain exceptions so the request claim rolls back and the caller can retry the same request ID and payload.
+
+The disposable suite must test all three paths separately: successful atomicity, durable expected rejection, and unexpected/retryable rollback.
 
 ## 7. Preconditions before execution
 
@@ -131,7 +134,7 @@ Do not execute this plan until all of these gates are satisfied:
 - Fixture schema and seed scripts have passed static review.
 - Function drafts compile in the disposable environment.
 - SECURITY DEFINER ownership, nested role-context checks, fixed search paths and EXECUTE ACLs have been verified.
-- The request-state contract defines success replay, payload mismatch, concurrent duplicate requests and rejected-request persistence.
+- The request-state contract defines success replay, durable rejected replay, payload mismatch, concurrent duplicate requests and retryable rollback.
 - Each failpoint has been shown to fire after the intended preceding mutation.
 - The test harness can catch an injected exception while preserving the outer test session for post-failure inspection.
 - The database version is recorded and the SHA-256 helper is confirmed.
