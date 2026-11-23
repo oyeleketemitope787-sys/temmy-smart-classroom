@@ -19,12 +19,16 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 ## Current contents
 
 - `CLASSROOM_TRANSACTION_FIXTURE_SCHEMA.sql` — synthetic tables and isolated test-role model.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_FOUNDATION_REVIEW_ONLY.sql.txt` — replacement shared request, audit, hashing and class/student lock helpers; review-only.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_PHASE1_REVIEW_ONLY.sql.txt` — V2 teacher award and deduction operations with durable rejection and no-op audit semantics; review-only.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_PHASE2_REVIEW_ONLY.sql.txt` — V2 full award reversal and activity score adjustment operations; review-only.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_V2_PHASE3_REVIEW_ONLY.sql.txt` — V2 one-student marketplace purchase operation; review-only.
 - `TRUSTED_ACTOR_IDENTITY_DESIGN.md` — restricted test-only gateway identity model.
 - `TEMMY_GATEWAY_PRODUCTION_AUTHENTICATION_DESIGN.md` — user-approved production design target: Supabase Auth token verification at the server-side Gateway, actor ID derived from verified identity, and protected database transaction entrypoints.\n- `TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md` — user-approved class-before-student locking rule, global lock order, transfer/admin ordering and required concurrency tests.
 - `TRANSACTION_FUNCTION_DESIGN_REVIEW_ONLY.md` — operation algorithms, idempotency, balance serialization, lock order, audit and test requirements; design document, not executable SQL.
-- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE1_REVIEW_ONLY.sql.txt` — draft SECURITY DEFINER helpers plus teacher award and deduction functions.
-- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE2_REVIEW_ONLY.sql.txt` — draft full award reversal and atomic activity score adjustment functions.
-- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE3_REVIEW_ONLY.sql.txt` — draft one-student marketplace purchase function with stock locking, purchase snapshot, ledger debit and idempotent success replay.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE1_REVIEW_ONLY.sql.txt` — superseded historical draft; do not install or execute.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE2_REVIEW_ONLY.sql.txt` — superseded historical draft; do not install or execute.
+- `CLASSROOM_TRANSACTION_FUNCTIONS_PHASE3_REVIEW_ONLY.sql.txt` — superseded historical draft; do not install or execute.
 - `CLASSROOM_TRANSACTION_TEST_SEED.sql.txt` — deterministic synthetic teacher, class, student, activity, ledger and marketplace rows.
 - `CLASSROOM_TRANSACTION_SMOKE_TESTS.sql.txt` — successful-path smoke checks for award, deduction, reversal, activity scoring, marketplace purchase and successful retry replay; outer transaction rolls back.
 - `CLASSROOM_TRANSACTION_EDGE_CASES.sql.txt` — draft rejection/no-op checks for insufficient balance, stock, inactive rewards, cross-teacher access, award cap, zero-balance deduction and invalid activity scores.
@@ -50,20 +54,20 @@ This directory is for a separate disposable PostgreSQL test suite. Its schema is
 
 ## Current review status
 
-Phase 1–3 function drafts cover teacher awards, deductions, full award reversal, activity score adjustment and one-student marketplace purchase. The deterministic synthetic seed, successful-path smoke test, initial edge-case checks, ACL assertions, concurrency protocol and atomicity/failure-injection protocol are also drafted.
+The V2 foundation and Phase 1–3 drafts now cover teacher awards, deductions, full award reversal, activity score adjustment and one-student marketplace purchase. The original Phase 1–3 files are superseded historical drafts. The deterministic synthetic seed, successful-path smoke test, initial edge-case checks, ACL assertions, concurrency protocol and atomicity/failure-injection protocol are also drafted.
 
-**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. A static review has identified remaining implementation gates: durable rejected-request audit/idempotency, implementing the approved zero-balance no-op audit event, and revising the existing SQL drafts to implement the approved class-before-student lock order; see STATIC_REVIEW_FINDINGS_V1.md and TRANSACTION_RECONCILIATION_GATE_2026-11-23.md. No production or hosted database changes have been made.
+**None of the SQL has been executed or syntax/runtime tested.** The ACL, concurrency and atomicity protocols have not been run. The failure-injection triggers described in the atomicity plan have not been created. A static review has produced V2 drafts implementing durable expected rejections, zero-balance no-op auditing and class-before-student locking. These changes remain unverified until PostgreSQL 16 syntax/runtime, role-context, ACL, concurrency and atomicity tests pass; see TRANSACTION_RECONCILIATION_GATE_2026-11-23.md. No production or hosted database changes have been made.
 
 ## Next gates
 
 Before any SQL is executed in a disposable test database:
 
 - Positively identify a fresh disposable database/cluster; do not use the existing local classroom database without separate explicit approval.
-- Review the fixture, seed, smoke-test and edge-case assumptions, including the zero-balance setup and exception-catching harness.
+- Review the fixture, seed, V2 smoke-test and V2 edge-case assumptions, including the zero-balance setup and durable rejection assertions.
 - Pin PostgreSQL version and confirm SHA-256 helper availability.
 - Verify SECURITY DEFINER role-context behaviour, function owner, fixed `search_path` and function ACLs.
-- Finalize stable result/error codes and durable rejected-request semantics.
-- Revise all transaction drafts to implement TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md and review lock order/concurrency behaviour.
+- Verify the V2 stable result/error codes and durable rejected-request semantics against the caller contract.
+- Statically review all V2 transaction drafts against TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md and review lock order/concurrency behaviour.
 - Reconcile the stale 100-point fixture seed to the approved 50-point manual-award default and verify no stale 20/100 test assumptions remain.
 - Add administrator-only award-cap configuration tests and durable above-cap rejection/replay tests.
 - Review and validate the test-only failure injector so each failpoint occurs after the intended preceding mutation.
