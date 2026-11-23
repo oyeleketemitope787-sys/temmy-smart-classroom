@@ -144,15 +144,16 @@ Expected business rejections are committed as durable idempotent outcomes withou
 Inputs: actor teacher, student, positive integer requested amount, reason, request UUID.
 
 Algorithm:
-1. Claim request and validate ownership.
-2. Require requested amount > 0.
-3. Lock student and calculate balance.
-4. Set actual deduction to the lesser of requested amount and nonnegative balance.
-5. If actual deduction is zero, store a `zero_balance_noop` result; create no ledger row and no success audit claiming a point mutation.
-6. Otherwise insert one negative ledger row for the actual amount.
-7. Store resulting balance and actual deduction; insert success audit; commit.
+1. Claim request and bind actor, operation and canonical payload.
+2. Discover the student's class with a non-locking lookup; lock the class, then lock the student, re-read membership and validate active state and teacher ownership.
+3. Require requested amount > 0.
+4. Calculate the authoritative signed-ledger balance while holding the common locks.
+5. Set actual deduction to the lesser of requested amount and nonnegative balance.
+6. If actual deduction is zero, store a completed `zero_balance_noop` result, write no ledger row, and write exactly one lightweight attributable audit event in the same transaction.
+7. Otherwise insert one negative ledger row for the actual amount, store the resulting balance and actual deduction, and write one success audit event.
+8. Commit the request result and audit atomically with any ledger mutation.
 
-The result must distinguish requested amount from actual deducted amount.
+The result must distinguish requested amount from actual deducted amount. An identical retry replays the stored result and must not create another audit event.
 
 ### 5.3 reverse_transaction
 
