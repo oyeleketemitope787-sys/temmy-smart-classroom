@@ -216,8 +216,9 @@ Deactivation blocks new purchases but must not delete purchase history. The fixt
 ## 6. Audit contract
 
 - Successful business state changes and success audit rows commit together.
-- A no-op or business rejection must not create a misleading success audit.
-- If rejected-attempt logging is required, design it separately from the mutation transaction.
+- A zero-balance deduction no-op is an accepted, traceable outcome: write one lightweight audit event and the completed idempotency result atomically, but do not create a ledger row.
+- Expected business rejections write a safe rejection audit and durable rejected request result atomically, with no business mutation.
+- Identical retries replay the stored no-op/rejection and must not duplicate audit rows. Unexpected failures roll back.
 - Audit metadata must be allowlisted and avoid student access codes, tokens, secrets, or unnecessary personal details.
 - A successful retry returns the stored outcome and must not create another success audit row.
 
@@ -258,7 +259,7 @@ Deactivation blocks new purchases but must not delete purchase history. The fixt
 - Update the synthetic award-cap seed from 100 to 50 before any disposable execution; verify no stale 20/100 assumptions remain in seed, smoke, edge-case, or concurrency tests.
 - Add tests for durable above-cap rejection/replay, changed-payload key reuse, administrator-only cap changes, and concurrent award versus class transfer/ownership change.
 
-Before function SQL is drafted:
+Before the superseded function SQL is replaced by a new review draft:
 - Use namespaced test roles (`temmy_ctest_*`) and refuse pre-existing role collisions.
 - Create fixture objects while SET ROLE to `temmy_ctest_data_owner`; do not rely on later ALTER OWNER commands to repair ambiguous ownership.
 - Pin PostgreSQL version and required extensions/functions for payload hashing.
