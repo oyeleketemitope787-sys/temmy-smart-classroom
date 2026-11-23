@@ -1,0 +1,78 @@
+/*
+NESTED SECURITY DEFINER ROLE-CONTEXT PROBE — POSTGRESQL 16
+REVIEW DRAFT. NOT EXECUTED. SYNTHETIC / DISPOSABLE ONLY.
+Requires fixture schema and temmy_ctest_gateway / temmy_ctest_data_owner roles.
+Run as disposable database administrator in a fresh isolated cluster.
+Never run against Supabase, production, cloud-test or shared databases.
+*/
+BEGIN;
+
+-- The inner probe is SECURITY INVOKER. It records the role GUC and effective
+-- SQL identities at the point where the V2 gateway-context helper executes.
+SET ROLE temmy_ctest_data_owner;
+CREATE OR REPLACE FUNCTION classroom_test._v2_test_read_nested_identity()
+RETURNS jsonb
+LANGUAGE sql
+SECURITY INVOKER
+SET search_path=pg_catalog
+AS $fn$
+ SELECT pg_catalog.jsonb_build_object(
+  'role_guc',pg_catalog.current_setting('role',true),
+  'current_user',current_user,
+  'session_user',session_user
+ )
+$fn$;
+
+-- This outer wrapper models the V2 entrypoint: it is SECURITY DEFINER and
+-- invokes the inner SECURITY INVOKER helper without changing the SQL call path.
+CREATE OR REPLACE FUNCTION classroom_test._v2_test_nested_security_definer()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=pg_catalog
+AS $fn$
+BEGIN
+ RETURN classroom_test._v2_test_read_nested_identity();
+END
+$fn$;
+
+REVOKE ALL ON FUNCTION classroom_test._v2_test_read_nested_identity() FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test._v2_test_nested_security_definer() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION classroom_test._v2_test_nested_security_definer()
+ TO temmy_ctest_gateway;
+RESET ROLE;
+
+SET LOCAL ROLE temmy_ctest_gateway;
+DO $test$
+DECLARE v_identity jsonb;
+BEGIN
+ v_identity:=classroom_test._v2_test_nested_security_definer();
+
+ IF v_identity->>'role_guc' IS DISTINCT FROM 'temmy_ctest_gateway' THEN
+  RAISE EXCEPTION 'Unexpected role GUC in nested SECURITY DEFINER chain: %',v_identity;
+ END IF;
+ IF v_identity->>'current_user' IS DISTINCT FROM 'temmy_ctest_data_owner' THEN
+  RAISE EXCEPTION 'Expected effective current_user to be data owner in inner invoker: %',v_identity;
+ END IF;
+ IF v_identity->>'session_user' IS NULL THEN
+  RAISE EXCEPTION 'Expected session_user to identify the disposable test runner: %',v_identity;
+ END IF;
+
+ RAISE NOTICE 'Nested identity probe: %',v_identity;
+END $test$;
+
+RESET ROLE;
+ROLLBACK;
+
+/*
+INTERPRETATION:
+- role_guc should remain temmy_ctest_gateway while current_user is
+  temmy_ctest_data_owner inside the SECURITY DEFINER -> SECURITY INVOKER chain.
+- If this assertion fails, do not use current_setting('role') as the V2 trust
+  guard. Rework the identity boundary before any transaction-function tests.
+- session_user is recorded for evidence only; it is not the gateway identity.
+
+The transaction rolls back the probe functions and grants.
+NOT EXECUTED. This is a PostgreSQL 16 runtime verification gate, not evidence
+that the expected values have been observed.
+*/
