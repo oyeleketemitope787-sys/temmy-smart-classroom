@@ -2,7 +2,7 @@
 
 **Status:** Review-only test protocol. Not executed.  
 **Environment:** Fresh disposable PostgreSQL database only.  
-**Scope:** Synthetic classroom transaction fixture and Phase 1–3 function drafts.
+**Scope:** Synthetic classroom transaction fixture and V2 helper foundation and V2 Phase 1–3 function drafts.
 
 ## Safety boundary
 
@@ -17,7 +17,7 @@
 
 Before these tests can be trusted, independently verify:
 
-1. The fixture and Phase 1–3 function drafts compile on the pinned PostgreSQL version.
+1. The fixture and V2 helper foundation and V2 Phase 1–3 function drafts compile on the pinned PostgreSQL version.
 2. The Gateway role context works through nested `SECURITY DEFINER` calls.
 3. Function ownership, fixed search paths, and ACL assertions pass.
 4. Every balance-changing function uses the same student-row lock before reading the ledger.
@@ -56,7 +56,7 @@ Use distinct request UUIDs unless the scenario explicitly tests a duplicate requ
 - Exactly one purchase succeeds.
 - Exactly one marketplace debit is committed.
 - Stock becomes 0, never negative.
-- The losing call receives `reward_out_of_stock` after it obtains the reward lock.
+- The losing call returns a durable structured `rejected` result with code `reward_out_of_stock` after it obtains the reward lock; its request row and one rejection audit commit, with no purchase/debit/stock mutation.
 - No purchase, debit, or stock decrement is committed for the losing call.
 
 **Why:** The reward row lock serializes competing purchases against finite stock.
@@ -105,7 +105,7 @@ Use distinct request UUIDs unless the scenario explicitly tests a duplicate requ
 **Setup:** Use the same request UUID in two concurrent calls, but change the student or reward in one call.  
 **Expected:**
 - At most one payload is accepted for that request UUID.
-- The other call rejects with `idempotency_key_reused_with_different_payload`.
+- The other call fails with `idempotency_key_reused_with_different_payload`; this is a key-binding conflict, not a durable business rejection.
 - No second ledger mutation, purchase or stock decrement occurs.
 - Which payload wins is intentionally nondeterministic; the invariant is that only one payload binds to the key.
 
@@ -147,16 +147,16 @@ For each scenario, record:
 
 Do not use wall-clock timing alone as proof of concurrency. Confirm overlap by holding one session at a deliberate test-only synchronization point or by observing lock waits in a separate administrator session. Any such instrumentation must remain confined to the disposable environment.
 
-## Current design caveats to resolve
+## Current V2 implementation checks
 
-1. **Rejected request durability:** Expected business exceptions roll back the request claim and in-transaction audit. This plan can assert no partial mutation, but it cannot establish durable rejection idempotency. Decide whether expected rejections should be stored as completed `rejected` results in a committed transaction or intentionally remain retryable.
+1. **Rejected request durability:** V2 returns expected business rejections as structured results, stores request status `rejected`, and writes one rejection audit in the same transaction. Verify exact replay and audit count for each rejection.
 2. **Duplicate same-key error race:** Verify the unique-key conflict path and result visibility under the actual PostgreSQL isolation level. Default READ COMMITTED is assumed; repeat under the chosen production isolation level before approval.
-3. **Lock ordering:** Follow TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md. The class row is locked before the student row; purchases then lock reward. Verify class administration, student transfers, activity edits and reward management use compatible ordering.
-4. **Activity scoring:** Test concurrent score changes and activity administration under the approved class → student → activity order. Revise the current draft, which still uses student-first locking.
+3. **Lock ordering:** Follow TEMMY_CLASSROOM_GLOBAL_LOCK_ORDERING_RULE.md. The class row is locked before the student row; activity scoring then locks activity record and activity; purchases then lock reward. Verify class administration, student transfers, activity edits and reward management use compatible ordering.
+4. **Activity scoring:** Test concurrent score changes and activity administration under the approved class → student → activity-record → activity order.
 5. **Deadlock handling:** Define retry behaviour for SQLSTATE `40P01` and serialization failures, reusing the same request UUID and identical payload.
 6. **Idempotency retention:** Define how long completed request rows are retained. Do not delete keys while a client may legitimately retry.
 7. **No execution claim:** No concurrency test has been run. This document describes expected experiments only.
 
 ## Exit criteria
 
-Do not approve the transaction layer until all scenarios pass repeatedly, no duplicate ledger/purchase rows appear, balances and finite stock remain correct, no partial mutation survives a rejected/failing request, and all lock waits/deadlocks are understood with an explicit safe retry policy.
+Do not approve the transaction layer until all scenarios pass repeatedly, no duplicate ledger/purchase rows appear, balances and finite stock remain correct, no partial business mutation survives a rejected/failing request (durable rejection request/audit rows are the intentional exception), and all lock waits/deadlocks are understood with an explicit safe retry policy.
