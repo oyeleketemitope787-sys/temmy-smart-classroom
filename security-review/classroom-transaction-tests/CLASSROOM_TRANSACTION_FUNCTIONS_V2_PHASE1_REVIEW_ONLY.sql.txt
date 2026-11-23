@@ -51,7 +51,8 @@ BEGIN
 
  SELECT cfg.integer_value INTO v_cap
    FROM classroom_test.transaction_config cfg
-  WHERE cfg.config_key='maximum_teacher_award';
+  WHERE cfg.config_key='maximum_teacher_award'
+  FOR SHARE;
  IF NOT FOUND THEN
    RAISE EXCEPTION USING ERRCODE='55000', MESSAGE='award_limit_not_configured';
  END IF;
