@@ -1,0 +1,171 @@
+/*
+CLASSROOM TRANSACTION FUNCTIONS — V2 PHASE 1
+Operations: award_points, deduct_points.
+REVIEW ONLY — NOT EXECUTED — NOT A MIGRATION.
+Requires the synthetic fixture and V2 helper foundation.
+PostgreSQL 16 disposable database only; never SGIS/Supabase/production/shared DB.
+*/
+BEGIN;
+DO $guard$
+BEGIN
+ IF to_regprocedure('classroom_test._v2_claim_request(uuid,uuid,text,text)') IS NULL
+ OR to_regprocedure('classroom_test._v2_lock_student_context(uuid,uuid)') IS NULL
+ OR to_regprocedure('classroom_test._v2_write_audit(uuid,uuid,text,uuid,text,jsonb)') IS NULL THEN
+   RAISE EXCEPTION 'V2 helper foundation missing; aborting';
+ END IF;
+END $guard$;
+SET ROLE temmy_ctest_data_owner;
+
+CREATE OR REPLACE FUNCTION classroom_test.award_points(
+ p_actor_teacher_id uuid,p_student_id uuid,p_amount integer,
+ p_reason text,p_request_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE
+ v_hash text; v_claim jsonb; v_context jsonb; v_cap integer;
+ v_tx_id uuid; v_result jsonb; v_reason text;
+BEGIN
+ PERFORM classroom_test._v2_assert_gateway_context();
+ IF p_actor_teacher_id IS NULL OR p_student_id IS NULL OR p_request_id IS NULL
+    OR p_amount IS NULL OR p_amount<=0 THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='invalid_award_request';
+ END IF;
+ v_reason:=NULLIF(pg_catalog.btrim(p_reason),'');
+ v_hash:=classroom_test._v2_canonical_hash(ARRAY[
+   p_actor_teacher_id::text,p_student_id::text,p_amount::text,COALESCE(v_reason,'')]);
+ v_claim:=classroom_test._v2_claim_request(
+   p_request_id,p_actor_teacher_id,'award_points',v_hash);
+ IF NOT (v_claim->>'claimed')::boolean THEN
+   RETURN (v_claim->'result') || jsonb_build_object('replayed',true);
+ END IF;
+
+ v_context:=classroom_test._v2_lock_student_context(p_student_id,p_actor_teacher_id);
+ IF v_context->>'status'='rejected' THEN
+   v_result:=jsonb_build_object('ok',false,'operation','award_points',
+     'status','rejected','code',v_context->>'code','replayed',false);
+   PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+     'award_points',p_student_id,'rejected',
+     jsonb_build_object('code',v_context->>'code'));
+   PERFORM classroom_test._v2_finish_request(p_request_id,'rejected',v_result);
+   RETURN v_result;
+ END IF;
+
+ SELECT cfg.integer_value INTO v_cap
+   FROM classroom_test.transaction_config cfg
+  WHERE cfg.config_key='maximum_teacher_award';
+ IF NOT FOUND THEN
+   RAISE EXCEPTION USING ERRCODE='55000', MESSAGE='award_limit_not_configured';
+ END IF;
+ IF p_amount>v_cap THEN
+   v_result:=jsonb_build_object('ok',false,'operation','award_points',
+     'status','rejected','code','award_limit_exceeded',
+     'maximum_allowed',v_cap,'requested',p_amount,'replayed',false);
+   PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+     'award_points',p_student_id,'rejected',
+     jsonb_build_object('code','award_limit_exceeded',
+                        'maximum_allowed',v_cap,'requested',p_amount));
+   PERFORM classroom_test._v2_finish_request(p_request_id,'rejected',v_result);
+   RETURN v_result;
+ END IF;
+
+ INSERT INTO classroom_test.point_transactions
+   (student_id,teacher_id,points,action_name,action_type,reason,source)
+ VALUES (p_student_id,p_actor_teacher_id,p_amount,'Teacher award',
+         'positive',v_reason,'teacher')
+ RETURNING id INTO v_tx_id;
+
+ v_result:=jsonb_build_object('ok',true,'operation','award_points',
+   'status','awarded','transaction_id',v_tx_id,'awarded',p_amount,
+   'balance',(v_context->>'balance')::bigint+p_amount,'replayed',false);
+ PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+   'award_points',p_student_id,'success',
+   jsonb_build_object('transaction_id',v_tx_id,'points',p_amount));
+ PERFORM classroom_test._v2_finish_request(p_request_id,'completed',v_result);
+ RETURN v_result;
+END $fn$;
+
+CREATE OR REPLACE FUNCTION classroom_test.deduct_points(
+ p_actor_teacher_id uuid,p_student_id uuid,p_requested_amount integer,
+ p_reason text,p_request_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE
+ v_hash text; v_claim jsonb; v_context jsonb; v_balance bigint;
+ v_actual bigint; v_tx_id uuid; v_result jsonb; v_reason text;
+BEGIN
+ PERFORM classroom_test._v2_assert_gateway_context();
+ IF p_actor_teacher_id IS NULL OR p_student_id IS NULL OR p_request_id IS NULL
+    OR p_requested_amount IS NULL OR p_requested_amount<=0 THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='invalid_deduction_request';
+ END IF;
+ v_reason:=NULLIF(pg_catalog.btrim(p_reason),'');
+ v_hash:=classroom_test._v2_canonical_hash(ARRAY[
+   p_actor_teacher_id::text,p_student_id::text,p_requested_amount::text,
+   COALESCE(v_reason,'')]);
+ v_claim:=classroom_test._v2_claim_request(
+   p_request_id,p_actor_teacher_id,'deduct_points',v_hash);
+ IF NOT (v_claim->>'claimed')::boolean THEN
+   RETURN (v_claim->'result') || jsonb_build_object('replayed',true);
+ END IF;
+
+ v_context:=classroom_test._v2_lock_student_context(p_student_id,p_actor_teacher_id);
+ IF v_context->>'status'='rejected' THEN
+   v_result:=jsonb_build_object('ok',false,'operation','deduct_points',
+     'status','rejected','code',v_context->>'code','replayed',false);
+   PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+     'deduct_points',p_student_id,'rejected',
+     jsonb_build_object('code',v_context->>'code'));
+   PERFORM classroom_test._v2_finish_request(p_request_id,'rejected',v_result);
+   RETURN v_result;
+ END IF;
+
+ v_balance:=(v_context->>'balance')::bigint;
+ v_actual:=LEAST(p_requested_amount::bigint,GREATEST(v_balance,0));
+ IF v_actual=0 THEN
+   v_result:=jsonb_build_object('ok',true,'operation','deduct_points',
+     'status','zero_balance_noop','requested',p_requested_amount,
+     'deducted',0,'balance',GREATEST(v_balance,0),
+     'transaction_id',NULL,'replayed',false);
+   PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+     'deduct_points',p_student_id,'no_op',
+     jsonb_build_object('status','zero_balance_noop',
+                        'requested',p_requested_amount,'deducted',0));
+   PERFORM classroom_test._v2_finish_request(p_request_id,'completed',v_result);
+   RETURN v_result;
+ END IF;
+
+ INSERT INTO classroom_test.point_transactions
+   (student_id,teacher_id,points,action_name,action_type,reason,source)
+ VALUES (p_student_id,p_actor_teacher_id,-v_actual::integer,
+         'Teacher deduction','negative',v_reason,'teacher')
+ RETURNING id INTO v_tx_id;
+
+ v_result:=jsonb_build_object('ok',true,'operation','deduct_points',
+   'status',CASE WHEN v_actual<p_requested_amount THEN 'clamped' ELSE 'deducted' END,
+   'requested',p_requested_amount,'deducted',v_actual,
+   'balance',GREATEST(v_balance-v_actual,0),
+   'transaction_id',v_tx_id,'replayed',false);
+ PERFORM classroom_test._v2_write_audit(p_request_id,p_actor_teacher_id,
+   'deduct_points',p_student_id,'success',
+   jsonb_build_object('transaction_id',v_tx_id,'requested',p_requested_amount,
+                      'deducted',v_actual));
+ PERFORM classroom_test._v2_finish_request(p_request_id,'completed',v_result);
+ RETURN v_result;
+END $fn$;
+
+REVOKE ALL ON FUNCTION classroom_test.award_points(uuid,uuid,integer,text,uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION classroom_test.deduct_points(uuid,uuid,integer,text,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION classroom_test.award_points(uuid,uuid,integer,text,uuid)
+ TO temmy_ctest_gateway;
+GRANT EXECUTE ON FUNCTION classroom_test.deduct_points(uuid,uuid,integer,text,uuid)
+ TO temmy_ctest_gateway;
+RESET ROLE;
+COMMIT;
+
+/*
+STATIC REVIEW NOTES — NOT EXECUTED:
+- Expected ownership/inactive/cap rejections are durable, audited and replayable.
+- Invalid typed arguments and missing protected configuration are exceptional
+  system/input failures and roll back the request claim.
+- Zero balance produces no ledger row and exactly one no_op audit event.
+- This slice still requires PostgreSQL 16 syntax/runtime, role-GUC, ACL,
+  idempotency, failure-injection and concurrency verification.
+*/
