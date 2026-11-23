@@ -185,3 +185,17 @@ These additions address the corresponding static test-coverage gaps; they do not
 The older V1 finding in section 6 referring to a stale 100-point fixture seed is historical and superseded: the current V2 fixture configuration row is 50, as confirmed by the 2026-11-23 fixture/seed reconciliation above. Do not treat the historical V1 note as a current fixture defect.
 
 **Current boundary:** all V2 function drafts and all test SQL remain unexecuted. The next meaningful technical gate is a careful static review of the new test scripts and the remaining PostgreSQL 16 role/hash assumptions, followed—only with explicit user approval—by isolated disposable PostgreSQL 16 verification.
+
+
+### PostgreSQL 16 SHA-256 documentation check — 2026-11-23
+
+The PostgreSQL 16 official documentation lists `sha256(bytea) → bytea` under built-in binary string functions and shows the expected SHA-256 output for `abc`. The V2 expression using `pg_catalog.sha256` is therefore consistent with the documented PostgreSQL 16 built-in; it does not require the `pgcrypto` extension for this function. See the PostgreSQL 16 binary string functions reference: https://www.postgresql.org/docs/16/functions-binarystring.html.
+
+This closes the documentation-availability question, not the pinned-image runtime gate. The exact PostgreSQL 16 image must still be recorded and the function expression/hash output exercised in the isolated disposable database.
+
+### Additional runtime-test drafts — 2026-11-23
+
+- `CLASSROOM_TRANSACTION_NESTED_ROLE_CONTEXT_TESTS.sql.txt` models a SECURITY DEFINER entrypoint calling a SECURITY INVOKER helper and asserts the role GUC remains the gateway role while effective `current_user` is the non-login data owner. This is a proposed runtime assertion only; its expected values have not been observed.
+- `CLASSROOM_TRANSACTION_AUDIT_FINALIZATION_FAILURE_TESTS.sql.txt` installs transaction-scoped test-only failpoint triggers and checks rollback of the award ledger write/request claim on audit failure, then rollback of ledger/audit/request claim on request-finalization failure. This covers two award-operation boundaries only; intermediate-write and other-operation cases remain open.
+
+Neither file has been executed. The nested identity result and all rollback assertions remain unverified.
