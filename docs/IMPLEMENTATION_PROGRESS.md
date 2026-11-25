@@ -608,3 +608,18 @@ Read-only inspection established:
 Created `docs/LOCALIZATION_ARCHITECTURE_DESIGN.md` on `cloud-test`. The proposal uses nullable BCP 47 language-tag fields on `teacher_profiles`, `students` and `classes`, with student resolution order individual -> class -> platform fallback and teacher resolution individual -> platform fallback. Exact supported-language list, platform fallback language and time-zone policy remain undecided. The proposal also defines shared translation resources, RTL/mixed-script handling, locale-aware formatting, controlled student RPCs, security requirements and staged rollout.
 
 No SQL migration, application code or live data was changed. Before implementation, complete RLS/grants/function-ACL review, agree the language registry/fallback/time-zone policy, and resolve the Supabase project header ambiguity. All repository changes remain on `cloud-test`; GitHub `main` and production Supabase must remain untouched.
+
+## 27. Dedicated localization preference RPCs approved — 2026-11-25
+
+The user approved dedicated database RPCs for reading and writing all three first-stage language preferences:
+- Teacher preference, using the authenticated teacher identity.
+- Class default, with server-side verification that the authenticated teacher owns the class.
+- Student preference, deriving the student from a verified access code rather than trusting a browser-supplied student ID.
+
+These RPCs will be restricted to language-preference operations. Existing direct Supabase workflows for unrelated teacher profile, class and student information are to remain unchanged.
+
+Read-only inspection of student_portal_login(text) and verify_student_access_code(text) confirmed that the login boundary returns stable student/class identity and does not return access-code hashes. Both existing functions are SECURITY DEFINER with search_path=public. Do not silently alter these legacy functions; new SECURITY DEFINER preference RPCs should use a restricted search path, fully qualified object references, minimal responses and explicit EXECUTE grants.
+
+Documentation updated on cloud-test: docs/LOCALIZATION_ARCHITECTURE_DESIGN.md (commit afd7bd6705ce30b9241525daa648d6d8a182b6ae). No database migration, function, UI or data change has been made. GitHub main and production Supabase remain untouched.
+
+Next: finish read-only review of the exact teacher/class/student preference write boundaries and settle the supported language registry, platform fallback and time-zone policy before drafting migration SQL.
