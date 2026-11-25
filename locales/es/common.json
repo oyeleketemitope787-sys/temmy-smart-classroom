@@ -71,6 +71,20 @@
     "title": "Grupos de estudiantes",
     "description": "Crea y administra grupos en la nube dentro de cada clase para el aprendizaje colaborativo.",
     "createGroup": "Crear grupo",
-    "refresh": "Actualizar"
+    "refresh": "Actualizar",
+    "signIn": "Inicia sesión como docente para administrar tus grupos en la nube.",
+    "createClass": "Primero crea una clase antes de crear grupos de estudiantes.",
+    "noGroups": "Todavía no hay grupos.",
+    "firstGroup": "Crea el primer grupo para esta clase.",
+    "noDescription": "Sin descripción",
+    "students": "{count, plural, one {# estudiante} other {# estudiantes}}",
+    "noMembers": "Todavía no hay estudiantes asignados.",
+    "edit": "Editar",
+    "members": "Miembros",
+    "delete": "Eliminar",
+    "activitiesTitle": "Actividades de aprendizaje",
+    "activitiesDesc": "Crea y administra tareas en directo y juegos Temmy Smart Games para tus clases.",
+    "createTask": "Crear tarea en directo",
+    "startGame": "Iniciar juego inteligente"
   }
 }
