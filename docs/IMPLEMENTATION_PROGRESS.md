@@ -76,8 +76,8 @@ These are inspection findings, not completed fixes. No production database or pr
 | Workstream | Planned work | Status |
 |---|---|---|
 | A. Baseline and record | Record approved requirements; inspect branch and current code/schema | In progress |
-| B. Points foundation | Define Aggregate/Spendable ledger, summaries, trusted atomic award/deduction/purchase operations, migration and tests | Not started |
-| C. Achievements and leadership | Thresholds, milestone ordering, class-period records, leadership appointments/history and teacher controls | Not started |
+| B. Points foundation | Define Aggregate/Spendable ledger, summaries, trusted atomic award/deduction/purchase operations, migration and tests | In progress — schema and legacy purchase accounting inspection required before migration |
+| C. Achievements and leadership | Thresholds, milestone ordering, class-period records, leadership appointments/history and teacher controls | In progress — Champion threshold corrected in UI to 500; leadership implementation pending schema inspection |
 | D. Activity foundation | Activity/question schema and versioning; six formats; assignments and eligibility | Not started |
 | E. Student assessment | Individual timers, autosave, offline recovery, navigation, submission and expiry | Not started |
 | F. Teacher assessment | Live monitoring, grading, feedback, publication, interventions and audit | Not started |
@@ -100,3 +100,13 @@ These are inspection findings, not completed fixes. No production database or pr
 ## 6. Next concrete step
 
 Inspect the complete existing Supabase schema and the relevant current activity/points RPCs and policies. Then prepare the first reviewed migration for the two-balance ledger and server-side atomic operations, with isolated test cases. Do not alter live data until the migration and tests are reviewed.
+
+
+## 7. Progress update — 2026-11-25 (implementation pass 1)
+
+- Updated `index.html` on `cloud-test` so the Champion achievement threshold is 500 Aggregate Points throughout the existing class summary, student leaderboard, reward-level helper, reports, student progress panel and student portal.
+- Verified that the old 200-point Champion threshold no longer appears in the checked UI patterns.
+- Commit: `e254e21b0edf313c0bf202febbd557372994e352`.
+- No database migration or live data change has been applied.
+- The separate Aggregate/Spendable ledger cannot safely be migrated from repository code alone: the hosted schema and existing marketplace purchase deduction function need read-only inspection first. Known existing objects include `students`, `point_transactions`, `purchases`, `marketplace_rewards`; `point_transactions` currently records a single signed `points` value. Existing historical purchases must not be double-counted or silently converted.
+- Next: obtain exact live definitions for the relevant tables, policies, triggers and `purchase_marketplace_reward`; then write a reviewed, additive migration and server-side atomic RPCs. Keep `main` untouched.
