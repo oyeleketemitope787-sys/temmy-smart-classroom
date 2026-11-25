@@ -78,12 +78,12 @@ let passwordFlowActive=false;
 <section id="groups" class="hidden">
 <div class="card">
 <div class="summary-title">
-<div><h2>👥 Student Groups</h2><div class="small">Create and manage cloud groups within each class for collaborative learning.</div></div>
-<button class="btn primary" onclick="openCreateGroup()">➕ Create Group</button>
+<div><h2>👥 <span data-i18n="groups.title">Student Groups</span></h2><div class="small" data-i18n="groups.description">Create and manage cloud groups within each class for collaborative learning.</div></div>
+<button class="btn primary" onclick="openCreateGroup()">➕ <span data-i18n="groups.createGroup">Create Group</span></button>
 </div>
 <div class="controls" style="margin-top:16px">
 <select id="groupClassSelect" class="select"></select>
-<button class="btn" onclick="refreshGroups()">🔄 Refresh</button>
+<button class="btn" onclick="refreshGroups()">🔄 <span data-i18n="groups.refresh">Refresh</span></button>
 </div>
 <div id="groupsList"></div>
 </div>
