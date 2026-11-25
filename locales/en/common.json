@@ -43,5 +43,28 @@
     "studentPortal": "Student Portal",
     "teacherAccount": "Teacher Account",
     "messages": "Messages"
+  },
+  "students": {
+    "addStudent": "Add Student",
+    "awardPoints": "Award Points",
+    "exportData": "Export Data",
+    "awardPointsLink": "Award points",
+    "leaderboard": "Student leaderboard",
+    "rank": "Rank",
+    "student": "Student",
+    "aggregatePoints": "Aggregate Points",
+    "spendablePoints": "Spendable Points",
+    "status": "Status",
+    "classSummary": "Class Summary",
+    "classAggregatePoints": "Class Aggregate Points",
+    "classSpendablePoints": "Class Spendable Points",
+    "studentsCount": "Students",
+    "averageAggregatePoints": "Average Aggregate Points",
+    "rewardLevelProgress": "Reward Level Progress",
+    "bronze": "Bronze",
+    "silver": "Silver",
+    "gold": "Gold",
+    "champion": "Champion",
+    "points": "points"
   }
 }
