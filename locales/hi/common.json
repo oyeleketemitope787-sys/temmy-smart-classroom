@@ -29,5 +29,11 @@
     "languageLoading": "भाषा लोड हो रही है…",
     "languageLoadError": "यह भाषा लोड नहीं हो सकी। कृपया फिर से प्रयास करें।",
     "languageServiceUnavailable": "भाषा सेवा अभी तैयार नहीं है।"
+  },
+  "navigation": {
+    "students": "विद्यार्थी",
+    "classes": "मेरी कक्षाएँ",
+    "groups": "समूह",
+    "activities": "गतिविधियाँ"
   }
 }
