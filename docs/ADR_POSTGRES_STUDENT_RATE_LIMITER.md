@@ -143,3 +143,8 @@ No extensions were installed, no schema/table/function was created, and no SQL w
 The test project has no existing `private` schema. Schema USAGE checks show `anon`, `authenticated`, and `service_role` have USAGE on `auth`, `extensions`, `graphql`, `graphql_public`, `public`, `realtime`, and `storage`; only `service_role` has USAGE on `vault`. This means a future `private` schema must be created deliberately and must not inherit browser-role access through broad grants. The migration should create it with a trusted owner, revoke schema privileges from `PUBLIC`, `anon`, and `authenticated`, and grant only the minimum required to `service_role` if the Edge Function's database RPC resolution requires schema USAGE. Keep the schema out of PostgREST exposed schemas as a separate dashboard/API configuration check; the `pgrst.db_schemas` setting was not visible in `pg_settings`, so that query did not establish the exposed-schema list.
 
 Next preflight: inspect database-level CREATE privileges and current role membership before drafting schema creation/grants. No schema has been created.
+
+
+## Database creation privilege result — 2026-11-25
+
+The test SQL editor reports `current_user = postgres`, database `postgres`, database owner `postgres`, and `has_database_privilege(..., 'CREATE') = true`. The intended migration role can create a schema in this test database. This is a capability check only; it does not authorize or perform schema creation. Before drafting the migration, inspect role membership and default privileges so the schema/table/function ownership and grants are explicit.
