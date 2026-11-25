@@ -132,3 +132,29 @@ No migration has been applied to Supabase and no production data has been change
 
 - Supplemental preflight script commit: 44aa30a6801630973562a0c078b6a9651665e711
 - Next: run the supplemental read-only script; use its results to finalize the additive points-account/ledger migration and preserve the existing purchase idempotency workflow.
+
+
+## 9. Legacy points classification — 2026-11-25
+
+The hosted ledger aggregation returned:
+- `activity_score / game`: 5 positive transactions, +78 net.
+- `activity_score / teacher`: 11 transactions (7 positive, 4 negative), +9 net.
+- `marketplace_purchase / teacher`: 6 negative transactions, -210 net.
+- `negative / teacher`: 37 negative transactions, -105 net.
+- `positive / teacher`: 158 positive transactions, +671 net.
+- `undo / teacher`: 25 transactions (9 positive, 16 negative), -74 net.
+
+Totals across the entire database:
+- Aggregate opening total under the approved rule (all legacy transactions except `marketplace_purchase`): +579.
+- Spendable opening total (all signed legacy transactions including marketplace purchases): +369.
+
+These are global totals only, not per-student balances. The migration must calculate each student's opening balances independently from that student's transaction rows. Historical marketplace deductions are excluded from Aggregate Points but remain deducted from Spendable Points. Existing non-marketplace positive, negative, activity and undo transactions contribute according to their signed amount, preserving the recorded history rather than guessing transaction intent.
+
+The purchase function's exact signature is confirmed as `public.purchase_marketplace_reward(uuid, uuid, uuid[])`. Its request idempotency key is protected by primary key `(teacher_id, request_id)`.
+
+Added a focused read-only reconciliation script, `supabase/preflight_points_reconciliation.sql`, to retrieve the request-table columns, per-student proposed opening balances, purchase-versus-deduction reconciliation by student, and exact purchase-function signature. It does not modify schema or data.
+
+No points migration has been applied. Before choosing whether to backfill directly, verify the per-student reconciliation and ensure the proposed Spendable opening balance does not become negative; do not silently clamp or rewrite a legacy balance.
+
+- Reconciliation script commit: 22b87ab52a63bfbf46030e086ed4232d821d053d
+- Next: inspect the per-student results and purchase reconciliation; then implement the additive account ledger and update the existing purchase RPC without removing its idempotency/locking protections.
