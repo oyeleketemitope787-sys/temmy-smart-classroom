@@ -1,0 +1,29 @@
+{
+  "$meta": {
+    "language": "ar",
+    "namespace": "common",
+    "resourceVersion": 1,
+    "direction": "rtl"
+  },
+  "app": {
+    "name": "فصل تيمي الذكي"
+  },
+  "common": {
+    "language": "اللغة",
+    "english": "الإنجليزية",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "refresh": "تحديث",
+    "loading": "جارٍ التحميل…",
+    "error": "حدث خطأ. يُرجى المحاولة مرة أخرى.",
+    "yes": "نعم",
+    "no": "لا",
+    "search": "بحث",
+    "settings": "الإعدادات",
+    "dashboard": "لوحة التحكم",
+    "logout": "تسجيل الخروج",
+    "languageSaved": "تم حفظ تفضيل اللغة."
+  }
+}
