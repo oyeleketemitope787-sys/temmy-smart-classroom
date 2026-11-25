@@ -43,5 +43,28 @@
     "studentPortal": "Portal do aluno",
     "teacherAccount": "Conta do professor",
     "messages": "Mensagens"
+  },
+  "students": {
+    "addStudent": "Adicionar aluno",
+    "awardPoints": "Atribuir pontos",
+    "exportData": "Exportar dados",
+    "awardPointsLink": "Atribuir pontos",
+    "leaderboard": "Classificação dos alunos",
+    "rank": "Classificação",
+    "student": "Aluno",
+    "aggregatePoints": "Pontos acumulados",
+    "spendablePoints": "Pontos disponíveis para gastar",
+    "status": "Estado",
+    "classSummary": "Resumo da turma",
+    "classAggregatePoints": "Pontos acumulados da turma",
+    "classSpendablePoints": "Pontos disponíveis da turma",
+    "studentsCount": "Alunos",
+    "averageAggregatePoints": "Média de pontos acumulados",
+    "rewardLevelProgress": "Progresso dos níveis de recompensa",
+    "bronze": "Bronze",
+    "silver": "Prata",
+    "gold": "Ouro",
+    "champion": "Campeão",
+    "points": "pontos"
   }
 }
