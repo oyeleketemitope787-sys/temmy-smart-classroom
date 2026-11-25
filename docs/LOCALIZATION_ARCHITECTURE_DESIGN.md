@@ -457,3 +457,20 @@ This is a draft, not an approved or executed migration. It still requires comple
 5. Confirm the Supabase dashboard is on `temmy-smart-classroom-test` immediately before any eventual execution. The SQL file itself cannot reliably distinguish two Supabase projects that both use the default database name.
 
 The three time-zone columns are included as nullable storage only. No time-zone RPC is included; that API remains separate. No migration has been run, no preference data has been written, and production Supabase/GitHub `main` remain untouched.
+
+
+### 16.1 Static SQL review notes
+
+A first static review found and corrected two migration preflight omissions:
+- The preflight now rejects collisions with the internal trigger-guard and language-validation helper function signatures, in addition to the six public RPC signatures.
+- The preflight now requires `current_user = 'postgres'`. This makes the intended owner of the newly created SECURITY DEFINER functions and the trusted trigger execution context explicit, rather than relying on an assumption about the migration runner.
+
+Remaining verification gates before any execution:
+- Confirm the dashboard is connected to the isolated test project immediately before running SQL. The migration cannot distinguish Supabase projects that share the default database name.
+- Confirm the current Supabase SQL Editor role is `postgres` and the preflight succeeds.
+- Execute behavioural tests under actual `anon` and `authenticated` roles to prove the invoker trigger blocks preference-column changes but does not block unrelated-column changes.
+- Test student access-code failure/success behaviour and consider rate limiting/abuse controls for anonymous access-code RPC calls. The draft does not add a new rate limiter.
+- Verify SECURITY DEFINER function owners, empty search paths, ACLs and helper execution after application.
+- Verify teacher identity, cross-teacher class denial, NULL inheritance and all three student resolution sources.
+
+The migration remains a draft. No Supabase SQL has been executed.
