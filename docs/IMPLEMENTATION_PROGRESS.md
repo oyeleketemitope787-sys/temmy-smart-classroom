@@ -325,3 +325,33 @@ Commits on `cloud-test`:
 - Student balance RPC migration: `23d787675ea89d4f6e7fa186b7aef5ab99f64ba2`
 
 Validation status: source-level review only. The new migration has not been run against Supabase, and the portal change has not been browser-tested against the hosted database. All five points migrations remain repository files only; none has been applied. Next: review the complete migration set and perform isolated PostgreSQL tests before requesting approval to apply anything to the hosted project.
+
+
+## 19. Five-migration static review and isolated test plan — 2026-11-25
+
+Reviewed all five points migrations together and made two consistency corrections on `cloud-test`:
+
+- In `20261125000200_add_atomic_point_transaction_rpc.sql`, student eligibility now requires `students.active IS TRUE`, matching the marketplace RPC, teacher balance summary and access-code verification. Previously, the award RPC treated a NULL active flag as active.
+- In `20261125000400_update_marketplace_purchase_spendable_account.sql`, lazy account initialization now aggregates the student's complete legacy ledger, without filtering by the current teacher. This matches the global per-student account backfill and avoids silently omitting historical transactions if a student changes teacher/class.
+
+Added `docs/POINTS_MIGRATION_TEST_PLAN.md` with:
+- Required schema/role preconditions.
+- Per-student backfill reconciliation queries.
+- Functional tests for awards, deductions, undo, marketplace purchases, retries and mismatched request IDs.
+- Teacher/student access and privilege checks.
+- Multi-student rollback and concurrent spending tests.
+- Post-test account-to-ledger reconciliation.
+
+Commits on `cloud-test`:
+- Active-student validation correction: `9fcc8d223065b418d83a266881634abe88a7027a`
+- Complete-ledger lazy initialization correction: `e202aef27da33cbea89b14bc3ddaf9bb1c39cd53`
+- Isolated verification plan: `64cb33e08139654d00d6e238b0a22a4c340fa8c2`
+
+Review findings still requiring execution-based verification:
+- The five SQL migrations have only been statically reviewed; no PostgreSQL/Supabase test database has been run.
+- Confirm the test snapshot's exact foreign-key identity relationship between `teacher_profiles.id`, `auth.uid()` and `classes.teacher_id`.
+- Exercise RPC grants and direct-table denials under real `anon` and `authenticated` roles.
+- Exercise multi-session concurrent award/purchase calls; deterministic locking and SQL inspection alone do not prove race-safety.
+- The activity score update and point-account RPC are separate browser requests and are not yet a single atomic transaction.
+
+No migration has been applied to the hosted Supabase project. Production `main` remains untouched.
