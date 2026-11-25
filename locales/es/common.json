@@ -279,5 +279,25 @@
     "deductSuccessOne": "Se descontaron {points} puntos a {student}.",
     "deductSuccessMany": "Se descontaron {points} puntos a {count} alumnos.",
     "selectStudentsPrompt": "Selecciona alumnos."
+  },
+  "classes": {
+    "classesTitle": "Mis clases",
+    "classesDescription": "Crea y administra tus clases. Las clases y los datos de los alumnos se cargan desde la base de datos en la nube de producción.",
+    "createNewClass": "Crear nueva clase",
+    "className": "Nombre de la clase",
+    "classNamePlaceholder": "Ej.: 8A_1",
+    "classDescriptionOptional": "Descripción (opcional)",
+    "classDescriptionPlaceholder": "Ej.: Clase de Matemáticas",
+    "enterClassName": "Introduce el nombre de la clase.",
+    "classAlreadyExists": "Esa clase ya existe.",
+    "createClassError": "No se pudo crear la clase: {error}",
+    "signInLoadClasses": "Inicia sesión como docente para cargar tus clases en la nube.",
+    "noCloudClasses": "Todavía no hay clases en la nube. Crea tu primera clase.",
+    "openClass": "Abrir clase",
+    "classSummary": "{count} alumno(s) • {aggregate} puntos acumulados • {spendable} puntos disponibles",
+    "cloudClassesLoadError": "No se pudieron cargar las clases en la nube: {error}",
+    "classesLoadedBalancesError": "Se cargaron las clases, pero no se pudieron cargar los saldos de puntos separados: {error}",
+    "classLoadedStudentsError": "Se cargó la clase, pero no se pudieron cargar los alumnos: {error}",
+    "cloudConnectedStatus": "Clases en la nube y saldos de puntos conectados. Los puntos se cargan desde Supabase."
   }
 }
