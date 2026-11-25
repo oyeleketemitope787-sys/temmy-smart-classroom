@@ -158,3 +158,10 @@ The membership query for `anon`, `authenticated`, `service_role`, and `postgres`
 ## Private-schema object check — 2026-11-25
 
 The read-only query against `pg_class` joined to `pg_namespace` for `nspname = 'private'` returned `Success. No rows returned`. This confirms there are currently no relations in a `private` schema; the earlier namespace check also confirmed that the schema itself does not exist. This removes a name collision concern for the proposed private limiter objects. It does not itself verify PostgREST exposed-schema configuration.
+
+
+## Scope decision: protect the complete student access-code pathway — 2026-11-25
+
+The user approved the recommendation to protect the entire student access-code pathway, not only student language-preference requests. The PostgreSQL rate limiter must therefore be invoked at the student access-code authentication boundary used by the existing student login flow (including `student_portal_login`/its Edge Function caller), before any access-code verification that could be used for guessing. It must also cover future student access-code authenticated operations only where those operations independently accept/verify an access code; an already-established student session should not be forced to resubmit the code for every normal request. Language preference RPCs must reuse the authenticated student session or the protected access-code entry flow, rather than create a weaker parallel login path.
+
+The currently drafted SQL names (`student_language_rate_limits`, `consume_student_language_rate_limit`, `cleanup_student_language_rate_limits`) are now too narrow and should be renamed to generic student access-code rate-limit names in a revised migration before application. No SQL migration has been executed. Next implementation step is inspect the existing student login Edge Function/client call path on `cloud-test`, identify the exact point before `student_portal_login` / `verify_student_access_code`, and then revise the database migration and Edge Function integration together. Do not modify the existing verifier's authentication semantics or production branch/project.
