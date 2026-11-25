@@ -23,7 +23,7 @@ Implement the approved activity workflow within Temmy Smart Classroom:
 - One attempt per activity; teacher-authorised exceptional reopening only, with an audit record.
 - Per-student server-controlled countdown timer; timer expiry preserves answers and locks editing.
 - Autosave with server confirmation, safe offline recovery and stale-write protection.
-- Student interface with Previous/Next and question navigator; review before submission.
+- Student interface follows the approved screenshot: numbered question tiles are the sole navigation method (no Previous/Next buttons); answered tiles are green, current tile blue, unanswered tiles neutral. Students may revisit/change answers before submission or expiry.
 - Submission confirmation, immutable submitted attempt, and status tracking.
 - Teacher live monitoring shows progress/timer/status but not active answers.
 - Hybrid marking, partial credit, optional negative marking (off by default), teacher feedback, controlled result publication and correction history.
@@ -99,7 +99,7 @@ These are inspection findings, not completed fixes. No production database or pr
 
 ## 6. Next concrete step
 
-Inspect the complete existing Supabase schema and the relevant current activity/points RPCs and policies. Then prepare the first reviewed migration for the two-balance ledger and server-side atomic operations, with isolated test cases. Do not alter live data until the migration and tests are reviewed.
+Complete the Live Activity schema and frontend compatibility design using the inspected activity tables, legacy RPCs, RLS policies, points RPC and current `index.html` workflows. Then prepare a reviewed additive migration for activity definitions/questions, per-student attempts, per-question autosave, server-authoritative timing/expiry, submission, marking and audit history. The final assessment-and-points operation must update the activity record and Aggregate/Spendable ledger atomically. Do not apply a migration until the design and SQL have been reviewed.
 
 
 ## 7. Progress update — 2026-11-25 (implementation pass 1)
@@ -493,3 +493,54 @@ Key deferred findings:
 - Historical game transactions for the inspected student total +49 across three transactions; one historical reason records 24/15 and another 29/15. The current inspected function caps awards using `least(p_score, p_max_score)`; the historical entries may predate the current function or reflect different supplied maximums. Preserve them and investigate before changing scoring rules.
 
 No Games code, schema, function, permission, or historical record has been modified. The audit is documentation only. GitHub `main` and production remain untouched.
+
+## 23. Live Activity legacy workflow and compatibility inspection — 2026-11-25
+
+The read-only inspection has now covered the legacy activity tables, their constraints/indexes, RLS policies, relevant functions, existing activity records, historical activity point transactions, the atomic points RPC, and the relevant teacher/student UI code in `index.html` on `cloud-test`.
+
+### Existing teacher workflow in `index.html`
+
+- Activity creation inserts a row directly into `class_activities` with `activity_type='live_task'`, title, description, maximum points, draft status, class and teacher.
+- Launch changes `class_activities.status` to `live`; close changes it to `closed`.
+- Teacher monitoring reads `student_activity_records` directly, scoped by activity and authenticated teacher.
+- The monitoring UI currently displays submitted answers and allows the teacher to review/score them.
+- Teacher scoring currently performs a direct update to `student_activity_records` first, then makes a separate RPC call to `record_student_point_transactions` for the score delta. If the points RPC fails, the browser attempts a compensating update to restore the previous record values.
+- This is not one atomic database transaction. A network interruption or failed compensation can leave the score record and points ledger inconsistent. Replace this with a single server-side assessment RPC that validates the teacher/record/activity, applies the score/feedback, and records the points delta in the same PostgreSQL transaction.
+- The current teacher activity UI has no configured per-activity duration, question editor, question bank, question-level marks, live attempt timer or active progress monitoring.
+
+### Existing student workflow in `index.html`
+
+- Student portal login uses `student_portal_login(p_access_code)`.
+- Activity list loads through `get_student_live_activities(p_access_code)`.
+- The existing student activity modal accepts one free-text response for the entire activity.
+- Submission calls `submit_student_activity(p_access_code,p_activity_id,p_answer)`.
+- Submitted responses become read-only; teacher feedback/score are shown when the record status is `scored`.
+- There is no question-level response model, autosave, countdown, resume state, automatic expiry submission or six-format response interface in the inspected legacy workflow.
+
+### Legacy compatibility requirements
+
+- Preserve the existing three `class_activities` and two historical `student_activity_records` exactly; do not automatically convert their `live_task` type or historical text answers into the new question/attempt model.
+- Keep `answer` available for legacy records.
+- Do not remove or repurpose the legacy student RPCs until all callers and compatibility paths are handled.
+- New Live Activity attempts should use a separate normalized question/attempt/answer structure and new controlled RPCs, linked to the existing activity identity where appropriate.
+- Existing teacher activity monitoring and scoring should not be silently broken during the transition.
+
+### Documentation consistency correction
+
+The earlier progress record contained an obsolete line describing Previous/Next buttons. It has been corrected to match the later approved interface: numbered question tiles are the sole navigation method; there are no Previous/Next buttons. Answered/current/unanswered tile states remain green/blue/neutral.
+
+### Next implementation design task
+
+Prepare the detailed additive schema and RPC blueprint, including:
+1. Activity configuration/versioning and six supported question types.
+2. Per-question marks and validated question content/answer keys.
+3. One student attempt per activity, with exceptional teacher-authorised audited reopening.
+4. Per-question autosaved responses, optimistic/stale-write protection and save confirmation.
+5. Server-authoritative start/deadline/expiry and safe reconnect completion.
+6. Immutable submission cutoff and objective grading, with written/judgement responses pending teacher marking.
+7. Atomic teacher assessment/score correction plus points-ledger/account update and idempotency.
+8. Teacher monitoring that exposes progress/status but not active answers.
+9. Strict SECURITY DEFINER function grants, constrained search paths, explicit teacher/student identity checks, and no direct student table access.
+10. Compatibility and regression tests for all historical records and legacy RPC callers.
+
+No activity schema or frontend changes were made in this inspection pass. All findings are read-only. Games remains deferred under `docs/GAME_SYSTEM_AUDIT.md`. GitHub `main` and production remain untouched.
