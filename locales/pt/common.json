@@ -158,6 +158,26 @@
     "serverNoConfirm": "O servidor não confirmou a transação.",
     "scoredResult": "obteve",
     "classPointsUpdated": "Pontos da turma atualizados em",
-    "saveScore": "Guardar pontuação"
+    "saveScore": "Guardar pontuação",
+    "activitiesLoadError": "Não foi possível carregar as atividades.",
+    "classNoActiveStudents": "Esta turma não tem alunos ativos.",
+    "startGameTitle": "Iniciar jogo inteligente Temmy",
+    "gameLabel": "Jogo",
+    "gameSelectionHelp": "Selecione os alunos que receberão a sessão do jogo.",
+    "searchStudents": "Pesquisar alunos...",
+    "selectAll": "Selecionar tudo",
+    "clearAll": "Limpar seleção",
+    "selectedStudents": "{count, plural, one {# aluno selecionado} other {# alunos selecionados}}",
+    "gameSessionDuration": "Cada aluno selecionado recebe uma sessão de jogo segura de 30 minutos.",
+    "selectAtLeastOne": "Selecione pelo menos um aluno.",
+    "gameSessionsReady": "Sessões de jogo prontas",
+    "sessionsCreated": "{count, plural, one {# sessão de jogo criada com sucesso.} other {# sessões de jogo criadas com sucesso.}}",
+    "gameName": "Desafio de Números Temmy",
+    "ready": "PRONTO",
+    "openGame": "Abrir jogo",
+    "sessionsFailed": "Não foi possível criar algumas sessões:",
+    "done": "Concluído",
+    "activityLaunchSuccess": "está agora AO VIVO.",
+    "activityCloseSuccess": "está agora fechada."
   }
 }
