@@ -435,3 +435,10 @@ Next: test that reusing the same request UUID with a different payload is reject
 In the isolated `temmy-smart-classroom-test` project, a transaction-wrapped test submitted a +1 request and then reused the same request UUID with a changed +2 payload. The PL/pgSQL test was written to re-raise a deliberate test-failure exception if the changed payload were accepted; the SQL script proceeded to its temporary balance query, indicating the changed-payload call was rejected as expected. Temporary balances were 23/23. After explicit rollback, an independent query confirmed Aggregate 22, Spendable 22, and zero matching test transactions. This verifies rejection of changed payload reuse and rollback.
 
 The generic points RPC behavioural tests now cover identical-request idempotency, changed-payload rejection, and rollback. Next: proceed to marketplace purchase behaviour tests in the isolated project. No production database or GitHub `main` changes.
+
+
+### Marketplace purchase spendable-only trial and rollback verified — 2026-11-25
+
+In the isolated `temmy-smart-classroom-test` project, a transaction-wrapped purchase trial used Code Final (initial Aggregate 22, Spendable 22) to purchase the 20-point Oral 1 reward. Temporary inspection showed Aggregate 22 and Spendable 2, confirming the account update deducts Spendable only. After explicit rollback, an independent query confirmed Aggregate 22, Spendable 22, and zero matching purchases. The balance effect and rollback are verified; the returned purchase payload itself was not included in the shared SQL output.
+
+Next: test insufficient Spendable balance rejection, then duplicate purchase request handling. No production database or GitHub `main` changes.
