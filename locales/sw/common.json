@@ -158,6 +158,26 @@
     "serverNoConfirm": "Seva haikuthibitisha muamala.",
     "scoredResult": "amepata",
     "classPointsUpdated": "Pointi za darasa zimebadilishwa kwa",
-    "saveScore": "Hifadhi alama"
+    "saveScore": "Hifadhi alama",
+    "activitiesLoadError": "Shughuli hazikuweza kupakiwa.",
+    "classNoActiveStudents": "Darasa hili halina wanafunzi wanaoshiriki kwa sasa.",
+    "startGameTitle": "Anzisha Mchezo Mahiri wa Temmy",
+    "gameLabel": "Mchezo",
+    "gameSelectionHelp": "Chagua mwanafunzi au wanafunzi watakaopokea kipindi cha mchezo.",
+    "searchStudents": "Tafuta wanafunzi...",
+    "selectAll": "Chagua wote",
+    "clearAll": "Futa chaguo",
+    "selectedStudents": "Wanafunzi {count} wamechaguliwa",
+    "gameSessionDuration": "Kila mwanafunzi aliyechaguliwa atapata kipindi salama cha mchezo cha dakika 30.",
+    "selectAtLeastOne": "Tafadhali chagua angalau mwanafunzi mmoja.",
+    "gameSessionsReady": "Vipindi vya mchezo viko tayari",
+    "sessionsCreated": "Vipindi {count} vya mchezo vimeundwa kwa mafanikio.",
+    "gameName": "Changamoto ya Namba ya Temmy",
+    "ready": "TAYARI",
+    "openGame": "Fungua mchezo",
+    "sessionsFailed": "Baadhi ya vipindi havikuweza kuundwa:",
+    "done": "Imekamilika",
+    "activityLaunchSuccess": "sasa iko MOJA KWA MOJA.",
+    "activityCloseSuccess": "sasa imefungwa."
   }
 }
