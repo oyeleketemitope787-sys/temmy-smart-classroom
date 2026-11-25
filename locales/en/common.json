@@ -66,5 +66,11 @@
     "gold": "Gold",
     "champion": "Champion",
     "points": "points"
+  },
+  "groups": {
+    "title": "Student Groups",
+    "description": "Create and manage cloud groups within each class for collaborative learning.",
+    "createGroup": "Create Group",
+    "refresh": "Refresh"
   }
 }
