@@ -9,7 +9,7 @@
     "name": "ٹیمی اسمارٹ کلاس روم"
   },
   "common": {
-    "language": "زبان",
+    "language": "انٹرفیس کی زبان",
     "english": "انگریزی",
     "save": "محفوظ کریں",
     "cancel": "منسوخ کریں",
@@ -24,6 +24,10 @@
     "settings": "ترتیبات",
     "dashboard": "ڈیش بورڈ",
     "logout": "لاگ آؤٹ",
-    "languageSaved": "زبان کی ترجیح محفوظ ہو گئی۔"
+    "languageSaved": "زبان کی ترجیح محفوظ ہو گئی۔",
+    "languageDeviceSaved": "زبان کی ترجیح اس ڈیوائس پر محفوظ ہوتی ہے۔",
+    "languageLoading": "زبان لوڈ ہو رہی ہے…",
+    "languageLoadError": "یہ زبان لوڈ نہیں ہو سکی۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "languageServiceUnavailable": "زبان کی سروس ابھی تیار نہیں ہے۔"
   }
 }
