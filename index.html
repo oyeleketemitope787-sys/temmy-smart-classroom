@@ -905,52 +905,18 @@ function selectPunctualityStatus(status,points){
   }
 }
 async function applyPunctuality(){
-  if(awardLocked){
-    alert(window.TemmyI18n?.t('groups.lockedMessage')||'Award Points is locked. Unlock it first.');
-    return;
-  }
+  if(awardLocked){alert(window.TemmyI18n?.t('groups.lockedMessage')||'Award Points is locked. Unlock it first.');return;}
   if(awardBusy)return;
-  if(!authSession){
-    alert(window.TemmyI18n?.t('groups.signInTeacher')||'Please sign in as the teacher first.');
-    return;
-  }
-
-  const cls=current();
-  if(!cls||!cls.id){
-    alert(window.TemmyI18n?.t('groups.cloudClass')||'Please select a cloud class first.');
-    return;
-  }
-
-  const targets=getSelected();
-  if(!targets.length){
-    alert(window.TemmyI18n?.t('groups.selectStudent')||'Please select at least one student.');
-    return;
-  }
-
+  if(!authSession){alert(window.TemmyI18n?.t('groups.signInTeacher')||'Please sign in as the teacher first.');return;}
+  const cls=current();if(!cls||!cls.id){alert(window.TemmyI18n?.t('groups.cloudClass')||'Please select a cloud class first.');return;}
+  const targets=getSelected();if(!targets.length){alert(window.TemmyI18n?.t('groups.selectStudent')||'Please select at least one student.');return;}
   const status=window.punctualityStatus||{status:'On Time',points:2};
-
-  try{
-    awardBusy=true;
-
-   const studentIds=targets.map(s=>s.id);
-
-const {error}=await supabaseClient.rpc('record_student_punctuality',{
-  p_student_ids:studentIds,
-  p_class_id:cls.id,
-  p_status:status.status,
-  p_points:status.points,
-  p_punctuality_date:new Date().toISOString().slice(0,10)
-});
-
-if(error)throw error;
-    alert(`Punctuality recorded for ${targets.length} student${targets.length===1?'':'s'}.`);
-    renderAwardStudents();
-  }catch(error){
-    console.error(error);
-    alert('Unable to record punctuality: '+(error.message||error));
-  }finally{
-    awardBusy=false;
-  }
+  try{awardBusy=true;const studentIds=targets.map(s=>s.id);
+    const {error}=await supabaseClient.rpc('record_student_punctuality',{p_student_ids:studentIds,p_class_id:cls.id,p_status:status.status,p_points:status.points,p_punctuality_date:new Date().toISOString().slice(0,10)});
+    if(error)throw error;
+    alert(window.TemmyI18n?.t('groups.punctualityRecorded')||'Punctuality recorded successfully.');renderAwardStudents();
+  }catch(error){console.error(error);alert((window.TemmyI18n?.t('groups.punctualityFailed')||'Unable to record punctuality')+': '+(error.message||error));}
+  finally{awardBusy=false;}
 }
 function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');if(info){const cls=current();info.textContent=scope==='all'?`All ${cls.students.length} students selected`:selectedIds.length?`${selectedIds.length} student${selectedIds.length===1?'':'s'} selected`:'Select students';}}
 function getSelected(){const cls=current();if(!cls)return[];const domIds=[...document.querySelectorAll('#awardStudents input.check:checked')].map(el=>el.dataset.studentId).filter(Boolean);if(domIds.length){selectedIds=[...new Set(domIds)];if(scope==='all')selectedIds=[...cls.students.map(s=>s.id)];}return cls.students.filter(s=>selectedIds.includes(s.id))}
