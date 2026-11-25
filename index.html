@@ -1822,6 +1822,8 @@ async function renderStudentHistory(){
 let studentPortalSession=null;
 let studentPortalActivities=[];
 let studentPortalHistory=[];
+let studentPortalPointAccounts=null;
+let studentPortalPointAccountError=null;
 let studentPortalGames=[];
 
 function syncPortalSelectors(){
@@ -2048,7 +2050,9 @@ async function sendStudentPortalMessage(){
   }
   const s=studentPortalSession;
   const fullName=[s.first_name,s.last_name].filter(Boolean).join(' ')||'Student';
-    const totalPoints=studentPortalHistory.reduce((sum,r)=>sum+(Number(r.points)||0),0);
+  const aggregatePoints=Number(studentPortalPointAccounts?.aggregate_points)||0;
+  const spendablePoints=Number(studentPortalPointAccounts?.spendable_points)||0;
+  const totalPoints=aggregatePoints;
   const level=totalPoints>=500?'Champion':totalPoints>=150?'Gold':totalPoints>=100?'Silver':totalPoints>=50?'Bronze':'Starter';
   const next=totalPoints>=500?500:totalPoints>=150?500:totalPoints>=100?150:totalPoints>=50?100:50;
   const previous=level==='Champion'?500:level==='Gold'?150:level==='Silver'?100:level==='Bronze'?50:0;
@@ -2059,20 +2063,23 @@ async function sendStudentPortalMessage(){
   body.innerHTML=`
    <div class="grid3" style="margin-top:16px">
   <div class="stat">
-    <small>Current Points</small>
-    <strong>${totalPoints}</strong>
+    <small>Aggregate Points</small>
+    <strong>${studentPortalPointAccounts?aggregatePoints:'—'}</strong>
   </div>
-
+  <div class="stat">
+    <small>Spendable Points</small>
+    <strong>${studentPortalPointAccounts?spendablePoints:'—'}</strong>
+  </div>
   <div class="stat">
     <small>Reward Level</small>
-    <strong style="font-size:22px">${level}</strong>
+    <strong style="font-size:22px">${studentPortalPointAccounts?level:'—'}</strong>
   </div>
-
   <div class="stat">
-    <small>Today's Points</small>
+    <small>Today's Net Change</small>
     <strong>${todayNet>=0?'+':''}${todayNet}</strong>
   </div>
 </div>
+${studentPortalPointAccountError?`<div class="notice" style="background:#fff0f0;border-color:#e6bcbc;margin-top:12px"><strong>Point balances could not be loaded.</strong><br>${esc(studentPortalPointAccountError)}</div>`:''}
 <div style="margin-top:12px;margin-bottom:4px">
   <h2 style="margin:0">Student Dashboard</h2>
   <div class="small" style="margin-top:4px">
@@ -2179,6 +2186,30 @@ async function sendStudentPortalMessage(){
   renderStudentPortalGames();
   renderStudentPortalHistory();
 }
+async function loadStudentPortalPointAccounts(){
+  if(!studentPortalSession){
+    studentPortalPointAccounts=null;
+    studentPortalPointAccountError=null;
+    return;
+  }
+
+  const {data:rows,error}=await supabaseClient.rpc(
+    'get_student_point_account_summary',
+    {p_access_code:studentPortalSession.accessCode}
+  );
+
+  if(error){
+    studentPortalPointAccounts=null;
+    studentPortalPointAccountError=error.message;
+    renderPortal();
+    return;
+  }
+
+  studentPortalPointAccounts=rows&&rows.length?rows[0]:null;
+  studentPortalPointAccountError=studentPortalPointAccounts?null:'No active student account was returned.';
+  renderPortal();
+}
+
 async function loadStudentPortalHistory(){
   if(!studentPortalSession){
     studentPortalHistory=[];
@@ -2358,8 +2389,11 @@ const list=document.getElementById('studentPortalHistoryList');
   const r=row[0];
   studentPortalSession={accessCode:code,student_id:r.student_id,class_id:r.class_id,class_name:r.class_name,first_name:r.first_name,last_name:r.last_name};
   if(msg)msg.textContent='Access verified successfully.';
- renderPortal();
-await loadStudentPortalHistory();
+  studentPortalPointAccounts=null;
+  studentPortalPointAccountError=null;
+  renderPortal();
+  await loadStudentPortalPointAccounts();
+  await loadStudentPortalHistory();
   await loadStudentPortalActivities();
     await loadStudentPortalGames();
 }
@@ -2456,7 +2490,7 @@ function openStudentActivity(id){
   );
 }
 function studentPortalLogout(){
-  studentPortalSession=null;studentPortalActivities=[];
+  studentPortalSession=null;studentPortalActivities=[];studentPortalHistory=[];studentPortalPointAccounts=null;studentPortalPointAccountError=null;studentPortalGames=[];
   const input=document.getElementById('studentAccessCode');if(input)input.value='';
   const msg=document.getElementById('studentPortalLoginMsg');if(msg)msg.textContent='';
   renderPortal();
