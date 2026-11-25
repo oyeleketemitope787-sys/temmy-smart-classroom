@@ -279,5 +279,25 @@
     "deductSuccessOne": "Foram retirados {points} pontos de {student}.",
     "deductSuccessMany": "Foram retirados {points} pontos de {count} alunos.",
     "selectStudentsPrompt": "Selecione os alunos."
+  },
+  "classes": {
+    "classesTitle": "As minhas turmas",
+    "classesDescription": "Crie e gira as suas turmas. As turmas e os dados dos alunos são carregados da base de dados cloud de produção.",
+    "createNewClass": "Criar nova turma",
+    "className": "Nome da turma",
+    "classNamePlaceholder": "Ex.: 8A_1",
+    "classDescriptionOptional": "Descrição (opcional)",
+    "classDescriptionPlaceholder": "Ex.: Turma de Matemática",
+    "enterClassName": "Introduza o nome da turma.",
+    "classAlreadyExists": "Essa turma já existe.",
+    "createClassError": "Não foi possível criar a turma: {error}",
+    "signInLoadClasses": "Inicie sessão como professor para carregar as suas turmas cloud.",
+    "noCloudClasses": "Ainda não existem turmas cloud. Crie a sua primeira turma.",
+    "openClass": "Abrir turma",
+    "classSummary": "{count} aluno(s) • {aggregate} pontos acumulados • {spendable} pontos disponíveis",
+    "cloudClassesLoadError": "Não foi possível carregar as turmas cloud: {error}",
+    "classesLoadedBalancesError": "As turmas foram carregadas, mas não foi possível carregar os saldos de pontos separados: {error}",
+    "classLoadedStudentsError": "A turma foi carregada, mas não foi possível carregar os alunos: {error}",
+    "cloudConnectedStatus": "Turmas cloud e saldos de pontos ligados. Os pontos são carregados do Supabase."
   }
 }
