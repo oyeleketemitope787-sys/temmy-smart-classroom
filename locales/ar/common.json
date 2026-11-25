@@ -43,5 +43,28 @@
     "studentPortal": "بوابة الطالب",
     "teacherAccount": "حساب المعلم",
     "messages": "الرسائل"
+  },
+  "students": {
+    "addStudent": "إضافة طالب",
+    "awardPoints": "منح النقاط",
+    "exportData": "تصدير البيانات",
+    "awardPointsLink": "منح النقاط",
+    "leaderboard": "قائمة ترتيب الطلاب",
+    "rank": "الترتيب",
+    "student": "الطالب",
+    "aggregatePoints": "إجمالي النقاط",
+    "spendablePoints": "النقاط القابلة للإنفاق",
+    "status": "الحالة",
+    "classSummary": "ملخص الصف",
+    "classAggregatePoints": "إجمالي نقاط الصف",
+    "classSpendablePoints": "نقاط الصف القابلة للإنفاق",
+    "studentsCount": "الطلاب",
+    "averageAggregatePoints": "متوسط إجمالي النقاط",
+    "rewardLevelProgress": "التقدم في مستويات المكافآت",
+    "bronze": "برونزي",
+    "silver": "فضي",
+    "gold": "ذهبي",
+    "champion": "بطل",
+    "points": "نقطة"
   }
 }
