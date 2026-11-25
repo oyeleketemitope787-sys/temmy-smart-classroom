@@ -37,11 +37,11 @@ let passwordFlowActive=false;
 <body>
 <header class="top"><h1>⭐ Temmy Smart Classroom</h1><p>Smart Learning • Smart Behaviour • Smart Rewards</p>
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">
-<label for="interfaceLanguageSelect" style="font-size:14px;font-weight:700">Interface language</label>
+<label for="interfaceLanguageSelect" data-i18n="common.language" style="font-size:14px;font-weight:700">Interface language</label>
 <select id="interfaceLanguageSelect" aria-label="Choose interface language" style="min-width:190px;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.55);background:#fff;color:#172033">
 <option value="en">English</option><option value="ar">العربية</option><option value="fr">Français</option><option value="es">Español</option><option value="pt">Português</option><option value="hi">हिन्दी</option><option value="ur">اردو</option><option value="sw">Kiswahili</option><option value="zh-Hans">简体中文</option>
 </select>
-<span id="interfaceLanguageStatus" aria-live="polite" style="font-size:12px;opacity:.9">Language preference is stored on this device.</span>
+<span id="interfaceLanguageStatus" data-i18n="common.languageDeviceSaved" aria-live="polite" style="font-size:12px;opacity:.9">Language preference is stored on this device.</span>
 </div>
 <div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD • V8.9.2 TEACHER ACTIVITY MONITORING • CLOUD HISTORY FIX • CLEAN BUILD</div></header>
 <div class="wrap">
@@ -2537,31 +2537,40 @@ window.addEventListener('DOMContentLoaded',()=>{initCloudTeacher();});
 </script>
 <script>
 (function(){
-  function syncLanguageControl(){
+  function renderLanguageControl(){
     const api=window.TemmyI18n;
     const select=document.getElementById('interfaceLanguageSelect');
-    if(api&&select)select.value=api.getLanguage();
+    const label=document.querySelector('[data-i18n="common.language"]');
+    const status=document.getElementById('interfaceLanguageStatus');
+    if(!api)return;
+    if(select)select.value=api.getLanguage();
+    if(label){
+      label.textContent=api.t('common.language');
+      if(select)select.setAttribute('aria-label',api.t('common.language'));
+    }
+    if(status)status.textContent=api.t('common.languageDeviceSaved');
   }
   document.addEventListener('change',async function(event){
     if(event.target?.id!=='interfaceLanguageSelect')return;
     const select=event.target;
     const status=document.getElementById('interfaceLanguageStatus');
-    if(!window.TemmyI18n){select.value='en';if(status)status.textContent='Language service is not ready.';return;}
+    const api=window.TemmyI18n;
+    if(!api){select.value='en';if(status)status.textContent='Language service is not ready.';return;}
     select.disabled=true;
-    if(status)status.textContent='Loading language…';
+    if(status)status.textContent=api.t('common.languageLoading');
     try{
-      await window.TemmyI18n.setLanguage(select.value);
-      if(status)status.textContent='Language preference saved on this device.';
+      await api.setLanguage(select.value);
+      renderLanguageControl();
     }catch(error){
-      select.value=window.TemmyI18n.getLanguage();
-      if(status)status.textContent='Could not load that language. Please try again.';
+      select.value=api.getLanguage();
+      if(status)status.textContent=api.t('common.languageLoadError');
       console.error('[Temmy i18n] Language change failed:',error);
     }finally{select.disabled=false;}
   });
-  window.addEventListener('temmy:i18n-ready',syncLanguageControl);
-  window.addEventListener('temmy:language-changed',syncLanguageControl);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',syncLanguageControl);
-  else syncLanguageControl();
+  window.addEventListener('temmy:i18n-ready',renderLanguageControl);
+  window.addEventListener('temmy:language-changed',renderLanguageControl);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',renderLanguageControl);
+  else renderLanguageControl();
 })();
 </script>
 <script type="module" src="./js/i18n.js"></script>
