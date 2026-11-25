@@ -111,3 +111,24 @@ Inspect the complete existing Supabase schema and the relevant current activity/
 - The separate Aggregate/Spendable ledger cannot safely be migrated from repository code alone: the hosted schema and existing marketplace purchase deduction function need read-only inspection first. Known existing objects include `students`, `point_transactions`, `purchases`, `marketplace_rewards`; `point_transactions` currently records a single signed `points` value. Existing historical purchases must not be double-counted or silently converted.
 - Added read-only schema inspection script: `supabase/preflight_points_and_leadership.sql` (commit `8792bd611dc8b15138041aefd7e68551a7786ded`). It retrieves table columns, constraints, RLS policies, triggers and function bodies for points, marketplace, activity and leadership objects. It makes no changes.
 - Next: run that preflight in the Supabase SQL Editor and use its results to write a reviewed, additive migration and server-side atomic RPCs. Keep `main` untouched.
+
+
+## 8. Database preflight completed — 2026-11-25
+
+The six original read-only preflight sections have now been run against the hosted Supabase project.
+
+Confirmed findings:
+- All inspected core tables have RLS enabled. Existing policies are teacher-oriented and scoped through each teacher's classes; there are no student-specific table policies in the inspected results. Student access currently relies on access-code SECURITY DEFINER functions and must be preserved/secured deliberately.
+- No user-defined triggers were returned for the inspected points, purchase, student, or activity tables.
+- Existing point history is stored in `point_transactions` as a single signed integer `points` amount. The existing marketplace purchase function calculates a balance from that legacy ledger, inserts a negative `marketplace_purchase` transaction and creates a purchase record.
+- The existing purchase function is `public.purchase_marketplace_reward(uuid, uuid, uuid[])`, is SECURITY DEFINER, locks the request, reward and student rows, validates all selected students before processing, and stores a request result for retry idempotency. Preserve these protections when updating purchase accounting.
+- The existing `submit_student_activity(text, uuid, text)` function rejects a previously submitted activity, but the inspected table has no unique constraint on `(activity_id, student_id)`; concurrent duplicate protection needs a database-level safeguard in the activity workstream.
+- The proposed `student_point_accounts` and `student_leadership_appointments` tables do not currently exist.
+- The original section-6 signature check used `to_regprocedure('public.purchase_marketplace_reward')` without argument types, so its NULL result did not establish absence. Section 5 supplied the exact existing signature.
+
+A supplemental read-only script, `supabase/preflight_points_backfill.sql`, was added to inspect the legacy purchase-request table and constraints, classify existing point transactions by action/source, compare purchase totals with marketplace deductions, and verify the exact purchase function signature. This is required before selecting a safe, non-destructive opening-balance backfill rule.
+
+No migration has been applied to Supabase and no production data has been changed.
+
+- Supplemental preflight script commit: 44aa30a6801630973562a0c078b6a9651665e711
+- Next: run the supplemental read-only script; use its results to finalize the additive points-account/ledger migration and preserve the existing purchase idempotency workflow.
