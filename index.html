@@ -63,15 +63,15 @@ let passwordFlowActive=false;
 <div id="cloudStatus" class="notice" style="display:none"></div>
 <div class="controls">
 <select id="classSelect" class="select"></select>
-<button class="btn primary" onclick="openAddStudent()">➕ Add Student</button>
-<button class="btn" onclick="showTab('award')">⭐ Award Points</button>
-<button class="btn" onclick="exportData()">⬇️ Export Data</button>
+<button class="btn primary" onclick="openAddStudent()">➕ <span data-i18n="students.addStudent">Add Student</span></button>
+<button class="btn" onclick="showTab('award')">⭐ <span data-i18n="students.awardPoints">Award Points</span></button>
+<button class="btn" onclick="exportData()">⬇️ <span data-i18n="students.exportData">Export Data</span></button>
 </div>
 <div class="grid2">
-<div class="card"><div class="summary-title"><div><h2 id="classTitle">Class</h2><div class="small">Student leaderboard</div></div><button class="btn" onclick="showTab('award')">Award points →</button></div>
-<table><thead><tr><th>Rank</th><th>Student</th><th>Aggregate Points</th><th>Spendable Points</th><th>Status</th></tr></thead><tbody id="studentRows"></tbody></table></div>
-<div class="card"><h2>🏆 Class Summary</h2><div class="grid2"><div class="stat"><small>Class Aggregate Points</small><strong id="classPoints">0</strong></div><div class="stat"><small>Class Spendable Points</small><strong id="classSpendablePoints">0</strong></div><div class="stat"><small>Students</small><strong id="studentCount">0</strong></div><div class="stat"><small>Average Aggregate Points</small><strong id="classAverage">0</strong></div></div></div>
-<div class="card"><h2>🎯 Reward Level Progress</h2><p>🥉 <strong>Bronze</strong> — 50+ points</p><p>🥈 <strong>Silver</strong> — 100+ points</p><p>🥇 <strong>Gold</strong> — 150+ points</p><p>🏆 <strong>Champion</strong> — 500+ points</p></div>
+<div class="card"><div class="summary-title"><div><h2 id="classTitle">Class</h2><div class="small" data-i18n="students.leaderboard">Student leaderboard</div></div><button class="btn" onclick="showTab('award')"><span data-i18n="students.awardPointsLink">Award points</span> →</button></div>
+<table><thead><tr><th data-i18n="students.rank">Rank</th><th data-i18n="students.student">Student</th><th data-i18n="students.aggregatePoints">Aggregate Points</th><th data-i18n="students.spendablePoints">Spendable Points</th><th data-i18n="students.status">Status</th></tr></thead><tbody id="studentRows"></tbody></table></div>
+<div class="card"><h2>🏆 <span data-i18n="students.classSummary">Class Summary</span></h2><div class="grid2"><div class="stat"><small data-i18n="students.classAggregatePoints">Class Aggregate Points</small><strong id="classPoints">0</strong></div><div class="stat"><small data-i18n="students.classSpendablePoints">Class Spendable Points</small><strong id="classSpendablePoints">0</strong></div><div class="stat"><small data-i18n="students.studentsCount">Students</small><strong id="studentCount">0</strong></div><div class="stat"><small data-i18n="students.averageAggregatePoints">Average Aggregate Points</small><strong id="classAverage">0</strong></div></div></div>
+<div class="card"><h2>🎯 <span data-i18n="students.rewardLevelProgress">Reward Level Progress</span></h2><p>🥉 <strong data-i18n="students.bronze">Bronze</strong> — 50+ <span data-i18n="students.points">points</span></p><p>🥈 <strong data-i18n="students.silver">Silver</strong> — 100+ <span data-i18n="students.points">points</span></p><p>🥇 <strong data-i18n="students.gold">Gold</strong> — 150+ <span data-i18n="students.points">points</span></p><p>🏆 <strong data-i18n="students.champion">Champion</strong> — 500+ <span data-i18n="students.points">points</span></p></div>
 </div></div></section>
 
 
