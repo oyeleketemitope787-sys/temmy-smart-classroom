@@ -442,3 +442,10 @@ The generic points RPC behavioural tests now cover identical-request idempotency
 In the isolated `temmy-smart-classroom-test` project, a transaction-wrapped purchase trial used Code Final (initial Aggregate 22, Spendable 22) to purchase the 20-point Oral 1 reward. Temporary inspection showed Aggregate 22 and Spendable 2, confirming the account update deducts Spendable only. After explicit rollback, an independent query confirmed Aggregate 22, Spendable 22, and zero matching purchases. The balance effect and rollback are verified; the returned purchase payload itself was not included in the shared SQL output.
 
 Next: test insufficient Spendable balance rejection, then duplicate purchase request handling. No production database or GitHub `main` changes.
+
+
+### Marketplace insufficient Spendable Points rejection and no-change verification — 2026-11-25
+
+In the isolated `temmy-smart-classroom-test` project, Code Final (Aggregate 22, Spendable 22) attempted to purchase the 50-point Excellent Performance reward. The test returned the expected rejection: "Insufficient Spendable Points for at least one selected student. No purchase completed." A subsequent read-only query confirmed Aggregate 22, Spendable 22, and zero matching purchases. This verifies insufficient-balance rejection without account or purchase changes.
+
+Next: test duplicate marketplace purchase request idempotency using a transaction-wrapped successful purchase trial and verify only one purchase/deduction occurs. No production database or GitHub `main` changes.
