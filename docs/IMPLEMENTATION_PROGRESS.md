@@ -724,6 +724,6 @@ This is documentation/design only. No database field, registry table, RPC, SQL m
 
 Commits on `cloud-test`:
 - Localization contract: 072351a480fde95cde9d42b5eda779e7715d1f57
-- Progress record: pending
+- Progress record: this documentation update (commit recorded in Git history)
 
 Next: perform the final read-only test-project preflight against the exact current schema and function ACLs, then draft an additive migration for review. Do not apply it until the full SQL is reviewed and explicitly approved. GitHub `main` and production Supabase remain untouched.
