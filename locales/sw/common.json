@@ -9,7 +9,7 @@
     "name": "Temmy Smart Classroom"
   },
   "common": {
-    "language": "Lugha",
+    "language": "Lugha ya kiolesura",
     "english": "Kiingereza",
     "save": "Hifadhi",
     "cancel": "Ghairi",
@@ -24,6 +24,10 @@
     "settings": "Mipangilio",
     "dashboard": "Dashibodi",
     "logout": "Ondoka",
-    "languageSaved": "Chaguo la lugha limehifadhiwa."
+    "languageSaved": "Chaguo la lugha limehifadhiwa.",
+    "languageDeviceSaved": "Chaguo la lugha huhifadhiwa kwenye kifaa hiki.",
+    "languageLoading": "Inapakia lugha…",
+    "languageLoadError": "Imeshindwa kupakia lugha hiyo. Tafadhali jaribu tena.",
+    "languageServiceUnavailable": "Huduma ya lugha haiko tayari."
   }
 }
