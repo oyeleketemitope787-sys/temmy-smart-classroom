@@ -567,3 +567,27 @@ These are platform-wide principles and apply to Live Activity, teacher/student p
 Updated `docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` with the global product direction and specific localization/internationalization requirements for Live Activity.
 
 **Next:** incorporate these requirements into the detailed Live Activity database/API design and establish reusable localization architecture before building UI changes. No code or database schema has been changed by this documentation update. GitHub `main` and production remain untouched.
+
+## 25. Live Activity database/API blueprint prepared — 2026-11-25
+
+Created `docs/LIVE_ACTIVITY_DATABASE_DESIGN.md` on `cloud-test` (commit `1881a637c43c0787eb6bfdbf062d6cc9457951ad`).
+
+The design proposes an additive model:
+- `class_activity_versions`: immutable published content/configuration snapshots, including per-activity duration.
+- `class_activity_questions`: six stable language-neutral question type codes, Unicode question content, public response configuration and server-only answer keys.
+- `student_activity_attempts`: one current attempt per student/activity, immutable version binding, server start/deadline, submission and grading state.
+- `student_activity_answers`: one revisioned autosaved response per question/attempt, objective/teacher marks and feedback.
+- `student_activity_events`: append-only audit history for submission, expiry, marking, correction and authorised reopening.
+
+The blueprint defines teacher authoring/publication, student start/resume, revision-protected autosave, submission/expiry, safe teacher monitoring, teacher marking and atomic points integration RPC responsibilities. It records SECURITY DEFINER/search-path/grant/RLS expectations, idempotency and concurrency rules, candidate indexes, compatibility safeguards and test sequence.
+
+Global Temmy requirements are built into the design: all subjects, international curricula, teacher-selected interface language independent of content language, Unicode/mixed-language content, RTL support, locale-aware formatting, configurable regional/academic structures and language-neutral persisted codes.
+
+Important blockers are explicitly recorded rather than guessed:
+1. Exact conversion from academic marks/partial marks to the existing activity reward points.
+2. Verified unattended expiry worker capability for disconnected students.
+3. Existing media/content and mathematical notation conventions.
+4. Exact current-attempt/reopening state semantics.
+5. Existing profile/preferences and frontend localization architecture.
+
+No database migration, application code or live data was changed. The document is a design proposal pending review. Games remains deferred. GitHub `main` and production Supabase remain untouched.
