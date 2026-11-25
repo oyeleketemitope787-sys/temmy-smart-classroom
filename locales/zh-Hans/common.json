@@ -279,5 +279,25 @@
     "deductSuccessOne": "已从 {student} 扣除 {points} 分。",
     "deductSuccessMany": "已从 {count} 名学生扣除 {points} 分。",
     "selectStudentsPrompt": "请选择学生。"
+  },
+  "classes": {
+    "classesTitle": "我的班级",
+    "classesDescription": "创建和管理班级。班级和学生数据从生产云数据库加载。",
+    "createNewClass": "创建新班级",
+    "className": "班级名称",
+    "classNamePlaceholder": "例如：8A_1",
+    "classDescriptionOptional": "描述（可选）",
+    "classDescriptionPlaceholder": "例如：数学班",
+    "enterClassName": "请输入班级名称。",
+    "classAlreadyExists": "该班级已存在。",
+    "createClassError": "无法创建班级：{error}",
+    "signInLoadClasses": "请以教师身份登录以加载云班级。",
+    "noCloudClasses": "尚无云班级。请创建第一个班级。",
+    "openClass": "打开班级",
+    "classSummary": "{count} 名学生 • {aggregate} 总积分 • {spendable} 可用积分",
+    "cloudClassesLoadError": "无法加载云班级：{error}",
+    "classesLoadedBalancesError": "班级已加载，但无法加载独立积分余额：{error}",
+    "classLoadedStudentsError": "班级已加载，但无法加载学生：{error}",
+    "cloudConnectedStatus": "云班级和积分余额已连接。积分从 Supabase 加载。"
   }
 }
