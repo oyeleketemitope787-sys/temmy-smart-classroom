@@ -29,5 +29,11 @@
     "languageLoading": "正在加载语言…",
     "languageLoadError": "无法加载该语言。请重试。",
     "languageServiceUnavailable": "语言服务尚未就绪。"
+  },
+  "navigation": {
+    "students": "学生",
+    "classes": "我的班级",
+    "groups": "小组",
+    "activities": "活动"
   }
 }
