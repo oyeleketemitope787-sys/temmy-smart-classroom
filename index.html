@@ -1388,41 +1388,43 @@ function viewActivityDetails(id){const a=findActivity(id);if(!a)return;const tr=
 async function monitorActivity(id){
  const a=findActivity(id);
  if(!a||!authSession)return;
+ const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;
  const cls=cloudClasses.find(c=>c.id===a.classId);
  const students=cls?.students||[];
  const {data:records,error}=await supabaseClient.from('student_activity_records').select('id,activity_id,student_id,teacher_id,status,answer,points_awarded,completed_at,notes').eq('activity_id',a.id).eq('teacher_id',authSession.user.id).order('completed_at',{ascending:true});
- if(error){alert('Could not load activity submissions: '+error.message);return;}
+ if(error){alert(tr('loadSubmissionsError')+error.message);return;}
  const byStudent={};
  (records||[]).forEach(r=>{byStudent[r.student_id]=r;});
  const submitted=(records||[]).length;
- const body='<div class="notice"><strong>Status:</strong> '+activityStatusLabel(a.status)+'<br><strong>Class:</strong> '+esc(cls?.name||'')+'<br><strong>Maximum points:</strong> '+a.points+'<br><strong>Students:</strong> '+students.length+' &nbsp; • &nbsp; <strong>Submitted:</strong> '+submitted+'</div>'+
-   '<div class="small" style="margin:12px 0">Teacher review is required before classroom points are awarded.</div>'+
-   '<div style="display:grid;gap:10px">'+(students.length?students.map(st=>{const r=byStudent[st.id];const state=r?(r.status==='scored'?'Scored':'Submitted'):'Not Submitted';const tag=r&&r.status==='scored'?'plus':r?'':'neutral';const score=r&&r.points_awarded!=null?Number(r.points_awarded):null;return '<div class="card" style="box-shadow:none;border:1px solid #e1e6ee;padding:14px"><div class="summary-title"><div><strong>'+esc(st.name)+'</strong><div class="small">'+state+(score!==null?' • '+score+'/'+a.points+' points':'')+'</div></div><span class="tag '+tag+'">'+state+'</span></div>'+(r?'<div class="small" style="margin-top:10px"><strong>Submitted:</strong> '+esc(r.completed_at||'')+'</div><div style="margin-top:8px;white-space:pre-wrap;background:#f7f9fc;border:1px solid #e1e6ee;border-radius:8px;padding:10px">'+esc(r.answer||'No response text stored.')+'</div><div class="group-actions" style="margin-top:10px"><button class="btn primary" onclick="reviewActivitySubmission(\''+esc(r.id)+'\',\''+esc(a.id)+'\')">'+(r.status==='scored'?'✏️ Edit Score':'📝 Review & Score')+'</button></div>':'<div class="small" style="margin-top:8px">No submission yet.</div>')+'</div>';}).join(''):'<div class="empty">No students found in this class.</div>')+'</div>';
- openModal('👀 Monitor — '+a.title,body,closeModal,'Close');
+ const body='<div class="notice"><strong>'+tr('statusLabel')+':</strong> '+activityStatusLabel(a.status)+'<br><strong>'+tr('classLabel')+':</strong> '+esc(cls?.name||'')+'<br><strong>'+tr('maximumPoints')+':</strong> '+a.points+'<br><strong>'+tr('studentsLabel')+':</strong> '+students.length+' &nbsp; • &nbsp; <strong>'+tr('submittedLabel')+':</strong> '+submitted+'</div>'+
+   '<div class="small" style="margin:12px 0">'+tr('teacherReviewNotice')+'</div>'+
+   '<div style="display:grid;gap:10px">'+(students.length?students.map(st=>{const r=byStudent[st.id];const state=r?(r.status==='scored'?tr('scored'):tr('submitted')):tr('notSubmitted');const tag=r&&r.status==='scored'?'plus':r?'':'neutral';const score=r&&r.points_awarded!=null?Number(r.points_awarded):null;return '<div class="card" style="box-shadow:none;border:1px solid #e1e6ee;padding:14px"><div class="summary-title"><div><strong>'+esc(st.name)+'</strong><div class="small">'+state+(score!==null?' • '+score+'/'+a.points+' '+tr('points'):'')+'</div></div><span class="tag '+tag+'">'+state+'</span></div>'+(r?'<div class="small" style="margin-top:10px"><strong>'+tr('submittedLabel')+':</strong> '+esc(r.completed_at||'')+'</div><div style="margin-top:8px;white-space:pre-wrap;background:#f7f9fc;border:1px solid #e1e6ee;border-radius:8px;padding:10px">'+esc(r.answer||tr('noResponseStored'))+'</div><div class="group-actions" style="margin-top:10px"><button class="btn primary" onclick="reviewActivitySubmission(\\''+esc(r.id)+'\\',\\''+esc(a.id)+'\\')">'+(r.status==='scored'?'✏️ '+tr('editScore'):'📝 '+tr('reviewScore'))+'</button></div>':'<div class="small" style="margin-top:8px">'+tr('noSubmissionYet')+'</div>')+'</div>';}).join(''):'<div class="empty">'+tr('noStudentsFound')+'</div>')+'</div>';
+ openModal('👀 '+tr('monitor')+' — '+a.title,body,closeModal,tr('close'));
 }
 
 async function reviewActivitySubmission(recordId,activityId){
  const a=findActivity(activityId);
  if(!a||!authSession)return;
+ const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;
  const {data:r,error}=await supabaseClient.from('student_activity_records').select('id,student_id,status,answer,points_awarded,completed_at,notes').eq('id',recordId).eq('activity_id',activityId).eq('teacher_id',authSession.user.id).maybeSingle();
- if(error||!r){alert('Could not load the submission: '+(error?.message||'Submission not found.'));return;}
+ if(error||!r){alert(tr('loadSubmissionError')+(error?.message||tr('submissionNotFound')));return;}
  const cls=cloudClasses.find(c=>c.id===a.classId);
  const student=cls?.students.find(s=>s.id===r.student_id);
  const currentScore=Number(r.points_awarded)||0;
- const body='<div class="notice"><strong>Student:</strong> '+esc(student?.name||'Student')+'<br><strong>Activity:</strong> '+esc(a.title)+'<br><strong>Maximum points:</strong> '+a.points+'</div><div class="formrow"><label>Student response</label><div style="white-space:pre-wrap;background:#f7f9fc;border:1px solid #e1e6ee;border-radius:8px;padding:12px;min-height:80px">'+esc(r.answer||'No response text stored.')+'</div></div><div class="formrow"><label>Score (0–'+a.points+')</label><input id="activityScore" type="number" min="0" max="'+a.points+'" step="1" value="'+currentScore+'"></div><div class="formrow"><label>Teacher feedback / notes (optional)</label><textarea id="activityNotes" rows="3" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px">'+esc(r.notes||'')+'</textarea></div><div class="notice"><strong>Point rule:</strong> Only the difference between the new score and the previous score will be added or deducted from the student\'s classroom points.</div>';
- openModal('📝 Review Submission',body,async()=>{
+ const body='<div class="notice"><strong>'+tr('studentLabel')+':</strong> '+esc(student?.name||tr('studentFallback'))+'<br><strong>'+tr('activityLabel')+':</strong> '+esc(a.title)+'<br><strong>'+tr('maximumPoints')+':</strong> '+a.points+'</div><div class="formrow"><label>'+tr('studentResponse')+'</label><div style="white-space:pre-wrap;background:#f7f9fc;border:1px solid #e1e6ee;border-radius:8px;padding:12px;min-height:80px">'+esc(r.answer||tr('noResponseStored'))+'</div></div><div class="formrow"><label>'+tr('scoreLabel')+' (0–'+a.points+')</label><input id="activityScore" type="number" min="0" max="'+a.points+'" step="1" value="'+currentScore+'"></div><div class="formrow"><label>'+tr('teacherFeedback')+'</label><textarea id="activityNotes" rows="3" style="width:100%;border:1px solid #ccd5e2;border-radius:8px;padding:10px">'+esc(r.notes||'')+'</textarea></div><div class="notice"><strong>'+tr('pointRule')+':</strong> '+tr('pointRuleExplain')+'</div>';
+ openModal('📝 '+tr('reviewSubmission'),body,async()=>{
    const score=Math.floor(Number(document.getElementById('activityScore').value));
    const notes=document.getElementById('activityNotes').value.trim();
-   if(!Number.isFinite(score)||score<0||score>a.points)return alert('Score must be between 0 and '+a.points+'.');
+   if(!Number.isFinite(score)||score<0||score>a.points)return alert(tr('scoreRangeError')+a.points+'.');
    const delta=score-currentScore;
    const nowStamp=new Date().toISOString();
    const {error:updateError}=await supabaseClient.from('student_activity_records').update({status:'scored',points_awarded:score,completed_at:r.completed_at||nowStamp,notes:notes||null}).eq('id',r.id).eq('teacher_id',authSession.user.id);
-   if(updateError)return alert('Could not save the score: '+updateError.message);
+   if(updateError)return alert(tr('saveScoreError')+updateError.message);
    if(delta!==0){
      const requestId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():null;
      if(!requestId){
        await supabaseClient.from('student_activity_records').update({status:r.status||'submitted',points_awarded:currentScore,notes:r.notes||null}).eq('id',r.id).eq('teacher_id',authSession.user.id);
-       return alert('Score was not finalized because this browser cannot create a secure point request ID.');
+       return alert(tr('secureIdError'));
      }
      const {data:txResult,error:txError}=await supabaseClient.rpc('record_student_point_transactions',{
        p_request_id:requestId,p_class_id:a.classId,
@@ -1430,16 +1432,15 @@ async function reviewActivitySubmission(recordId,activityId){
      });
      if(txError||!txResult||txResult.success!==true){
        await supabaseClient.from('student_activity_records').update({status:r.status||'submitted',points_awarded:currentScore,notes:r.notes||null}).eq('id',r.id).eq('teacher_id',authSession.user.id);
-       return alert('Score was not finalized because the point transaction failed: '+(txError?.message||'The server did not confirm the transaction.'));
+       return alert(tr('pointTransactionError')+(txError?.message||tr('serverNoConfirm')));
      }
    }
    closeModal();
    await loadCloudClasses();
-   alert('✓ '+(student?.name||'Student')+' scored '+score+'/'+a.points+'.'+(delta!==0?' Classroom points updated by '+(delta>0?'+':'')+delta+'.':''));
+   alert('✓ '+(student?.name||tr('studentFallback'))+' '+tr('scoredResult')+' '+score+'/'+a.points+'.'+(delta!==0?' '+tr('classPointsUpdated')+' '+(delta>0?'+':'')+delta+'.':''));
    await monitorActivity(activityId);
- },'Save Score');
+ },tr('saveScore'));
 }
-
 function renderHistory(){const box=document.getElementById('recentHistory'),list=data.history.filter(h=>h.className===data.currentClass).slice(0,12);const last=data.lastPointAction;if(last&&last.className===data.currentClass)document.getElementById('lastActionBox').innerHTML=`<strong>${esc(last.reason)}</strong><br>${last.deltas.length} student${last.deltas.length===1?'':'s'} • ${esc(last.date)}<br><span class="small">${last.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' • ')}</span>`;else document.getElementById('lastActionBox').textContent='No point action recorded for this class.';box.innerHTML=list.length?list.map(h=>`<div style="padding:9px 0;border-bottom:1px solid #edf0f5"><strong>${esc(h.reason)}</strong> <span class="small">• ${esc(h.date)}</span><div class="small">${h.deltas.map(d=>esc(d.name)+' '+(d.delta>=0?'+':'')+d.delta).join(' • ')}</div></div>`).join(''):'<div class="empty">No recent activity.</div>'}
 function openModal(title,body,fn,buttonText='Save',hideCancel=false){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalSave').textContent=buttonText;document.getElementById('modalSave').onclick=fn;const cancelBtn=document.querySelector('#modal .formactions .btn:not(#modalSave)');if(cancelBtn)cancelBtn.style.display=hideCancel?'none':'';document.getElementById('modal').classList.remove('hidden')}function closeModal(){document.getElementById('modal').classList.add('hidden')}
 function closeAllMenus(){document.querySelectorAll('.menu').forEach(m=>m.classList.add('hidden'))}
