@@ -436,3 +436,24 @@ Before preparing or applying SQL, re-inspect the exact test project's schema and
 7. Test-project identity before any write; production project and GitHub `main` remain out of scope.
 
 Only after these checks should an additive migration be drafted. The migration must be reviewed as a complete unit, and the user must explicitly approve applying it to the isolated test project. No migration is authorised by this design document.
+
+
+## 16. Direct-write guard and migration review — 2026-11-25
+
+The user approved a narrowly scoped database safeguard: browser-role writes must not change localization preference columns directly; the six approved language RPCs remain the browser-facing write boundary. Existing unrelated profile, class and student writes, existing RLS policies and legacy login functions must remain unchanged.
+
+A draft migration is now present at `supabase/migrations/20261125000300_add_localization_preferences.sql` on `cloud-test`. It proposes:
+- The extensible `interface_languages` registry and the nine approved language tags.
+- Nullable language and IANA time-zone preference columns on teacher, student and class rows.
+- Foreign keys from language preference fields to the registry.
+- An invoker trigger guard on each owner table. For direct `anon`/`authenticated` writes, it rejects only INSERT/UPDATE attempts that set or change preference fields; unrelated columns remain unaffected. The intended SECURITY DEFINER RPCs run under their owner role and can update the fields.
+- The six approved language RPCs, with teacher identity from `auth.uid()`, class ownership checks, student identity derived through the existing access-code verifier, empty search paths, and explicit grants.
+
+This is a draft, not an approved or executed migration. It still requires complete SQL review and execution-based verification, particularly:
+1. Confirm the migration is executed by the intended database owner so the SECURITY DEFINER functions and invoker trigger behave as designed.
+2. Test direct preference writes under real `anon` and `authenticated` roles, and verify unrelated column updates still work.
+3. Test teacher ownership, cross-teacher class denial, valid/invalid student access codes, NULL inheritance and all fallback paths.
+4. Inspect installed function owners, configurations, ACLs and trigger definitions after application in the isolated test project.
+5. Confirm the Supabase dashboard is on `temmy-smart-classroom-test` immediately before any eventual execution. The SQL file itself cannot reliably distinguish two Supabase projects that both use the default database name.
+
+The three time-zone columns are included as nullable storage only. No time-zone RPC is included; that API remains separate. No migration has been run, no preference data has been written, and production Supabase/GitHub `main` remain untouched.
