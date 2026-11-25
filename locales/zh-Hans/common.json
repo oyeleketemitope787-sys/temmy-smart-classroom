@@ -43,5 +43,28 @@
     "studentPortal": "学生门户",
     "teacherAccount": "教师账户",
     "messages": "消息"
+  },
+  "students": {
+    "addStudent": "添加学生",
+    "awardPoints": "奖励积分",
+    "exportData": "导出数据",
+    "awardPointsLink": "奖励积分",
+    "leaderboard": "学生排行榜",
+    "rank": "排名",
+    "student": "学生",
+    "aggregatePoints": "累计积分",
+    "spendablePoints": "可使用积分",
+    "status": "状态",
+    "classSummary": "班级摘要",
+    "classAggregatePoints": "班级累计积分",
+    "classSpendablePoints": "班级可使用积分",
+    "studentsCount": "学生人数",
+    "averageAggregatePoints": "平均累计积分",
+    "rewardLevelProgress": "奖励等级进度",
+    "bronze": "铜级",
+    "silver": "银级",
+    "gold": "金级",
+    "champion": "冠军",
+    "points": "积分"
   }
 }
