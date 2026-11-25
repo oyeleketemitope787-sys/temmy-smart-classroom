@@ -665,3 +665,21 @@ The user approved the time-zone design for the global platform:
 Updated `docs/LOCALIZATION_ARCHITECTURE_DESIGN.md` on `cloud-test` (commit `1f98f94f0b4802487c6696f68ea217a2d811e22f`). This is a design decision only; no migration, application code or preference data has changed.
 
 The initial language registry, English fallback, teacher/student/class preference scope, dedicated RPC boundary, and time-zone storage policy are now approved. Remaining design work includes translation-resource packaging/versioning and coverage/rollout targets, precise time-zone resolution in class-context views, and final security/compatibility review before migration drafting. GitHub `main` and production Supabase remain untouched.
+
+
+## 30. Translation-resource architecture documented — 2026-11-25
+
+Added the recommended translation-resource design to `docs/LOCALIZATION_ARCHITECTURE_DESIGN.md` on `cloud-test` (commit `77216d4decf07fd596f08fe320b39b722562511b`).
+
+The design recommends:
+- Source-controlled UTF-8 JSON resources separated by language and functional namespace, with English as the canonical key/fallback source.
+- Stable semantic keys, named placeholders and ICU MessageFormat-compatible plural/select messages; the runtime parser/dependency must be evaluated and pinned before implementation.
+- Central language metadata for BCP 47 tag, native name, text direction and translation coverage.
+- Deterministic active-language -> English per-key fallback, safe missing-key diagnostics and measurable coverage by language/namespace.
+- Automated resource validation, placeholder parity, duplicate-key checks, hard-coded UI-string review and RTL/mixed-script smoke tests.
+- Reviewed, versioned resource bundles; no runtime external translation of classroom/student content.
+- An incremental rollout recommendation beginning with shared English resources and Arabic RTL validation, then expanding the other approved languages.
+
+This is a design recommendation, not a newly approved user constraint. No translation resource files, parser dependency, application code, UI, database migration or preference data were changed. All work remains on `cloud-test`; GitHub `main` and production Supabase remain untouched.
+
+**Next:** continue the read-only security and compatibility review for the localization preference RPCs and time-zone resolution, then consolidate the final schema/API specification before any migration is drafted.
