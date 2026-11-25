@@ -66,5 +66,11 @@
     "gold": "Ouro",
     "champion": "Campeão",
     "points": "pontos"
+  },
+  "groups": {
+    "title": "Grupos de alunos",
+    "description": "Crie e gerencie grupos na nuvem em cada turma para promover a aprendizagem colaborativa.",
+    "createGroup": "Criar grupo",
+    "refresh": "Atualizar"
   }
 }
