@@ -273,6 +273,11 @@
     "recoveryNotice": "Katika uzalishaji, tumia barua pepe ya mwalimu iliyosajiliwa kurejesha nenosiri.",
     "pinRecovery": "PIN inaweza kurejeshwa baada ya uthibitishaji salama wa akaunti ya mwalimu pekee.",
     "pinExposed": "PIN ikifichuka, mwalimu anaweza kuibadilisha kupitia Teacher Account → Security & Account Controls.",
-    "pinSecurity": "Hii inazuia wanafunzi kurejesha au kubadilisha taarifa za usalama za mwalimu."
+    "pinSecurity": "Hii inazuia wanafunzi kurejesha au kubadilisha taarifa za usalama za mwalimu.",
+    "awardSuccessOne": "Pointi {points} zimeongezwa kwa {student}.",
+    "awardSuccessMany": "Pointi {points} zimeongezwa kwa wanafunzi {count}.",
+    "deductSuccessOne": "Pointi {points} zimeondolewa kwa {student}.",
+    "deductSuccessMany": "Pointi {points} zimeondolewa kwa wanafunzi {count}.",
+    "selectStudentsPrompt": "Chagua wanafunzi."
   }
 }
