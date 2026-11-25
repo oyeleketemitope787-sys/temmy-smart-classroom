@@ -29,5 +29,11 @@
     "languageLoading": "Chargement de la langue…",
     "languageLoadError": "Impossible de charger cette langue. Veuillez réessayer.",
     "languageServiceUnavailable": "Le service linguistique n’est pas prêt."
+  },
+  "navigation": {
+    "students": "Élèves",
+    "classes": "Mes classes",
+    "groups": "Groupes",
+    "activities": "Activités"
   }
 }
