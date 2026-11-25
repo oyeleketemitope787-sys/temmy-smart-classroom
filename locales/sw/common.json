@@ -29,5 +29,11 @@
     "languageLoading": "Inapakia lugha…",
     "languageLoadError": "Imeshindwa kupakia lugha hiyo. Tafadhali jaribu tena.",
     "languageServiceUnavailable": "Huduma ya lugha haiko tayari."
+  },
+  "navigation": {
+    "students": "Wanafunzi",
+    "classes": "Madarasa yangu",
+    "groups": "Vikundi",
+    "activities": "Shughuli"
   }
 }
