@@ -273,6 +273,11 @@
     "recoveryNotice": "En producción, usa el correo registrado del profesor para recuperar la contraseña.",
     "pinRecovery": "El PIN solo se puede recuperar tras verificar de forma segura la cuenta del profesor.",
     "pinExposed": "Si se revela el PIN, el profesor puede cambiarlo desde Cuenta del profesor → Seguridad y controles.",
-    "pinSecurity": "Esto impide que los alumnos recuperen o cambien las credenciales de seguridad del profesor."
+    "pinSecurity": "Esto impide que los alumnos recuperen o cambien las credenciales de seguridad del profesor.",
+    "awardSuccessOne": "Se añadieron {points} puntos a {student}.",
+    "awardSuccessMany": "Se añadieron {points} puntos a {count} alumnos.",
+    "deductSuccessOne": "Se descontaron {points} puntos a {student}.",
+    "deductSuccessMany": "Se descontaron {points} puntos a {count} alumnos.",
+    "selectStudentsPrompt": "Selecciona alumnos."
   }
 }
