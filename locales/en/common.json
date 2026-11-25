@@ -1,0 +1,29 @@
+{
+  "$meta": {
+    "language": "en",
+    "namespace": "common",
+    "resourceVersion": 1,
+    "direction": "ltr"
+  },
+  "app": {
+    "name": "Temmy Smart Classroom"
+  },
+  "common": {
+    "language": "Language",
+    "english": "English",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "back": "Back",
+    "refresh": "Refresh",
+    "loading": "Loading…",
+    "error": "Something went wrong. Please try again.",
+    "yes": "Yes",
+    "no": "No",
+    "search": "Search",
+    "settings": "Settings",
+    "dashboard": "Dashboard",
+    "logout": "Log out",
+    "languageSaved": "Language preference saved."
+  }
+}
