@@ -29,5 +29,11 @@
     "languageLoading": "Loading language…",
     "languageLoadError": "Could not load that language. Please try again.",
     "languageServiceUnavailable": "Language service is not ready."
+  },
+  "navigation": {
+    "students": "Students",
+    "classes": "My Classes",
+    "groups": "Groups",
+    "activities": "Activities"
   }
 }
