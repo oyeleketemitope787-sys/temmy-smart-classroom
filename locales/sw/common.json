@@ -71,6 +71,20 @@
     "title": "Vikundi vya Wanafunzi",
     "description": "Unda na udhibiti vikundi vya mtandaoni katika kila darasa kwa ajili ya kujifunza kwa ushirikiano.",
     "createGroup": "Unda Kikundi",
-    "refresh": "Onyesha upya"
+    "refresh": "Onyesha upya",
+    "signIn": "Ingia kama mwalimu ili kudhibiti vikundi vyako vya mtandaoni.",
+    "createClass": "Unda darasa kwanza kabla ya kuunda vikundi vya wanafunzi.",
+    "noGroups": "Bado hakuna vikundi.",
+    "firstGroup": "Unda kikundi chako cha kwanza cha darasa hili.",
+    "noDescription": "Hakuna maelezo",
+    "students": "{count, plural, one {# mwanafunzi} other {# wanafunzi}}",
+    "noMembers": "Bado hakuna wanafunzi waliopangiwa.",
+    "edit": "Hariri",
+    "members": "Wanachama",
+    "delete": "Futa",
+    "activitiesTitle": "Shughuli za Kujifunza",
+    "activitiesDesc": "Unda na udhibiti kazi za moja kwa moja na michezo ya Temmy Smart Games kwa madarasa yako.",
+    "createTask": "Unda Kazi ya Moja kwa Moja",
+    "startGame": "Anzisha Mchezo Mahiri"
   }
 }
