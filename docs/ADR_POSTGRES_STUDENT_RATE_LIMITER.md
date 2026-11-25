@@ -103,3 +103,36 @@ Because many students may share a school NAT, per-source thresholds must be gene
 - Supabase API security and pre-request checks: https://supabase.com/docs/guides/api/securing-your-api
 - Supabase log fields: https://supabase.com/docs/guides/observability/log-field-reference
 - MDN X-Forwarded-For security guidance: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For
+
+
+# PostgreSQL rate limiter: extension and cleanup implementation notes
+
+**Date:** 2026-11-25  
+**Status:** Design update; not implemented
+
+## Test-project extension inventory
+
+The test database reports:
+- `pg_stat_statements` 1.11 in schema `extensions`
+- `pgcrypto` 1.3 in schema `extensions`
+- `plpgsql` 1.0 in `pg_catalog`
+- `supabase_vault` 0.3.1 in `vault`
+- `uuid-ossp` 1.1 in `extensions`
+
+`pg_cron` is not installed. Do not install it solely for this feature without a separate decision and test-project approval.
+
+## Consequences for the proposed limiter
+
+- PostgreSQL-backed counters remain viable.
+- The Edge Function should compute HMAC-SHA-256 fingerprints using Web Crypto APIs and server-only secrets. This avoids requiring the database to receive raw access codes or source IP addresses.
+- If any SQL cryptographic helper is needed, explicitly schema-qualify `extensions.*`; do not rely on search_path.
+- Cleanup must not depend on pg_cron. Use a bounded, controlled maintenance function or an approved existing scheduler after separate inspection. Do not run an unbounded delete per request.
+- A maintenance function, if added, must be service-role-only or owner-only, delete a limited batch of expired rows, and return only a count. It must not be callable by browser roles.
+
+## Next preflight checks
+
+1. Confirm whether the `private` schema exists and whether it is exposed through Supabase API schemas.
+2. Inspect available database scheduler facilities already configured in the project (do not install or enable anything).
+3. Inspect role/schema privileges relevant to creating a non-exposed private schema and table.
+
+No extensions were installed, no schema/table/function was created, and no SQL was executed beyond read-only inspection.
