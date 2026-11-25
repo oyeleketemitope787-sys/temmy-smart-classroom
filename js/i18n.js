@@ -177,4 +177,9 @@ const api = Object.freeze({
 });
 
 window.TemmyI18n = api;
-window.dispatchEvent(new CustomEvent("temmy:i18n-ready", { detail: { language: activeLanguage } }));
+initLocalization().then(language => {
+  window.dispatchEvent(new CustomEvent("temmy:i18n-ready", { detail: { language } }));
+}).catch(error => {
+  console.error("[Temmy i18n] Initialization failed; the classroom will continue in its existing language.", error);
+  window.dispatchEvent(new CustomEvent("temmy:i18n-error", { detail: { message: "Localization could not be initialized." } }));
+});
