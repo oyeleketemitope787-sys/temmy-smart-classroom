@@ -158,6 +158,26 @@
     "serverNoConfirm": "服务器未确认该交易。",
     "scoredResult": "得分",
     "classPointsUpdated": "课堂积分变动",
-    "saveScore": "保存分数"
+    "saveScore": "保存分数",
+    "activitiesLoadError": "无法加载活动。",
+    "classNoActiveStudents": "此班级没有活跃学生。",
+    "startGameTitle": "开始 Temmy 智能游戏",
+    "gameLabel": "游戏",
+    "gameSelectionHelp": "选择将接收游戏会话的学生。",
+    "searchStudents": "搜索学生...",
+    "selectAll": "全选",
+    "clearAll": "清除选择",
+    "selectedStudents": "已选择 {count} 名学生",
+    "gameSessionDuration": "每位选中的学生将获得一个安全的 30 分钟游戏会话。",
+    "selectAtLeastOne": "请至少选择一名学生。",
+    "gameSessionsReady": "游戏会话已就绪",
+    "sessionsCreated": "已成功创建 {count} 个游戏会话。",
+    "gameName": "Temmy 数字挑战",
+    "ready": "就绪",
+    "openGame": "打开游戏",
+    "sessionsFailed": "部分会话无法创建：",
+    "done": "完成",
+    "activityLaunchSuccess": "现已上线。",
+    "activityCloseSuccess": "现已关闭。"
   }
 }
