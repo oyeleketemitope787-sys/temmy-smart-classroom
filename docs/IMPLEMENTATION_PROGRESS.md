@@ -683,3 +683,25 @@ The design recommends:
 This is a design recommendation, not a newly approved user constraint. No translation resource files, parser dependency, application code, UI, database migration or preference data were changed. All work remains on `cloud-test`; GitHub `main` and production Supabase remain untouched.
 
 **Next:** continue the read-only security and compatibility review for the localization preference RPCs and time-zone resolution, then consolidate the final schema/API specification before any migration is drafted.
+
+## 31. Localization time-zone resolution and compatibility safeguards documented — 2026-11-25
+
+Expanded the localization design on cloud-test (commit 3ea34e440cd8ec1d870cae18d668f91db3dbf0f5) with deterministic time-zone display rules by context:
+- Personal dashboards/history use the individual's explicit IANA preference; class-scoped items may use the class default where the individual has no preference.
+- Class-wide timetables/events use the class time zone, with explicit labels when shown alongside personal-time equivalents.
+- Activity deadlines remain immutable server instants; countdowns use server time and never change when display preferences change.
+- Device time zone remains an unpersisted suggestion until user confirmation; UTC is the deterministic display fallback if no usable zone is available.
+- Recurring local schedules retain the local wall time, recurrence rule and IANA zone; ambiguous/nonexistent daylight-saving times must be resolved explicitly.
+- Interface locale and time zone remain independent settings.
+
+### Compatibility/security review notes carried forward
+
+- New preference RPCs remain narrowly scoped: teacher identity from auth.uid(); class ownership checked against the authenticated teacher; student identity derived only from a verified access code. No client-supplied student ID is authoritative.
+- New SECURITY DEFINER routines must use an empty/restricted search_path, schema-qualified references, explicit identity/ownership checks, minimal response data, and explicit EXECUTE grants. Do not change legacy login functions or broaden direct access to student_access credentials.
+- Existing direct workflows for unrelated teacher profile/class/student data remain unchanged.
+- Read-only inspection of index.html confirms AUTH_REDIRECT_URL still points to the production classroom domain. This must be reviewed and changed to a test-only redirect before any browser authentication/UI testing; do not test the test project through the production redirect.
+- The app remains a monolithic index.html with no localization framework/resources or language/time-zone selectors. No frontend localization work should begin until the safe test redirect and the implementation branch strategy are resolved.
+
+No SQL, application code, redirect configuration, translation files or user preference data were changed in this review. GitHub main and production Supabase remain untouched.
+
+**Next:** complete the exact preference RPC contract and schema naming/validation specification, then perform a final migration preflight against the isolated test project's identity, grants and current schema before writing SQL.
