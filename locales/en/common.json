@@ -158,6 +158,26 @@
     "serverNoConfirm": "The server did not confirm the transaction.",
     "scoredResult": "scored",
     "classPointsUpdated": "Classroom points updated by",
-    "saveScore": "Save Score"
+    "saveScore": "Save Score",
+    "activitiesLoadError": "Activities could not be loaded.",
+    "classNoActiveStudents": "This class has no active students.",
+    "startGameTitle": "Start Temmy Smart Game",
+    "gameLabel": "Game",
+    "gameSelectionHelp": "Select the student(s) who will receive the game session.",
+    "searchStudents": "Search students...",
+    "selectAll": "Select All",
+    "clearAll": "Clear All",
+    "selectedStudents": "{count, plural, one {# student selected} other {# students selected}}",
+    "gameSessionDuration": "Each selected student receives a secure 30-minute game session.",
+    "selectAtLeastOne": "Please select at least one student.",
+    "gameSessionsReady": "Game Sessions Ready",
+    "sessionsCreated": "{count, plural, one {# game session created successfully.} other {# game sessions created successfully.}}",
+    "gameName": "Temmy Number Challenge",
+    "ready": "READY",
+    "openGame": "Open Game",
+    "sessionsFailed": "Some sessions could not be created:",
+    "done": "Done",
+    "activityLaunchSuccess": "is now LIVE.",
+    "activityCloseSuccess": "is now closed."
   }
 }
