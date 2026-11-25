@@ -43,5 +43,28 @@
     "studentPortal": "Portal del estudiante",
     "teacherAccount": "Cuenta del docente",
     "messages": "Mensajes"
+  },
+  "students": {
+    "addStudent": "Añadir estudiante",
+    "awardPoints": "Otorgar puntos",
+    "exportData": "Exportar datos",
+    "awardPointsLink": "Otorgar puntos",
+    "leaderboard": "Clasificación de estudiantes",
+    "rank": "Puesto",
+    "student": "Estudiante",
+    "aggregatePoints": "Puntos acumulados",
+    "spendablePoints": "Puntos disponibles para gastar",
+    "status": "Estado",
+    "classSummary": "Resumen de la clase",
+    "classAggregatePoints": "Puntos acumulados de la clase",
+    "classSpendablePoints": "Puntos disponibles de la clase",
+    "studentsCount": "Estudiantes",
+    "averageAggregatePoints": "Promedio de puntos acumulados",
+    "rewardLevelProgress": "Progreso de niveles de recompensa",
+    "bronze": "Bronce",
+    "silver": "Plata",
+    "gold": "Oro",
+    "champion": "Campeón",
+    "points": "puntos"
   }
 }
