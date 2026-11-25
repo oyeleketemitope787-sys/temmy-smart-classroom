@@ -474,3 +474,19 @@ Remaining verification gates before any execution:
 - Verify teacher identity, cross-teacher class denial, NULL inheritance and all three student resolution sources.
 
 The migration remains a draft. No Supabase SQL has been executed.
+
+
+## 17. Student language RPC exposure decision — 2026-11-25
+
+Inspection of the existing test database found:
+- `student_portal_login(text)` is owned by `postgres`, SECURITY DEFINER, and executable by `anon`, `authenticated`, and `postgres`.
+- `verify_student_access_code(text)` is owned by `postgres`, SECURITY DEFINER, and executable by `authenticated` and `postgres`; it is not executable by `anon`.
+- `student_access` has RLS enabled, no explicit RLS policies, and no ordinary SELECT/INSERT/UPDATE/DELETE grants to browser roles.
+- The `student_access` table has a unique constraint on `student_id`, but no visible failed-attempt counter or lockout columns.
+- No matching database triggers for access/login/rate limiting were found. The current browser login source calls `student_portal_login`; no rate-limit logic was found in that inspected login path. This does not rule out gateway/hosting-level controls.
+
+Decision: do not expose the new student language RPCs to `anon` or `authenticated`. The draft migration now revokes browser execution and grants those two RPCs only to `service_role`; each function also checks `auth.role() = 'service_role'`. The service-role key must remain server-side and must never enter `index.html` or other browser bundles.
+
+Required next component: a dedicated Supabase Edge Function (or equivalent trusted server endpoint) for student language get/set. It must validate request shape, apply persistent/distributed rate limiting before attempting code verification, avoid logging access codes, call the service-role-only RPCs, return only the minimal language preference payload, and use generic authentication failures. A process-local in-memory limiter alone is insufficient for a horizontally scaled/serverless deployment. The exact persistent limiter design and Edge Function deployment/configuration remain to be designed and reviewed before implementation.
+
+The existing `student_portal_login` and `verify_student_access_code` functions are not modified by this localization work. The existing login flow remains unchanged until a separately tested integration change is approved.
