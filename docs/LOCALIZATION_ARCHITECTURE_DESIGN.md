@@ -147,3 +147,20 @@ Do not implement translations by replacing arbitrary English text in the DOM. Do
 This document records design only. No SQL migration, schema modification, application code change, translation resource, preference value or live data update has been made as part of this design decision.
 
 All repository documentation work is limited to `cloud-test`. The Supabase project identity/header ambiguity must be resolved before any database write. GitHub `main` and production Supabase must remain untouched.
+
+## 10. Approved preference API boundary — 2026-11-25
+
+The user approved dedicated database RPCs for all three first-stage preference owners:
+- Teacher preference read/write, derived from the authenticated teacher identity (auth.uid()).
+- Class default read/write, with authenticated teacher ownership validation for the target class.
+- Student preference read/write, with the student derived from a verified access code; a browser-supplied student ID must never be authoritative.
+
+These RPCs are limited to language-preference operations. Existing direct Supabase workflows for other teacher profile, class and student data remain unchanged unless a separate reviewed change is approved.
+
+Read-only review of the existing student login boundary confirmed:
+- student_portal_login(text) is SECURITY DEFINER and returns student ID, class ID, class name and student name; it does not return the access-code hash.
+- verify_student_access_code(text) is SECURITY DEFINER and returns only student ID, class ID and student name after checking the submitted code against the stored hash and requiring active access/student records.
+- Both currently use search_path=public; do not silently alter these legacy functions as part of localization. New SECURITY DEFINER preference RPCs should use a restricted search path (prefer an empty search_path), fully qualified object references, minimal return data, and explicit EXECUTE grants.
+- Existing student login and verification function ACLs were inspected. The preference API must not broaden direct access to student_access or credential fields.
+
+The user also approved using dedicated RPCs for all three preference operations while retaining existing direct workflows for unrelated profile/class/student information. This is an approved architecture decision; no migration, function, UI or data change has yet been made.
