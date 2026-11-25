@@ -43,8 +43,10 @@ begin
   if p_request_id is null or p_class_id is null then
     raise exception 'Request ID and class ID are required.';
   end if;
-  if jsonb_typeof(p_entries) is distinct from 'array'
-     or jsonb_array_length(p_entries) = 0 then
+  if jsonb_typeof(p_entries) is distinct from 'array' then
+    raise exception 'Point transactions must be supplied as a JSON array.';
+  end if;
+  if jsonb_array_length(p_entries) = 0 then
     raise exception 'At least one point transaction is required.';
   end if;
 
