@@ -198,3 +198,25 @@ The RPC deliberately excludes `marketplace_purchase`; the existing purchase RPC 
 Commit: `567e7b9bf7576a9b036da781ef76fa4464a4b136`.
 
 Validation status: reviewed statically against the inspected table/function architecture, but not executed against PostgreSQL/Supabase. It has not been applied to the hosted database. The exact hosted purchase function body and a complete test environment are still required before replacing purchase accounting and declaring the points workflow ready.
+
+
+
+## 12. Teacher point-entry paths connected to atomic RPC — 2026-11-25
+
+Updated `index.html` on `cloud-test`:
+- Standard teacher awards now call `record_student_point_transactions` with a fresh request UUID, class ID and validated transaction entries instead of inserting directly into `point_transactions`.
+- Undo now uses the same RPC and records the reversal as an `undo` transaction.
+- Activity scoring now uses the same RPC for the score difference, preserving the existing activity-record rollback when the RPC reports an error.
+- All three paths require a positive server confirmation before showing success or updating the local history.
+- A source scan after the change found no remaining direct browser-side `INSERT` calls to `point_transactions`. The remaining ledger access in the file is read-only history/balance loading. Punctuality continues to use its existing dedicated `record_student_punctuality` RPC and was not changed.
+
+Commit: `e0d2c03d2c4a83860ad5714c5646fc761f5a0f5f`.
+
+Validation status:
+- Verified the three intended call sites now invoke the atomic RPC and the old direct-insert calls are absent.
+- This is a static source review only. No browser integration test or PostgreSQL execution has been performed because the migration is not applied to Supabase.
+- The current class loader still calculates a single legacy balance from the transaction ledger; Aggregate/Spendable display separation is not yet complete.
+- The existing marketplace purchase RPC remains unchanged and still calculates spendable funds from the legacy ledger. It must be replaced only after retrieving its exact hosted definition, preserving its locks and request idempotency.
+- Activity score record updates and point RPC calls remain two sequential requests; a later hardening step should make score finalisation and its point delta one database transaction to remove any ambiguous network-failure window.
+
+Next: implement a controlled server-side account-summary read for teacher/student views, then migrate the UI to display Aggregate and Spendable separately. In parallel, retrieve the full current `purchase_marketplace_reward(uuid,uuid,uuid[])` definition before preparing its replacement. Do not run either migration in Supabase yet.
