@@ -270,3 +270,19 @@ Migration commit on `cloud-test`: `9abe5f6f9006cf758c5256544dc69d59fe5fb7bc`.
 Validation status: source-level review against the exact hosted function supplied by the user. It has not been executed in PostgreSQL, tested under concurrent requests, or applied to Supabase. The four points migrations remain repository files only. Before application, run the migrations in order in an isolated test database and verify: (1) a purchase lowers Spendable only; (2) Aggregate is unchanged; (3) insufficient funds for any selected student leaves every student's balances and purchase rows unchanged; (4) same request retry returns the stored result without a second deduction; (5) same request ID with different details is rejected; and (6) concurrent purchase/award operations cannot overspend.
 
 Next: continue migrating remaining student and teacher balance displays to explicit Aggregate/Spendable labels, then prepare an isolated database verification checklist. Do not run these migrations against the hosted project until the complete migration set is reviewed and explicit approval is given.
+
+
+## 16. Teacher-facing balance labels — 2026-11-25
+
+Updated `index.html` on `cloud-test`:
+- The main class leaderboard now labels its two balance columns as Aggregate Points and Spendable Points.
+- Class summary now shows total Aggregate Points and total Spendable Points separately; average remains an Aggregate Points measure.
+- Individual student history/profile now shows both balances separately, and reward progress is explicitly calculated from Aggregate Points.
+- Teacher class cards now show both class totals.
+- Existing rank and reward-level logic continues to use the compatibility `points` property, which the cloud class loader maps to Aggregate Points.
+
+Commit: `e74aa58c24ca148c456d7a37af2871aa768af78d`.
+
+Validation: reviewed the changed source sections and confirmed the old duplicate table/class-card markup was removed. No browser test has been run. The report renderer and student portal still need separate-balance labels/data. The student portal must receive its balances through a secure access-code RPC; it must not be given direct table access or infer Spendable Points from the visible transaction-history rows.
+
+No Supabase migration has been applied.
