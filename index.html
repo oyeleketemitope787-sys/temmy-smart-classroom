@@ -1227,7 +1227,7 @@ const studentsHtml=cls.students.map(s=>`
     <input type="checkbox"
            class="game-student-check"
            value="${esc(s.id)}"
-           onchange="document.getElementById('gameSelectionInfo').textContent=document.querySelectorAll('.game-student-check:checked').length+(document.querySelectorAll('.game-student-check:checked').length===1?' student selected':' students selected')">
+           onchange="document.getElementById('gameSelectionInfo').textContent=window.TemmyI18n.t('groups.selectedStudents',{count:document.querySelectorAll('.game-student-check:checked').length})">
     <span class="student-name">${esc(s.name)}</span>
     <strong>${s.points}</strong>
   </label>
@@ -1236,13 +1236,13 @@ const studentsHtml=cls.students.map(s=>`
   openModal(
     window.TemmyI18n?.t('groups.startGameTitle')||'Start Temmy Smart Game',
     `<div class="formrow">
-       <label>Class</label>
+       <label>${window.TemmyI18n?.t('groups.classLabel')||'Class'}</label>
        <input value="${esc(cls.name)}" disabled>
      </div>
      <div class="formrow">
-       <label>'+window.TemmyI18n?.t('groups.gameLabel')+'</label>
+       <label>${window.TemmyI18n?.t('groups.gameLabel')||'Game'}</label>
        <select id="gameSelect" class="select">
-         <option value="grade3-temmy-number-challenge">Temmy Number Challenge</option>
+         <option value="grade3-temmy-number-challenge">${window.TemmyI18n?.t('groups.gameName')||'Temmy Number Challenge'}</option>
        </select>
      </div>
      <div class="small" style="margin:10px 0">
@@ -1251,25 +1251,25 @@ const studentsHtml=cls.students.map(s=>`
      <div class="controls" style="margin:10px 0;gap:8px;flex-wrap:wrap">
   <input
     class="search"
-    placeholder="🔎 Search students..."
+    placeholder="🔎 ${window.TemmyI18n?.t('groups.searchStudents')||'Search students...'}"
     oninput="const q=this.value.toLowerCase().trim();document.querySelectorAll('#gameStudentList .student-row').forEach(row=>row.style.display=(row.dataset.name||'').includes(q)?'':'none')"
   >
   <button
     type="button"
     class="btn"
-onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=true);const n=document.querySelectorAll('.game-student-check:checked').length;document.getElementById('gameSelectionInfo').textContent=n+(n===1?' student selected':' students selected')"  >
+onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=true);const n=document.querySelectorAll('.game-student-check:checked').length;document.getElementById('gameSelectionInfo').textContent=window.TemmyI18n.t('groups.selectedStudents',{count:n})"  >
     ✅ ${window.TemmyI18n?.t('groups.selectAll')}
   </button>
   <button
     type="button"
     class="btn"
-    onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=false);document.getElementById('gameSelectionInfo').textContent='0 students selected'"
+    onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=false);document.getElementById('gameSelectionInfo').textContent=window.TemmyI18n.t('groups.selectedStudents',{count:0})"
   >
     ↩ ${window.TemmyI18n?.t('groups.clearAll')}
   </button>
 </div>
      <div class="selection-info" id="gameSelectionInfo">
-       0 students selected
+       ${window.TemmyI18n?.t('groups.selectedStudents',{count:0})||'0 students selected'}
      </div>
      <div class="student-list" id="gameStudentList">
        ${studentsHtml}
@@ -1361,7 +1361,7 @@ onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked
       document.getElementById('modalSave').textContent=window.TemmyI18n?.t('groups.done')||'Done';
       document.getElementById('modalSave').onclick=closeModal;
     },
-    'Start Smart Game'
+    window.TemmyI18n?.t('groups.startGame')||'Start Smart Game'
   );
 }
   function openCreateActivity(){
