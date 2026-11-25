@@ -9,7 +9,7 @@
     "name": "فصل تيمي الذكي"
   },
   "common": {
-    "language": "اللغة",
+    "language": "لغة الواجهة",
     "english": "الإنجليزية",
     "save": "حفظ",
     "cancel": "إلغاء",
@@ -24,6 +24,10 @@
     "settings": "الإعدادات",
     "dashboard": "لوحة التحكم",
     "logout": "تسجيل الخروج",
-    "languageSaved": "تم حفظ تفضيل اللغة."
+    "languageSaved": "تم حفظ تفضيل اللغة.",
+    "languageDeviceSaved": "يُحفظ تفضيل اللغة على هذا الجهاز.",
+    "languageLoading": "جارٍ تحميل اللغة…",
+    "languageLoadError": "تعذر تحميل هذه اللغة. يُرجى المحاولة مرة أخرى.",
+    "languageServiceUnavailable": "خدمة اللغة غير جاهزة."
   }
 }
