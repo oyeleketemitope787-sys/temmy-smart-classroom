@@ -1021,7 +1021,7 @@ function recordPointAction(reason,deltas,stamp){
 }
 
 async function undoLastPointAction(){
- if(awardLocked){alert('Award Points is locked. Unlock it first.');return;}
+ if(awardLocked){alert(window.TemmyI18n?.t('groups.lockedMessage')||'Award Points is locked. Unlock it first.');return;}
  if(awardBusy)return;
  if(!authSession){alert(window.TemmyI18n?.t('groups.signInTeacher')||'Please sign in as the teacher first.');return;}
 
