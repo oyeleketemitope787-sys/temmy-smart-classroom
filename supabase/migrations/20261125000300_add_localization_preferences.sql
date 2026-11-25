@@ -202,6 +202,10 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 DECLARE v_student uuid; v_class uuid; v_individual text; v_default text;
 BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'Student language access must use the protected server endpoint'
+      USING ERRCODE='42501';
+  END IF;
   IF p_access_code IS NULL OR p_access_code='' THEN
     RAISE EXCEPTION 'Invalid or inactive access code' USING ERRCODE='28000';
   END IF;
@@ -235,6 +239,10 @@ RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 DECLARE v_student uuid; v_class uuid; v_language text;
 BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'Student language access must use the protected server endpoint'
+      USING ERRCODE='42501';
+  END IF;
   IF p_access_code IS NULL OR p_access_code='' THEN
     RAISE EXCEPTION 'Invalid or inactive access code' USING ERRCODE='28000';
   END IF;
@@ -262,8 +270,10 @@ GRANT EXECUTE ON FUNCTION public.get_teacher_interface_language() TO authenticat
 GRANT EXECUTE ON FUNCTION public.set_teacher_interface_language(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_class_default_interface_language(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.set_class_default_interface_language(uuid,text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_student_interface_language(text) TO anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.set_student_interface_language(text,text) TO anon,authenticated;
+REVOKE ALL ON FUNCTION public.get_student_interface_language(text) FROM anon, authenticated;
+REVOKE ALL ON FUNCTION public.set_student_interface_language(text,text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_student_interface_language(text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.set_student_interface_language(text,text) TO service_role;
 
 COMMIT;
 
