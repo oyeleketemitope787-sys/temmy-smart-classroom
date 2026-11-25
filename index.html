@@ -182,7 +182,7 @@ let passwordFlowActive=false;
 </div>
 </section>
 
-<section id="classes" class="hidden"><div class="card"><h2>🏫 My Classes</h2><div class="notice">Create and manage your classes. Your classes and student data are loaded from the production cloud database.</div><button class="btn primary" onclick="openCreateClass()">➕ Create New Class</button><div id="classCards"></div></div></section>
+<section id="classes" class="hidden"><div class="card"><h2>🏫 <span data-i18n="classes.classesTitle">My Classes</span></h2><div class="notice" data-i18n="classes.classesDescription">Create and manage your classes. Your classes and student data are loaded from the production cloud database.</div><button class="btn primary" onclick="openCreateClass()">➕ <span data-i18n="classes.createNewClass">Create New Class</span></button><div id="classCards"></div></div></section>
 
 <section id="market" class="hidden"><div class="controls"><button class="btn primary" onclick="openAddReward()">➕ Create Marketplace Item</button></div><div class="card"><h2>🛒 Marketplace</h2><div class="small">Students spend points earned in the selected class.</div><div id="marketItems" class="market" style="margin-top:16px"></div></div></section>
 
@@ -1398,13 +1398,13 @@ document.addEventListener('click',e=>{if(!e.target.closest('.menu-wrap'))closeAl
 
 function openCreateClass(){
  if(!authSession)return showTab('account');
- openModal('Create New Class',`<div class="formrow"><label>Class name</label><input id="newClass" placeholder="e.g. 8A_1" autofocus></div><div class="formrow"><label>Description (optional)</label><input id="newClassDescription" placeholder="e.g. Mathematics Class"></div>`,async()=>{
+ openModal(window.TemmyI18n?.t('classes.createNewClass')||'Create New Class',`<div class="formrow"><label>${window.TemmyI18n?.t('classes.className')||'Class name'}</label><input id="newClass" placeholder="${window.TemmyI18n?.t('classes.classNamePlaceholder')||'e.g. 8A_1'}" autofocus></div><div class="formrow"><label>${window.TemmyI18n?.t('classes.classDescriptionOptional')||'Description (optional)'}</label><input id="newClassDescription" placeholder="${window.TemmyI18n?.t('classes.classDescriptionPlaceholder')||'e.g. Mathematics Class'}"></div>`,async()=>{
   const name=document.getElementById('newClass').value.trim();
   const description=document.getElementById('newClassDescription').value.trim();
-  if(!name)return alert('Please enter a class name.');
-  if(cloudClasses.some(c=>c.name.toLowerCase()===name.toLowerCase()))return alert('That class already exists.');
+  if(!name)return alert(window.TemmyI18n?.t('classes.enterClassName')||'Please enter a class name.');
+  if(cloudClasses.some(c=>c.name.toLowerCase()===name.toLowerCase()))return alert(window.TemmyI18n?.t('classes.classAlreadyExists')||'That class already exists.');
   const {data:row,error}=await supabaseClient.from('classes').insert({teacher_id:authSession.user.id,name,description:description||null,active:true}).select().single();
-  if(error)return alert('Could not create class: '+error.message);
+  if(error)return alert((window.TemmyI18n?.t('classes.createClassError',{error:error.message})||'Could not create class: '+error.message));
   closeModal();
   await loadCloudClasses();
   data.currentClass=name;
@@ -1415,8 +1415,8 @@ function openCreateClass(){
 function renderClasses(){
  const el=document.getElementById('classCards');
  if(!el)return;
- if(!authSession){el.innerHTML='<div class="notice">Sign in as a teacher to load your cloud classes.</div>';return;}
-  el.innerHTML=cloudClasses.length?cloudClasses.map(c=>{const aggregate=(c.students||[]).reduce((a,s)=>a+(Number(s.aggregatePoints??s.points)||0),0);const spendable=(c.students||[]).reduce((a,s)=>a+(Number(s.spendablePoints)||0),0);return `<div class="class-card"><div class="summary-title"><div><h3>🏫 ${esc(c.name)}</h3><div class="small">${c.students.length} students • ${aggregate} Aggregate Points • ${spendable} Spendable Points</div></div><div class="controls" style="margin:0"><button class="btn primary" onclick="selectClass('${esc(c.name)}')">Open Class</button></div></div></div>`}).join(''):'<div class="empty">No cloud classes yet. Create your first class.</div>';
+ if(!authSession){el.innerHTML='<div class="notice">'+(window.TemmyI18n?.t('classes.signInLoadClasses')||'Sign in as a teacher to load your cloud classes.')+'</div>';return;}
+  el.innerHTML=cloudClasses.length?cloudClasses.map(c=>{const aggregate=(c.students||[]).reduce((a,s)=>a+(Number(s.aggregatePoints??s.points)||0),0);const spendable=(c.students||[]).reduce((a,s)=>a+(Number(s.spendablePoints)||0),0);return `<div class="class-card"><div class="summary-title"><div><h3>🏫 ${esc(c.name)}</h3><div class="small">${window.TemmyI18n?.t('classes.classSummary',{count:c.students.length,aggregate,spendable})||c.students.length+' students • '+aggregate+' Aggregate Points • '+spendable+' Spendable Points'}</div></div><div class="controls" style="margin:0"><button class="btn primary" onclick="selectClass('${esc(c.name)}')">${window.TemmyI18n?.t('classes.openClass')||'Open Class'}</button></div></div></div>`}).join(''):'<div class="empty">'+(window.TemmyI18n?.t('classes.noCloudClasses')||'No cloud classes yet. Create your first class.')+'</div>';
 }
 function selectClass(name){data.currentClass=name;selectedIds=[];renderAll();showTab('students')}
 async function loadCloudClasses(){
@@ -1424,10 +1424,10 @@ async function loadCloudClasses(){
  cloudLoading=true;renderClasses();
 
  const {data:rows,error}=await supabaseClient.from('classes').select('*').eq('teacher_id',authSession.user.id).eq('active',true).order('name');
- if(error){cloudLoading=false;showCloudStatus('Cloud classes could not be loaded: '+error.message,true);return;}
+ if(error){cloudLoading=false;showCloudStatus((window.TemmyI18n?.t('classes.cloudClassesLoadError',{error:error.message})||'Cloud classes could not be loaded: '+error.message),true);return;}
 
  const {data:accountRows,error:accountError}=await supabaseClient.rpc('get_teacher_student_point_accounts');
- if(accountError){cloudLoading=false;showCloudStatus('Classes loaded, but separate point balances could not be loaded: '+accountError.message,true);return;}
+ if(accountError){cloudLoading=false;showCloudStatus((window.TemmyI18n?.t('classes.classesLoadedBalancesError',{error:accountError.message})||'Classes loaded, but separate point balances could not be loaded: '+accountError.message),true);return;}
 
  const accountsByStudent={};
  (accountRows||[]).forEach(a=>{
@@ -1437,7 +1437,7 @@ async function loadCloudClasses(){
  const mapped=[];
  for(const c of (rows||[])){
   const {data:students,error:se}=await supabaseClient.from('students').select('*').eq('class_id',c.id).order('first_name');
-  if(se){cloudLoading=false;showCloudStatus('Class loaded, but students could not be loaded: '+se.message,true);return;}
+  if(se){cloudLoading=false;showCloudStatus((window.TemmyI18n?.t('classes.classLoadedStudentsError',{error:se.message})||'Class loaded, but students could not be loaded: '+se.message),true);return;}
   mapped.push({
    id:c.id,
    name:c.name,
@@ -1464,7 +1464,7 @@ async function loadCloudClasses(){
 
  cloudLoading=false;
  cloudReady=true;
- showCloudStatus('Cloud classes and point balances connected. Points are loaded from Supabase.',false);
+ showCloudStatus(window.TemmyI18n?.t('classes.cloudConnectedStatus')||'Cloud classes and point balances connected. Points are loaded from Supabase.',false);
  renderAll();
  await loadCloudGroups();
  await loadCloudActivities();
