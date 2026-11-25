@@ -237,3 +237,17 @@ The new `get_teacher_student_point_accounts()` RPC:
 Commit: `9e13b824f96f8d09df678eb4575037bb0f2be0da`.
 
 Validation: static SQL review only. The migration has not been executed in PostgreSQL/Supabase. The teacher UI has not yet been switched to this read RPC. The next UI pass must use Aggregate Points for ranking/reward levels and Spendable Points for marketplace selection and purchase affordance; the purchase RPC remains the final authority for affordability.
+
+
+## 14. Teacher class loader and marketplace selector use separate balances — 2026-11-25
+
+Updated `index.html` on `cloud-test`:
+- Replaced the teacher class loader's legacy single-ledger sum with `get_teacher_student_point_accounts()`.
+- Each cloud student now carries `aggregatePoints` and `spendablePoints` separately. The legacy `points` compatibility property is temporarily mapped to Aggregate Points so existing achievement/ranking/award screens continue to use the approved achievement measure while the remaining displays are migrated.
+- Marketplace student selection now shows Spendable Points, while its displayed rank remains based on Aggregate Points.
+- The purchase modal explicitly states that affordability is based on Spendable Points and that Supabase remains authoritative for all-or-nothing purchase validation.
+- Static source scan confirmed the old class-loader aggregation from `point_transactions` and the old marketplace selector display of the single `points` value are gone.
+
+Commit: `cb397c538f26108952638af60f2387e5ee385d83`.
+
+Validation: static source review only. The summary RPC migration is not applied, so the new class loader cannot yet be exercised against the hosted database. Other student/teacher surfaces still need explicit Aggregate/Spendable labels and balances. The marketplace purchase RPC still needs to be updated to deduct Spendable only while preserving its existing request idempotency and locking. No Supabase changes have been made.
