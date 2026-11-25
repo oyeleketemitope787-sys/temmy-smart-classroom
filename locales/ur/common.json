@@ -1,0 +1,29 @@
+{
+  "$meta": {
+    "language": "ur",
+    "namespace": "common",
+    "resourceVersion": 1,
+    "direction": "rtl"
+  },
+  "app": {
+    "name": "ٹیمی اسمارٹ کلاس روم"
+  },
+  "common": {
+    "language": "زبان",
+    "english": "انگریزی",
+    "save": "محفوظ کریں",
+    "cancel": "منسوخ کریں",
+    "close": "بند کریں",
+    "back": "واپس",
+    "refresh": "تازہ کریں",
+    "loading": "لوڈ ہو رہا ہے…",
+    "error": "کچھ غلط ہو گیا۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "yes": "ہاں",
+    "no": "نہیں",
+    "search": "تلاش",
+    "settings": "ترتیبات",
+    "dashboard": "ڈیش بورڈ",
+    "logout": "لاگ آؤٹ",
+    "languageSaved": "زبان کی ترجیح محفوظ ہو گئی۔"
+  }
+}
