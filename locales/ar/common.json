@@ -279,5 +279,25 @@
     "deductSuccessOne": "تم خصم {points} نقطة من {student}.",
     "deductSuccessMany": "تم خصم {points} نقطة من {count} من الطلاب.",
     "selectStudentsPrompt": "حدد الطلاب."
+  },
+  "classes": {
+    "classesTitle": "صفوفي",
+    "classesDescription": "أنشئ صفوفك وأدرها. يتم تحميل الصفوف وبيانات الطلاب من قاعدة بيانات الإنتاج السحابية.",
+    "createNewClass": "إنشاء صف جديد",
+    "className": "اسم الصف",
+    "classNamePlaceholder": "مثال: 8A_1",
+    "classDescriptionOptional": "الوصف (اختياري)",
+    "classDescriptionPlaceholder": "مثال: صف الرياضيات",
+    "enterClassName": "يرجى إدخال اسم الصف.",
+    "classAlreadyExists": "هذا الصف موجود بالفعل.",
+    "createClassError": "تعذر إنشاء الصف: {error}",
+    "signInLoadClasses": "سجّل الدخول كمعلم لتحميل صفوفك السحابية.",
+    "noCloudClasses": "لا توجد صفوف سحابية بعد. أنشئ صفك الأول.",
+    "openClass": "فتح الصف",
+    "classSummary": "{count} من الطلاب • {aggregate} نقطة إجمالية • {spendable} نقطة قابلة للاستخدام",
+    "cloudClassesLoadError": "تعذر تحميل الصفوف السحابية: {error}",
+    "classesLoadedBalancesError": "تم تحميل الصفوف، ولكن تعذر تحميل أرصدة النقاط المنفصلة: {error}",
+    "classLoadedStudentsError": "تم تحميل الصف، ولكن تعذر تحميل الطلاب: {error}",
+    "cloudConnectedStatus": "تم الاتصال بالصفوف السحابية وأرصدة النقاط. يتم تحميل النقاط من Supabase."
   }
 }
