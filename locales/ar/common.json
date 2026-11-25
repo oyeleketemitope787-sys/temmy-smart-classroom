@@ -29,5 +29,11 @@
     "languageLoading": "جارٍ تحميل اللغة…",
     "languageLoadError": "تعذر تحميل هذه اللغة. يُرجى المحاولة مرة أخرى.",
     "languageServiceUnavailable": "خدمة اللغة غير جاهزة."
+  },
+  "navigation": {
+    "students": "الطلاب",
+    "classes": "صفوفي",
+    "groups": "المجموعات",
+    "activities": "الأنشطة"
   }
 }
