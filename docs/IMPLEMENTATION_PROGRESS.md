@@ -705,3 +705,25 @@ Expanded the localization design on cloud-test (commit 3ea34e440cd8ec1d870cae18d
 No SQL, application code, redirect configuration, translation files or user preference data were changed in this review. GitHub main and production Supabase remain untouched.
 
 **Next:** complete the exact preference RPC contract and schema naming/validation specification, then perform a final migration preflight against the isolated test project's identity, grants and current schema before writing SQL.
+
+## 22. Global localization preference RPC and schema contract documented — 2026-11-25
+
+Fetched the current localization design and implementation-progress files from GitHub `cloud-test`, then consolidated the approved language-preference boundary into a concrete API/schema specification.
+
+Documented:
+- Six proposed nullable preference fields: teacher/student individual interface language, class default interface language, and teacher/student/class IANA time zone.
+- A non-enum language registry with the nine approved BCP 47 tags and English fallback.
+- Exact six language RPC names, parameters, return contracts, caller roles and ownership/identity rules.
+- Student identity derivation through the existing `verify_student_access_code(text)` helper; no client-supplied student ID.
+- Teacher identity through `auth.uid()`; class default writes require server-side class ownership.
+- Empty search path, schema-qualified references, minimal return data, explicit EXECUTE grants and no direct preference-table access for browser roles.
+- A separate time-zone RPC contract is deliberately not folded into the approved language RPCs; its exact API boundary remains to be reviewed.
+- A pre-migration checklist covering schema, grants, RLS, helper function ACLs, registry collisions, roles and test-project identity.
+
+This is documentation/design only. No database field, registry table, RPC, SQL migration, application code or preference value has been created or changed. No SQL was run and no Supabase project was modified.
+
+Commits on `cloud-test`:
+- Localization contract: 072351a480fde95cde9d42b5eda779e7715d1f57
+- Progress record: pending
+
+Next: perform the final read-only test-project preflight against the exact current schema and function ACLs, then draft an additive migration for review. Do not apply it until the full SQL is reviewed and explicitly approved. GitHub `main` and production Supabase remain untouched.
