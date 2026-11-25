@@ -354,3 +354,85 @@ A user's explicit preference controls personal presentation. A class default con
 BCP 47 interface language/locale and IANA time zone are separate preferences. Do not infer a time zone from a language, country, IP address or curriculum. Date/number formatting uses the selected interface locale; date/time conversion uses the resolved time zone.
 
 No time-zone columns, UI, scheduling changes or database functions have been implemented by this design section.
+
+## 15. Preference storage and RPC contract — design specification (25 November 2026)
+
+This section consolidates the approved language-preference API boundary and the approved time-zone preference scope into a concrete, reviewable design. It is a design specification only. It does not create columns, tables, functions, migrations or application code.
+
+### 15.1 Proposed additive preference fields
+
+| Table | Field | Type | NULL meaning |
+|---|---|---|---|
+| `teacher_profiles` | `preferred_interface_language` | `text` | Use platform fallback |
+| `students` | `preferred_interface_language` | `text` | Inherit class default, then platform fallback |
+| `classes` | `default_interface_language` | `text` | Use platform fallback for students without an individual choice |
+| `teacher_profiles` | `preferred_time_zone` | `text` | No explicit personal zone |
+| `students` | `preferred_time_zone` | `text` | No explicit personal zone |
+| `classes` | `default_time_zone` | `text` | No explicit class scheduling zone |
+
+All six fields are nullable and additive. Language values are BCP 47 tags; time-zone values are IANA identifiers. Do not use enums, translated labels, numeric UTC offsets, or a credential/access-code field as the preference owner. Do not add default values that make an inherited preference look explicitly selected.
+
+The three language fields and three time-zone fields are separate concerns. The approved first-stage RPC boundary below is specifically for language preferences. Time-zone persistence must use a separately reviewed API contract; do not silently expand the approved language RPCs to write time zones.
+
+### 15.2 Language registry and server validation
+
+Use a non-enum registry as the authoritative server-side allowlist. Recommended table: `public.interface_languages`, with:
+- `language_tag text PRIMARY KEY` (BCP 47 tag);
+- `native_name text NOT NULL`;
+- `text_direction text NOT NULL CHECK (text_direction IN ('ltr','rtl'))`;
+- `enabled boolean NOT NULL DEFAULT true`;
+- optional resource-coverage metadata kept distinct from user preferences.
+
+Seed the initially approved tags: `en`, `ar`, `fr`, `es`, `pt`, `hi`, `ur`, `sw`, `zh-Hans`. English remains the platform fallback (`en`). Arabic and Urdu are RTL; the other initial languages are LTR. Registry changes are data/configuration changes, not schema enum changes. A tag must be enabled before a preference RPC accepts it. A missing translation for an individual key still falls back to English; registry membership is not a claim of full translation coverage.
+
+A setter accepts either NULL (clear the explicit preference) or an exact enabled registry tag. Reject empty strings, whitespace-padded tags, unsupported tags and disabled tags; do not silently normalize a malformed tag into another language.
+
+### 15.3 Language RPC surface
+
+Use six narrow RPCs, all `SECURITY DEFINER`, with `SET search_path = ''`, schema-qualified references, minimal results, and explicit EXECUTE grants:
+
+| RPC | Parameters | Result / behaviour | Caller |
+|---|---|---|---|
+| `get_teacher_interface_language()` | none | Teacher's stored nullable individual language | `authenticated` |
+| `set_teacher_interface_language(text)` | `p_language_tag` nullable | Set/clear caller's own preference; return stored nullable tag | `authenticated` |
+| `get_class_default_interface_language(uuid)` | `p_class_id` | Class's stored nullable default; verify caller owns class | `authenticated` |
+| `set_class_default_interface_language(uuid,text)` | `p_class_id`, nullable `p_language_tag` | Set/clear class default only after ownership check; return stored nullable tag | `authenticated` |
+| `get_student_interface_language(text)` | `p_access_code` | Return only individual tag, class-default tag, effective tag and source code | `anon`, `authenticated` |
+| `set_student_interface_language(text,text)` | `p_access_code`, nullable `p_language_tag` | Set/clear verified student's individual preference; return stored nullable tag | `anon`, `authenticated` |
+
+Student getter result is a single row with four values: `individual_language`, `class_default_language`, `effective_language`, and `preference_source` (`individual`, `class`, or `platform`). Effective resolution is individual -> class -> `en`. The student setter changes only the individual field; setting NULL restores inheritance. Do not return student IDs, access-code hashes, class membership details, profile fields or any unrelated data.
+
+The student RPCs must call the existing `verify_student_access_code(text)` helper internally, derive the permanent student ID and class from its verified result, and reject invalid/inactive access. Never accept a browser-supplied student ID. Do not change the existing login/verification function definitions or grants as part of this work.
+
+Teacher RPC identity comes only from `auth.uid()`; require the matching `teacher_profiles` row. Class RPCs must verify `classes.teacher_id = auth.uid()` and return no information for a class not owned by the caller. The class ID is a lookup key, not proof of authority.
+
+Revoke default `PUBLIC` execution. Grant teacher/class functions only to `authenticated`; grant student access-code functions only to the portal roles actually required (`anon` and `authenticated`). Do not grant direct browser table access to the registry or preference columns merely to support these RPCs. Review function ownership, helper execution rights, RLS bypass behaviour and exact role grants before SQL is drafted.
+
+### 15.4 Time-zone validation and separate API boundary
+
+The three proposed time-zone fields store IANA names such as `Asia/Muscat`, `Europe/London` and `Africa/Lagos`. Validate a submitted value against the PostgreSQL IANA time-zone catalog (for example, `pg_timezone_names`) and reject abbreviations, fixed offsets and unknown names. NULL clears an explicit preference. The application may suggest the device's detected IANA zone, but persistence requires user confirmation.
+
+The approved policy requires individual teacher/student preferences and a class default. The precise read/write RPC names, student access-code handling and whether time-zone preferences are exposed through dedicated RPCs or a carefully reviewed combined settings API are not yet approved. Keep them out of the language RPC signatures above until that separate contract is agreed. Any eventual student time-zone RPC must derive identity from the verified access code, and any class time-zone write must enforce teacher ownership.
+
+### 15.5 Resolution and consistency invariants
+
+- Teacher interface language: individual -> platform fallback. A class default never overrides the teacher's choice.
+- Student interface language: individual -> class default -> platform fallback.
+- Teacher/student personal time display: explicit individual IANA preference; if absent, apply the documented class-context rule where applicable, then device suggestion without persisting it.
+- Class-wide schedule display: class IANA default; otherwise viewer's explicit zone; otherwise device suggestion. Label class time when showing a class schedule in a personal-time view.
+- Language and time zone are independent; never infer one from the other, country, IP address or curriculum.
+- Changing either display preference must not alter server timestamps, deadlines, expiry instants, grading, points, or an already-running countdown.
+- A missing/disabled stored language is ignored safely and resolution continues through the fallback chain. Invalid stored time-zone data must fall back safely and be surfaced for repair; it must never shift the underlying instant.
+
+### 15.6 Pre-migration verification checklist
+
+Before preparing or applying SQL, re-inspect the exact test project's schema and verify:
+1. Exact columns, types, nullability, constraints, FKs and existing indexes on `teacher_profiles`, `students` and `classes`.
+2. Current table grants and RLS policies, including column-level privileges.
+3. Exact definitions, owners, SECURITY DEFINER status, search paths and ACLs of `verify_student_access_code(text)` and any helper it invokes.
+4. Whether `interface_languages` or an equivalent registry already exists; do not create a duplicate.
+5. Existing function names/signatures to avoid collisions.
+6. PostgreSQL role availability and the actual Supabase API roles used by the portals.
+7. Test-project identity before any write; production project and GitHub `main` remain out of scope.
+
+Only after these checks should an additive migration be drafted. The migration must be reviewed as a complete unit, and the user must explicitly approve applying it to the isolated test project. No migration is authorised by this design document.
