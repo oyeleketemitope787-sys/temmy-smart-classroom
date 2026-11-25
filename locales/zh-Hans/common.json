@@ -1,0 +1,29 @@
+{
+  "$meta": {
+    "language": "zh-Hans",
+    "namespace": "common",
+    "resourceVersion": 1,
+    "direction": "ltr"
+  },
+  "app": {
+    "name": "Temmy 智慧课堂"
+  },
+  "common": {
+    "language": "语言",
+    "english": "英语",
+    "save": "保存",
+    "cancel": "取消",
+    "close": "关闭",
+    "back": "返回",
+    "refresh": "刷新",
+    "loading": "正在加载…",
+    "error": "发生错误。请重试。",
+    "yes": "是",
+    "no": "否",
+    "search": "搜索",
+    "settings": "设置",
+    "dashboard": "仪表板",
+    "logout": "退出登录",
+    "languageSaved": "语言偏好已保存。"
+  }
+}
