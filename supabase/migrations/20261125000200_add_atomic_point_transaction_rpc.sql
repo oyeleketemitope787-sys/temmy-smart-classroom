@@ -116,7 +116,7 @@ begin
     from jsonb_to_recordset(p_entries) as e(student_id uuid)
   ) target on target.student_id = s.id
   where s.class_id = p_class_id
-    and coalesce(s.active, true) = true
+    and s.active IS TRUE
   order by s.id
   for update of s;
 
