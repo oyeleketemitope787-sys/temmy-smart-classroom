@@ -314,3 +314,43 @@ Track coverage by namespace and key count. Do not block the whole application fr
 Implement the resource loader and key conventions first, then complete the shared `common` namespace in English and Arabic as the first RTL validation pair. Add the remaining approved languages incrementally, with coverage reported per namespace. This is a sequencing recommendation, not a claim that Arabic or any other language is already translated.
 
 No translation files, parser dependency, application code or UI have been added by this design section.
+
+## 14. Time-zone resolution and display contract — recommended implementation detail (25 November 2026)
+
+This section translates the approved IANA time-zone policy into deterministic display rules. It does not change the authoritative server-time policy.
+
+### 14.1 Resolve by purpose, not by one global time zone
+
+Use the following rules consistently:
+
+| Display context | Time-zone resolution |
+|---|---|
+| Teacher's personal dashboard, account history and personal activity timestamps | Teacher's explicit time-zone preference; otherwise the relevant class default when the item is class-scoped; otherwise the device zone as an unpersisted display suggestion |
+| Student's personal dashboard, personal history and personal activity timestamps | Student's explicit time-zone preference; otherwise the relevant class default; otherwise the device zone as an unpersisted display suggestion |
+| Class timetable, class event, class session and class-wide schedule | Class default time zone; if none exists, the viewing user's explicit preference; otherwise the device zone as an unpersisted display suggestion |
+| Activity deadline and countdown | The immutable server deadline instant is authoritative. Display it in the student's personal time zone, and identify the class time zone as contextual metadata where useful. Countdown is calculated from server time/deadline, never by converting or recalculating the deadline. |
+| Audit events and points ledger | Preserve the server timestamp as an instant; display in the viewer's personal preference, with an explicit time-zone label when ambiguity matters. |
+
+A user's explicit preference controls personal presentation. A class default controls the interpretation and presentation of class-wide schedules. Do not silently replace one with the other: when a class schedule is shown in a personal view, label the class time zone (for example, “Class time — Asia/Muscat”) or offer a clearly labelled personal-time equivalent.
+
+### 14.2 Missing preferences and device suggestions
+
+- A valid explicit IANA preference is used first according to the context table.
+- If a class-scoped view has no class time zone, use the viewer's explicit preference.
+- If no explicit preference applies, the browser/device IANA zone may be used for initial display and suggested in settings; do not persist it until the user confirms.
+- If device-zone detection fails or returns an unsupported value, use UTC as the deterministic safe display fallback and show the zone label. UTC fallback is a presentation fallback only; it does not change stored instants.
+- Never store a numeric offset such as UTC+4 as the preference. Validate identifiers against the runtime/server IANA time-zone database.
+
+### 14.3 Scheduling and daylight-saving safety
+
+- A scheduled local wall-clock time must be stored with its IANA time-zone identifier and the resolved UTC instant.
+- For recurring schedules, retain the intended local time, recurrence rule and IANA zone so daylight-saving transitions do not shift the intended local schedule.
+- For one-off deadlines, persist the resolved instant; a later preference or time-zone database change must not move it.
+- When a local time is ambiguous or nonexistent during a daylight-saving transition, the scheduling workflow must explicitly resolve the ambiguity (or reject and request another time); do not silently guess.
+- Server timestamps, activity start/deadline/expiry, submission cutoffs, grading and points events remain authoritative.
+
+### 14.4 Locale and time zone are separate
+
+BCP 47 interface language/locale and IANA time zone are separate preferences. Do not infer a time zone from a language, country, IP address or curriculum. Date/number formatting uses the selected interface locale; date/time conversion uses the resolved time zone.
+
+No time-zone columns, UI, scheduling changes or database functions have been implemented by this design section.
