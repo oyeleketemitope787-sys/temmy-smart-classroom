@@ -72,8 +72,8 @@
     "description": "Create and manage cloud groups within each class for collaborative learning.",
     "createGroup": "Create Group",
     "refresh": "Refresh",
-    "signIn": "Sign in as a teacher to manage your cloud groups.",
-    "createClass": "Create a class first before creating student groups.",
+    "signIn": "Sign in as a teacher to manage cloud activities.",
+    "createClass": "Create a class first before creating an activity.",
     "noGroups": "No groups yet.",
     "firstGroup": "Create your first group for this class.",
     "noDescription": "No description",
@@ -85,6 +85,20 @@
     "activitiesTitle": "Learning Activities",
     "activitiesDesc": "Create and manage Live Tasks and Temmy Smart Games for your classes.",
     "createTask": "Create Live Task",
-    "startGame": "Start Smart Game"
+    "startGame": "Start Smart Game",
+    "none": "No activities yet.",
+    "first": "Create your first Live Task, Live Assignment or Live Quiz.",
+    "activity": "Activity",
+    "liveTask": "Live Task",
+    "live": "LIVE",
+    "closed": "CLOSED",
+    "draft": "DRAFT",
+    "noInstructions": "No instructions provided.",
+    "points": "points",
+    "available": "available",
+    "launch": "Launch",
+    "close": "Close",
+    "monitor": "Monitor",
+    "view": "View"
   }
 }
