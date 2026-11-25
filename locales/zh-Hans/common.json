@@ -9,7 +9,7 @@
     "name": "Temmy 智慧课堂"
   },
   "common": {
-    "language": "语言",
+    "language": "界面语言",
     "english": "英语",
     "save": "保存",
     "cancel": "取消",
@@ -24,6 +24,10 @@
     "settings": "设置",
     "dashboard": "仪表板",
     "logout": "退出登录",
-    "languageSaved": "语言偏好已保存。"
+    "languageSaved": "语言偏好已保存。",
+    "languageDeviceSaved": "语言偏好设置保存在此设备上。",
+    "languageLoading": "正在加载语言…",
+    "languageLoadError": "无法加载该语言。请重试。",
+    "languageServiceUnavailable": "语言服务尚未就绪。"
   }
 }
