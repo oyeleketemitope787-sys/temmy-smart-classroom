@@ -34,6 +34,14 @@
     "students": "Alunos",
     "classes": "Minhas turmas",
     "groups": "Grupos",
-    "activities": "Atividades"
+    "activities": "Atividades",
+    "awardPoints": "Atribuir pontos",
+    "marketplace": "Loja",
+    "purchases": "Compras",
+    "reports": "Relatórios",
+    "studentHistory": "Histórico do aluno",
+    "studentPortal": "Portal do aluno",
+    "teacherAccount": "Conta do professor",
+    "messages": "Mensagens"
   }
 }
