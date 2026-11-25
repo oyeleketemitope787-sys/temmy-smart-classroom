@@ -34,6 +34,14 @@
     "students": "学生",
     "classes": "我的班级",
     "groups": "小组",
-    "activities": "活动"
+    "activities": "活动",
+    "awardPoints": "奖励积分",
+    "marketplace": "奖励商城",
+    "purchases": "购买记录",
+    "reports": "报告",
+    "studentHistory": "学生记录",
+    "studentPortal": "学生门户",
+    "teacherAccount": "教师账户",
+    "messages": "消息"
   }
 }
