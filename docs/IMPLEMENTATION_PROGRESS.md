@@ -780,3 +780,10 @@ Following inspection of student access table grants, RLS, policies, login/verifi
 - Commit: `851dca5d797d9b70e717ef433fefacd47a5fd326`.
 
 Architecture documentation records the required server-side endpoint and persistent/distributed rate limiting. No Edge Function has been created or deployed yet. No database migration has been executed. Existing student login/verifier functions and browser login flow remain unchanged. Production remains untouched.
+
+
+### Student Edge Function design — 2026-11-25
+
+Added `docs/ADR_STUDENT_LOCALIZATION_EDGE_FUNCTION.md` (commit `23b99da1998fabad541065d0b3316100a138b4af`). It defines the proposed student-language endpoint contract, generic failure responses, server-only secrets, CORS/request validation, test cases, rollout gates and a shared atomic rate limiter. Upstash Redis is proposed subject to explicit user approval; a Postgres-backed atomic limiter remains an alternative. Example thresholds are proposals only.
+
+No function source, credentials, Redis resources, deployment or database execution has been created. Production remains untouched.
