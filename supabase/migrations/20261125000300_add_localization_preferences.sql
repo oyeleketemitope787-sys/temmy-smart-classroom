@@ -16,6 +16,10 @@ BEGIN
   IF to_regclass('public.interface_languages') IS NOT NULL THEN
     RAISE EXCEPTION 'public.interface_languages already exists; inspect before proceeding';
   END IF;
+  IF to_regprocedure('public.guard_localization_preference_columns()') IS NOT NULL
+     OR to_regprocedure('public.assert_enabled_interface_language(text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'One or more internal localization helper functions already exist';
+  END IF;
   IF to_regprocedure('public.get_teacher_interface_language()') IS NOT NULL
      OR to_regprocedure('public.set_teacher_interface_language(text)') IS NOT NULL
      OR to_regprocedure('public.get_class_default_interface_language(uuid)') IS NOT NULL
