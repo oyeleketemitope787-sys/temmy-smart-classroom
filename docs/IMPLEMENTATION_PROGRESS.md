@@ -544,3 +544,26 @@ Prepare the detailed additive schema and RPC blueprint, including:
 10. Compatibility and regression tests for all historical records and legacy RPC callers.
 
 No activity schema or frontend changes were made in this inspection pass. All findings are read-only. Games remains deferred under `docs/GAME_SYSTEM_AUDIT.md`. GitHub `main` and production remain untouched.
+
+## 24. Global Temmy Smart Classroom direction confirmed — 2026-11-25
+
+The user explicitly confirmed that Temmy Smart Classroom is a global, all-subject education platform, not a Mathematics-only product and not restricted to one country or curriculum.
+
+Product principles to carry into all future design and development:
+- Support teaching and learning across all subjects and disciplines.
+- Design for teachers and learners in different countries and education systems.
+- Allow each teacher to select a preferred interface language. Language choice must be a core product capability, not a later visual patch.
+- Keep interface language separate from educational content language: teachers may operate the platform in one language and create/deliver content in another.
+- Design all UI strings, validation, notifications, accessibility labels and teacher/student workflows for localization.
+- Use Unicode-safe storage/rendering and support mixed scripts, including right-to-left languages.
+- Localize dates, times, numbers and decimal formats; keep server timestamps and timing/scoring authoritative.
+- Do not hard-code assumptions about a single curriculum, grade naming system, date format, time zone, currency or school-week pattern.
+- Use stable language-neutral codes for persisted types/statuses; translate display labels in the interface.
+- Provide appropriate user-level language preferences, sensible school/class defaults and fallback behaviour when a translation is unavailable.
+- Initial language list and rollout order remain to be decided; do not assume them.
+
+These are platform-wide principles and apply to Live Activity, teacher/student portals, games, reporting, settings and future modules. They do not change the current approved Live Activity question formats or interface layout.
+
+Updated `docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` with the global product direction and specific localization/internationalization requirements for Live Activity.
+
+**Next:** incorporate these requirements into the detailed Live Activity database/API design and establish reusable localization architecture before building UI changes. No code or database schema has been changed by this documentation update. GitHub `main` and production remain untouched.
