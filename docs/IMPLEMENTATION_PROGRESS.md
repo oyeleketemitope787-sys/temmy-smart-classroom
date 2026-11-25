@@ -220,3 +220,20 @@ Validation status:
 - Activity score record updates and point RPC calls remain two sequential requests; a later hardening step should make score finalisation and its point delta one database transaction to remove any ambiguous network-failure window.
 
 Next: implement a controlled server-side account-summary read for teacher/student views, then migrate the UI to display Aggregate and Spendable separately. In parallel, retrieve the full current `purchase_marketplace_reward(uuid,uuid,uuid[])` definition before preparing its replacement. Do not run either migration in Supabase yet.
+
+
+## 13. Controlled teacher balance-summary RPC prepared — 2026-11-25
+
+Added `supabase/migrations/20261125000300_add_teacher_point_account_summary_rpc.sql` on `cloud-test`.
+
+The new `get_teacher_student_point_accounts()` RPC:
+- Returns class ID, student ID, Aggregate Points and Spendable Points as separate values.
+- Is SECURITY DEFINER with an empty search path.
+- Returns only active students in active classes owned by the authenticated teacher.
+- Uses zero defaults for a student account row not yet created; the atomic write RPC will initialise that account on the first point transaction.
+- Revokes execution from PUBLIC and anon and grants it to authenticated users only.
+- Does not grant direct browser access to `student_point_accounts`.
+
+Commit: `9e13b824f96f8d09df678eb4575037bb0f2be0da`.
+
+Validation: static SQL review only. The migration has not been executed in PostgreSQL/Supabase. The teacher UI has not yet been switched to this read RPC. The next UI pass must use Aggregate Points for ranking/reward levels and Spendable Points for marketplace selection and purchase affordance; the purchase RPC remains the final authority for affordability.
