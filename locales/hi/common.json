@@ -9,7 +9,7 @@
     "name": "टेमी स्मार्ट क्लासरूम"
   },
   "common": {
-    "language": "भाषा",
+    "language": "इंटरफ़ेस भाषा",
     "english": "अंग्रेज़ी",
     "save": "सहेजें",
     "cancel": "रद्द करें",
@@ -24,6 +24,10 @@
     "settings": "सेटिंग्स",
     "dashboard": "डैशबोर्ड",
     "logout": "लॉग आउट",
-    "languageSaved": "भाषा की प्राथमिकता सहेजी गई।"
+    "languageSaved": "भाषा की प्राथमिकता सहेजी गई।",
+    "languageDeviceSaved": "भाषा की प्राथमिकता इस डिवाइस पर सहेजी जाती है।",
+    "languageLoading": "भाषा लोड हो रही है…",
+    "languageLoadError": "यह भाषा लोड नहीं हो सकी। कृपया फिर से प्रयास करें।",
+    "languageServiceUnavailable": "भाषा सेवा अभी तैयार नहीं है।"
   }
 }
