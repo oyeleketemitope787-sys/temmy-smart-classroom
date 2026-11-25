@@ -273,6 +273,11 @@
     "recoveryNotice": "प्रोडक्शन में पासवर्ड पुनर्प्राप्त करने के लिए पंजीकृत शिक्षक ईमेल का उपयोग करें।",
     "pinRecovery": "PIN केवल सुरक्षित शिक्षक-खाता सत्यापन के बाद पुनर्प्राप्त किया जा सकता है।",
     "pinExposed": "PIN उजागर होने पर शिक्षक इसे Teacher Account → Security & Account Controls से बदल सकते हैं।",
-    "pinSecurity": "इससे विद्यार्थी शिक्षक की सुरक्षा जानकारी पुनर्प्राप्त या बदल नहीं सकते।"
+    "pinSecurity": "इससे विद्यार्थी शिक्षक की सुरक्षा जानकारी पुनर्प्राप्त या बदल नहीं सकते।",
+    "awardSuccessOne": "{student} को {points} अंक दिए गए।",
+    "awardSuccessMany": "{count} विद्यार्थियों को {points} अंक दिए गए।",
+    "deductSuccessOne": "{student} से {points} अंक घटाए गए।",
+    "deductSuccessMany": "{count} विद्यार्थियों से {points} अंक घटाए गए।",
+    "selectStudentsPrompt": "विद्यार्थियों का चयन करें।"
   }
 }
