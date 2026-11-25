@@ -29,5 +29,11 @@
     "languageLoading": "زبان لوڈ ہو رہی ہے…",
     "languageLoadError": "یہ زبان لوڈ نہیں ہو سکی۔ براہِ کرم دوبارہ کوشش کریں۔",
     "languageServiceUnavailable": "زبان کی سروس ابھی تیار نہیں ہے۔"
+  },
+  "navigation": {
+    "students": "طلبہ",
+    "classes": "میری جماعتیں",
+    "groups": "گروپس",
+    "activities": "سرگرمیاں"
   }
 }
