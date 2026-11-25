@@ -355,3 +355,27 @@ Review findings still requiring execution-based verification:
 - The activity score update and point-account RPC are separate browser requests and are not yet a single atomic transaction.
 
 No migration has been applied to the hosted Supabase project. Production `main` remains untouched.
+
+
+## 20. Five points migrations applied to isolated Supabase test project — 2026-11-25
+
+The user confirmed the separate Supabase project `temmy-smart-classroom-test` is healthy and used its SQL Editor for the five points migrations. The project dashboard's branch selector displays `main` with a `PRODUCTION` label, but the Supabase project itself is the separately named test project; the live production project was not selected or modified.
+
+Before migration execution, read-only checks confirmed the test project contains the expected baseline dataset:
+- 8 students, 1 class, 2 teacher profiles.
+- 242 point transactions, 6 purchases, 2 marketplace rewards, 3 class activities, 2 student activity records and 4 marketplace purchase requests.
+- Per-student Aggregate/Spendable opening balances exactly matched the prior reconciliation; all Spendable balances were non-negative.
+- The only student with purchases had 6 purchase rows / 210 points and 6 marketplace deduction transactions / 210 points; difference = 0.
+
+The user then ran all five migrations successfully in `temmy-smart-classroom-test` (Supabase returned “Success. No rows returned” for each):
+1. `20261125000100_create_student_point_accounts.sql` — account table and historical backfill. Post-migration query returned all 8 expected student balances, matching the pre-migration ledger calculation.
+2. `20261125000200_add_atomic_point_transaction_rpc.sql` — atomic teacher point transaction RPC and idempotency table. A follow-up catalog check confirmed SECURITY DEFINER, empty search path, authenticated EXECUTE and no anon EXECUTE.
+3. `20261125000300_add_teacher_point_account_summary_rpc.sql` — teacher summary RPC. Catalog/function-definition check confirmed SECURITY DEFINER, STABLE, empty search path, authenticated EXECUTE, no anon EXECUTE, and active teacher-owned class/student filtering.
+4. `20261125000400_update_marketplace_purchase_spendable_account.sql` — marketplace RPC update. Catalog/function-definition check confirmed SECURITY DEFINER, empty search path, authenticated EXECUTE and no anon EXECUTE; inspected definition deducts Spendable only.
+5. `20261125000500_add_student_point_account_summary_rpc.sql` — access-code student balance RPC. Catalog check confirmed SECURITY DEFINER, STABLE, empty search path, and EXECUTE for anon/authenticated as intentionally required by the student portal.
+
+A small hardening edit was also made on `cloud-test` to the atomic RPC migration: JSON input array type and empty-array validation are now separate IF checks. This avoids relying on SQL boolean evaluation order when handling malformed JSON. The revised migration was used for the test-project application. Commit: `ccdf251` (verify exact full SHA from repository history if needed).
+
+**Current verification boundary:** migration application, opening-balance reconciliation and function catalog/definition checks have passed. Actual behavioural tests have NOT yet been run. Still required: real access-code ownership test; direct table privilege denial; teacher-scope RPC test under authenticated identity; award/negative/undo and idempotency tests; purchase Spendable-only, insufficient-funds rollback and retry tests; account-to-ledger reconciliation after test transactions; ideally concurrent award/purchase tests using separate sessions. Browser integration of teacher/student UI against this test project is also outstanding.
+
+No migration has been applied to the separate live production Supabase project. Do not deploy or alter production without explicit approval. The repository working branch remains `cloud-test`; production Git branch `main` remains untouched.
