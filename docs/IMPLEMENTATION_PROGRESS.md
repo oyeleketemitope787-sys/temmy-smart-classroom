@@ -109,4 +109,5 @@ Inspect the complete existing Supabase schema and the relevant current activity/
 - Commit: `e254e21b0edf313c0bf202febbd557372994e352`.
 - No database migration or live data change has been applied.
 - The separate Aggregate/Spendable ledger cannot safely be migrated from repository code alone: the hosted schema and existing marketplace purchase deduction function need read-only inspection first. Known existing objects include `students`, `point_transactions`, `purchases`, `marketplace_rewards`; `point_transactions` currently records a single signed `points` value. Existing historical purchases must not be double-counted or silently converted.
-- Next: obtain exact live definitions for the relevant tables, policies, triggers and `purchase_marketplace_reward`; then write a reviewed, additive migration and server-side atomic RPCs. Keep `main` untouched.
+- Added read-only schema inspection script: `supabase/preflight_points_and_leadership.sql` (commit `8792bd611dc8b15138041aefd7e68551a7786ded`). It retrieves table columns, constraints, RLS policies, triggers and function bodies for points, marketplace, activity and leadership objects. It makes no changes.
+- Next: run that preflight in the Supabase SQL Editor and use its results to write a reviewed, additive migration and server-side atomic RPCs. Keep `main` untouched.
