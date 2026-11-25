@@ -43,5 +43,28 @@
     "studentPortal": "विद्यार्थी पोर्टल",
     "teacherAccount": "शिक्षक खाता",
     "messages": "संदेश"
+  },
+  "students": {
+    "addStudent": "विद्यार्थी जोड़ें",
+    "awardPoints": "अंक दें",
+    "exportData": "डेटा निर्यात करें",
+    "awardPointsLink": "अंक दें",
+    "leaderboard": "विद्यार्थी क्रम-सूची",
+    "rank": "स्थान",
+    "student": "विद्यार्थी",
+    "aggregatePoints": "कुल अंक",
+    "spendablePoints": "खर्च करने योग्य अंक",
+    "status": "स्थिति",
+    "classSummary": "कक्षा सारांश",
+    "classAggregatePoints": "कक्षा के कुल अंक",
+    "classSpendablePoints": "कक्षा के खर्च करने योग्य अंक",
+    "studentsCount": "विद्यार्थी",
+    "averageAggregatePoints": "औसत कुल अंक",
+    "rewardLevelProgress": "पुरस्कार स्तर की प्रगति",
+    "bronze": "कांस्य",
+    "silver": "रजत",
+    "gold": "स्वर्ण",
+    "champion": "चैंपियन",
+    "points": "अंक"
   }
 }
