@@ -46,9 +46,9 @@ let passwordFlowActive=false;
 <div style="margin-top:10px;font-size:12px;opacity:.85">STABLE CLASSROOM BUILD • V8.9.2 TEACHER ACTIVITY MONITORING • CLOUD HISTORY FIX • CLEAN BUILD</div></header>
 <div class="wrap">
 <nav class="nav">
-<button id="studentsTab" class="active" onclick="showTab('students')">🧑‍🎓 Students</button>
-<button id="classesTab" onclick="showTab('classes')">🏫 My Classes</button><button id="groupsTab" onclick="showTab('groups')">👥 Groups</button>
-<button id="activitiesTab" onclick="showTab('activities')">📚 Activities</button>
+<button id="studentsTab" class="active" onclick="showTab('students')">🧑‍🎓 <span data-i18n="navigation.students">Students</span></button>
+<button id="classesTab" onclick="showTab('classes')">🏫 <span data-i18n="navigation.classes">My Classes</span></button><button id="groupsTab" onclick="showTab('groups')">👥 <span data-i18n="navigation.groups">Groups</span></button>
+<button id="activitiesTab" onclick="showTab('activities')">📚 <span data-i18n="navigation.activities">Activities</span></button>
 <button id="awardTab" onclick="showTab('award')">⭐ Award Points</button>
 <button id="marketTab" onclick="showTab('market')">🛒 Marketplace</button>
 <button id="purchasesTab" onclick="showTab('purchases')">📜 Purchases</button>
@@ -2544,11 +2544,11 @@ window.addEventListener('DOMContentLoaded',()=>{initCloudTeacher();});
     const status=document.getElementById('interfaceLanguageStatus');
     if(!api)return;
     if(select)select.value=api.getLanguage();
-    if(label){
-      label.textContent=api.t('common.language');
-      if(select)select.setAttribute('aria-label',api.t('common.language'));
-    }
-    if(status)status.textContent=api.t('common.languageDeviceSaved');
+    document.querySelectorAll('[data-i18n]').forEach(function(element){
+      const key=element.getAttribute('data-i18n');
+      element.textContent=api.t(key);
+    });
+    if(select)select.setAttribute('aria-label',api.t('common.language'));
   }
   document.addEventListener('change',async function(event){
     if(event.target?.id!=='interfaceLanguageSelect')return;
