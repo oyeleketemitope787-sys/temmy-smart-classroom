@@ -744,3 +744,19 @@ Added `supabase/preflight_localization_preferences.sql` on `cloud-test`. The scr
 Commit: `b40e6d8b5e4f57edca94748d68ad84e91a79c8d2`.
 
 The preflight has not been run. It must be run only after confirming the SQL Editor is connected to the separately named `temmy-smart-classroom-test` project. No database write, migration, preference field or RPC has been created. GitHub `main` and production Supabase remain untouched.
+
+
+## Localization migration draft prepared — 2026-11-25
+
+The user approved a narrowly scoped guard against direct browser-role changes to localization preference columns. Existing unrelated direct updates, RLS policies and legacy login functions are to remain unchanged.
+
+Added draft `supabase/migrations/20261125000300_add_localization_preferences.sql` on `cloud-test`. It contains the language registry, nullable language/time-zone preference columns, language FKs, per-table preference write guards and the six approved language RPCs.
+
+Updated `docs/LOCALIZATION_ARCHITECTURE_DESIGN.md` with the safeguard and the required review/test gates.
+
+Commit for migration file: `43bd6c3e7db56963092433912c8f1daab25020fd`.
+Design-document update commit: `01d634b2c679ca55162fb1076942e398e394180a`.
+
+**Not applied:** this is repository-only SQL. No Supabase schema, function, trigger or preference data has been changed by this draft. Before execution, statically review the entire SQL and then test on the separately named `temmy-smart-classroom-test` project only. In particular verify the migration owner, invoker-trigger behaviour under actual API roles, unrelated-column compatibility, student access-code RPC behaviour, ownership checks, and all fallback paths. Confirm the dashboard project immediately before execution; the SQL itself cannot reliably distinguish two projects both named database `postgres`.
+
+GitHub `main` and production Supabase remain untouched.
