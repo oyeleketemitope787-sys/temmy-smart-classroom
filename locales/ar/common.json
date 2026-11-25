@@ -34,6 +34,14 @@
     "students": "الطلاب",
     "classes": "صفوفي",
     "groups": "المجموعات",
-    "activities": "الأنشطة"
+    "activities": "الأنشطة",
+    "awardPoints": "منح النقاط",
+    "marketplace": "المتجر",
+    "purchases": "المشتريات",
+    "reports": "التقارير",
+    "studentHistory": "سجل الطالب",
+    "studentPortal": "بوابة الطالب",
+    "teacherAccount": "حساب المعلم",
+    "messages": "الرسائل"
   }
 }
