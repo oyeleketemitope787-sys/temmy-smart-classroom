@@ -66,19 +66,25 @@ begin
     raise exception 'The active class does not belong to the signed-in teacher';
   end if;
 
+  -- Lock all selected students in deterministic ID order before processing.
+  -- This matches the marketplace/points RPC lock order and avoids deadlocks
+  -- when a punctuality batch overlaps a purchase or another points operation.
+  perform 1
+  from public.students s
+  join unnest(p_student_ids) as target(student_id)
+    on target.student_id = s.id
+  where s.class_id = p_class_id
+    and s.active is true
+  order by s.id
+  for update of s;
+
+  get diagnostics v_student_count = row_count;
+  if v_student_count <> cardinality(p_student_ids) then
+    raise exception 'One or more students do not belong to the selected active class';
+  end if;
+
   foreach v_student_id in array p_student_ids
   loop
-    perform 1
-    from public.students s
-    where s.id = v_student_id
-      and s.class_id = p_class_id
-      and s.active is true
-    for update;
-
-    if not found then
-      raise exception 'Student does not belong to the selected active class';
-    end if;
-
     select *
       into v_existing
     from public.punctuality_records pr
