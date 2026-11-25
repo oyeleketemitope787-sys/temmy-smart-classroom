@@ -158,6 +158,26 @@
     "serverNoConfirm": "لم يؤكد الخادم المعاملة.",
     "scoredResult": "حصل على",
     "classPointsUpdated": "تم تحديث نقاط الصف بمقدار",
-    "saveScore": "حفظ الدرجة"
+    "saveScore": "حفظ الدرجة",
+    "activitiesLoadError": "تعذّر تحميل الأنشطة.",
+    "classNoActiveStudents": "لا يوجد طلاب نشطون في هذا الصف.",
+    "startGameTitle": "بدء لعبة Temmy الذكية",
+    "gameLabel": "اللعبة",
+    "gameSelectionHelp": "اختر الطالب أو الطلاب الذين سيتلقون جلسة اللعبة.",
+    "searchStudents": "ابحث عن الطلاب...",
+    "selectAll": "تحديد الكل",
+    "clearAll": "مسح التحديد",
+    "selectedStudents": "تم تحديد {count} من الطلاب",
+    "gameSessionDuration": "سيحصل كل طالب محدد على جلسة لعب آمنة مدتها 30 دقيقة.",
+    "selectAtLeastOne": "يرجى تحديد طالب واحد على الأقل.",
+    "gameSessionsReady": "جلسات اللعب جاهزة",
+    "sessionsCreated": "تم إنشاء {count} من جلسات اللعب بنجاح.",
+    "gameName": "تحدي أرقام Temmy",
+    "ready": "جاهز",
+    "openGame": "فتح اللعبة",
+    "sessionsFailed": "تعذّر إنشاء بعض الجلسات:",
+    "done": "تم",
+    "activityLaunchSuccess": "أصبح الآن مباشرًا.",
+    "activityCloseSuccess": "مغلق الآن."
   }
 }
