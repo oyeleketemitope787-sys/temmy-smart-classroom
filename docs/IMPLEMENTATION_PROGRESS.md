@@ -760,3 +760,13 @@ Design-document update commit: `01d634b2c679ca55162fb1076942e398e394180a`.
 **Not applied:** this is repository-only SQL. No Supabase schema, function, trigger or preference data has been changed by this draft. Before execution, statically review the entire SQL and then test on the separately named `temmy-smart-classroom-test` project only. In particular verify the migration owner, invoker-trigger behaviour under actual API roles, unrelated-column compatibility, student access-code RPC behaviour, ownership checks, and all fallback paths. Confirm the dashboard project immediately before execution; the SQL itself cannot reliably distinguish two projects both named database `postgres`.
 
 GitHub `main` and production Supabase remain untouched.
+
+
+### Static review update — 2026-11-25
+
+Reviewed the complete draft migration. Added preflight checks for collisions with both internal helper functions and required execution as `postgres`, so SECURITY DEFINER function ownership is explicit. Updated the architecture design with remaining verification gates, including real-role trigger tests and anonymous access-code abuse/rate-limit review.
+
+Latest migration hardening commit: `25321d06e765373ddef4958f28687dc6a17e5b8a`.
+Design review note commit: `0839ca808b337d1ea24d8e27e5309ac3ac20f53f`.
+
+Still draft only. No SQL has been executed against Supabase. Do not apply until the test project is reconfirmed and the remaining security/behavioural review is completed.
