@@ -71,6 +71,20 @@
     "title": "Groupes d’élèves",
     "description": "Créez et gérez des groupes en ligne dans chaque classe pour favoriser l’apprentissage collaboratif.",
     "createGroup": "Créer un groupe",
-    "refresh": "Actualiser"
+    "refresh": "Actualiser",
+    "signIn": "Connectez-vous en tant qu’enseignant pour gérer vos groupes en ligne.",
+    "createClass": "Créez d’abord une classe avant de créer des groupes d’élèves.",
+    "noGroups": "Aucun groupe pour le moment.",
+    "firstGroup": "Créez le premier groupe de cette classe.",
+    "noDescription": "Aucune description",
+    "students": "{count, plural, one {# élève} other {# élèves}}",
+    "noMembers": "Aucun élève n’est encore affecté.",
+    "edit": "Modifier",
+    "members": "Membres",
+    "delete": "Supprimer",
+    "activitiesTitle": "Activités d’apprentissage",
+    "activitiesDesc": "Créez et gérez des tâches en direct et des jeux Temmy Smart Games pour vos classes.",
+    "createTask": "Créer une tâche en direct",
+    "startGame": "Lancer un jeu intelligent"
   }
 }
