@@ -770,3 +770,13 @@ Latest migration hardening commit: `25321d06e765373ddef4958f28687dc6a17e5b8a`.
 Design review note commit: `0839ca808b337d1ea24d8e27e5309ac3ac20f53f`.
 
 Still draft only. No SQL has been executed against Supabase. Do not apply until the test project is reconfirmed and the remaining security/behavioural review is completed.
+
+
+### Student RPC security boundary — 2026-11-25
+
+Following inspection of student access table grants, RLS, policies, login/verifier function ACLs and the browser login path, the migration was hardened:
+- Student language RPCs now reject callers unless `auth.role() = 'service_role'`.
+- Their EXECUTE grants are restricted to `service_role`; browser roles `anon` and `authenticated` are explicitly revoked.
+- Commit: `851dca5d797d9b70e717ef433fefacd47a5fd326`.
+
+Architecture documentation records the required server-side endpoint and persistent/distributed rate limiting. No Edge Function has been created or deployed yet. No database migration has been executed. Existing student login/verifier functions and browser login flow remain unchanged. Production remains untouched.
