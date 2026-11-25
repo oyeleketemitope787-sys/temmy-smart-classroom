@@ -109,7 +109,7 @@ let passwordFlowActive=false;
 <div class="grid2">
 <div class="card"><div class="summary-title"><div><h2>⭐ <span data-i18n="groups.awardTitle">Award Points</span></h2><div class="small" data-i18n="groups.awardHelp">Select exactly who should receive the points.</div></div><button id="awardLockBtn" class="btn gold" onclick="toggleAwardLock()">🔒 <span data-i18n="groups.lockAward">Lock Award Points</span></button></div><div id="awardLockNotice" class="notice hidden"></div>
 <div class="scopebar"><button id="scopeIndividual" class="active" onclick="setScope('individual')">👤 <span data-i18n="groups.individual">Individual</span></button><button id="scopeMultiple" onclick="setScope('multiple')">👥 <span data-i18n="groups.multiple">Multiple</span></button><button id="scopeAll" onclick="setScope('all')">🌟 <span data-i18n="groups.selectAll">Select All</span></button></div>
-<input id="studentSearch" class="search" placeholder="🔎 ${window.TemmyI18n?.t('groups.searchStudents')}" oninput="renderAwardStudents()">
+<input id="studentSearch" class="search" placeholder="🔎 Search students..." data-i18n-placeholder="groups.searchStudents" oninput="renderAwardStudents()">
 <div class="selection-info" id="selectionInfo">1 student selected</div>
 <div id="awardStudents" class="student-list"></div>
 <div class="footer-note" data-i18n="groups.individualRule">Individual = one student • Multiple = any selected students • Select All = the whole class</div>
@@ -2550,6 +2550,9 @@ window.addEventListener('DOMContentLoaded',()=>{initCloudTeacher();});
     document.querySelectorAll('[data-i18n]').forEach(function(element){
       const key=element.getAttribute('data-i18n');
       element.textContent=api.t(key);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(element){
+      element.setAttribute('placeholder',api.t(element.getAttribute('data-i18n-placeholder')));
     });
     if(select)select.setAttribute('aria-label',api.t('common.language'));
   }
