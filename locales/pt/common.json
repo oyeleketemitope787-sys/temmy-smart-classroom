@@ -72,8 +72,8 @@
     "description": "Crie e gerencie grupos na nuvem em cada turma para promover a aprendizagem colaborativa.",
     "createGroup": "Criar grupo",
     "refresh": "Atualizar",
-    "signIn": "Inicie sessão como professor para gerir os seus grupos na nuvem.",
-    "createClass": "Crie uma turma antes de criar grupos de alunos.",
+    "signIn": "Inicie sessão como professor para gerir as atividades na nuvem.",
+    "createClass": "Crie uma turma antes de criar uma atividade.",
     "noGroups": "Ainda não há grupos.",
     "firstGroup": "Crie o primeiro grupo desta turma.",
     "noDescription": "Sem descrição",
@@ -85,6 +85,20 @@
     "activitiesTitle": "Atividades de aprendizagem",
     "activitiesDesc": "Crie e gira tarefas ao vivo e jogos Temmy Smart Games para as suas turmas.",
     "createTask": "Criar tarefa ao vivo",
-    "startGame": "Iniciar jogo inteligente"
+    "startGame": "Iniciar jogo inteligente",
+    "none": "Ainda não há atividades.",
+    "first": "Crie a sua primeira tarefa, trabalho ou questionário ao vivo.",
+    "activity": "Atividade",
+    "liveTask": "Tarefa ao vivo",
+    "live": "AO VIVO",
+    "closed": "FECHADA",
+    "draft": "RASCUNHO",
+    "noInstructions": "Não foram fornecidas instruções.",
+    "points": "pontos",
+    "available": "disponíveis",
+    "launch": "Iniciar",
+    "close": "Fechar",
+    "monitor": "Acompanhar",
+    "view": "Ver"
   }
 }
