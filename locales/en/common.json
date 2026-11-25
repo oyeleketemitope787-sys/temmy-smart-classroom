@@ -279,5 +279,25 @@
     "deductSuccessOne": "{points} points deducted from {student}.",
     "deductSuccessMany": "{points} points deducted from {count} students.",
     "selectStudentsPrompt": "Select students."
+  },
+  "classes": {
+    "classesTitle": "My Classes",
+    "classesDescription": "Create and manage your classes. Your classes and student data are loaded from the production cloud database.",
+    "createNewClass": "Create New Class",
+    "className": "Class name",
+    "classNamePlaceholder": "e.g. 8A_1",
+    "classDescriptionOptional": "Description (optional)",
+    "classDescriptionPlaceholder": "e.g. Mathematics Class",
+    "enterClassName": "Please enter a class name.",
+    "classAlreadyExists": "That class already exists.",
+    "createClassError": "Could not create class: {error}",
+    "signInLoadClasses": "Sign in as a teacher to load your cloud classes.",
+    "noCloudClasses": "No cloud classes yet. Create your first class.",
+    "openClass": "Open Class",
+    "classSummary": "{count, plural, one {# student} other {# students}} • {aggregate} Aggregate Points • {spendable} Spendable Points",
+    "cloudClassesLoadError": "Cloud classes could not be loaded: {error}",
+    "classesLoadedBalancesError": "Classes loaded, but separate point balances could not be loaded: {error}",
+    "classLoadedStudentsError": "Class loaded, but students could not be loaded: {error}",
+    "cloudConnectedStatus": "Cloud classes and point balances connected. Points are loaded from Supabase."
   }
 }
