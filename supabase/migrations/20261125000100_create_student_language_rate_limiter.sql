@@ -105,8 +105,8 @@ BEGIN
       END IF;
 
       v_bucket := pg_catalog.to_timestamp(
-        pg_catalog.floor(
-          pg_catalog.extract(epoch FROM v_now) / v_window
+        floor(
+          extract(epoch FROM v_now) / v_window
         ) * v_window
       );
 
@@ -128,10 +128,10 @@ BEGIN
 
       IF v_attempts > v_limit THEN
         v_blocked := true;
-        v_retry := pg_catalog.greatest(
+        v_retry := greatest(
           v_retry,
-          pg_catalog.ceil(
-            pg_catalog.extract(
+          ceil(
+            extract(
               epoch FROM (v_bucket + pg_catalog.make_interval(secs => v_window) - v_now)
             )
           )::integer
