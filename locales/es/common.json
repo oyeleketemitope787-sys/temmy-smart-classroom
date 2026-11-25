@@ -29,5 +29,11 @@
     "languageLoading": "Cargando idioma…",
     "languageLoadError": "No se pudo cargar ese idioma. Inténtalo de nuevo.",
     "languageServiceUnavailable": "El servicio de idiomas no está listo."
+  },
+  "navigation": {
+    "students": "Estudiantes",
+    "classes": "Mis clases",
+    "groups": "Grupos",
+    "activities": "Actividades"
   }
 }
