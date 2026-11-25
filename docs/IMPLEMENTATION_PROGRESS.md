@@ -591,3 +591,20 @@ Important blockers are explicitly recorded rather than guessed:
 5. Existing profile/preferences and frontend localization architecture.
 
 No database migration, application code or live data was changed. The document is a design proposal pending review. Games remains deferred. GitHub `main` and production Supabase remain untouched.
+
+
+## 26. Language preference architecture direction approved — 2026-11-25
+
+The user approved the recommended first-stage scope: individual teacher preferences, individual student preferences and class defaults, while deferring school/organisation accounts and defaults. The design must retain a clean extension point for a future organisation-level fallback.
+
+Read-only inspection established:
+- `teacher_profiles.id` is aligned with `auth.uid()` through existing teacher profile RLS policies.
+- `classes.teacher_id` references `teacher_profiles.id`; `students.class_id` references `classes.id`.
+- `student_access.student_id` references `students.id` and is unique. Student language preference must attach to permanent `students.id`, never to a replaceable access credential.
+- No organisation/settings table, language preference columns, matching language/locale routines, or relevant teacher/student/class triggers were found in the inspected public schema.
+- `student_access` has no RLS policies returned by the inspection; keep student preference operations behind controlled RPCs and do not expose credential hashes.
+- The existing `index.html` on `cloud-test` has no localization framework, translation resources, language selector, locale preference persistence or RTL direction handling. It uses browser-default `toLocaleString()` and two `localeCompare()` sort paths.
+
+Created `docs/LOCALIZATION_ARCHITECTURE_DESIGN.md` on `cloud-test`. The proposal uses nullable BCP 47 language-tag fields on `teacher_profiles`, `students` and `classes`, with student resolution order individual -> class -> platform fallback and teacher resolution individual -> platform fallback. Exact supported-language list, platform fallback language and time-zone policy remain undecided. The proposal also defines shared translation resources, RTL/mixed-script handling, locale-aware formatting, controlled student RPCs, security requirements and staged rollout.
+
+No SQL migration, application code or live data was changed. Before implementation, complete RLS/grants/function-ACL review, agree the language registry/fallback/time-zone policy, and resolve the Supabase project header ambiguity. All repository changes remain on `cloud-test`; GitHub `main` and production Supabase must remain untouched.
