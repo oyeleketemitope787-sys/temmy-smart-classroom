@@ -449,3 +449,12 @@ Next: test insufficient Spendable balance rejection, then duplicate purchase req
 In the isolated `temmy-smart-classroom-test` project, Code Final (Aggregate 22, Spendable 22) attempted to purchase the 50-point Excellent Performance reward. The test returned the expected rejection: "Insufficient Spendable Points for at least one selected student. No purchase completed." A subsequent read-only query confirmed Aggregate 22, Spendable 22, and zero matching purchases. This verifies insufficient-balance rejection without account or purchase changes.
 
 Next: test duplicate marketplace purchase request idempotency using a transaction-wrapped successful purchase trial and verify only one purchase/deduction occurs. No production database or GitHub `main` changes.
+
+
+### Marketplace duplicate purchase idempotency and rollback verified — 2026-11-25
+
+In the isolated `temmy-smart-classroom-test` project, Code Final (Aggregate 22, Spendable 22) submitted the same 20-point Oral 1 purchase request twice using an identical request UUID, reward ID, and student ID. Temporary inspection showed Aggregate 22, Spendable 2, and exactly one matching purchase. This confirms the duplicate request did not create a second purchase or second deduction. After explicit rollback, an independent query confirmed Aggregate 22, Spendable 22, and zero matching purchases.
+
+Marketplace behavioural tests now cover spendable-only deduction, insufficient Spendable Points rejection with no changes, identical-request idempotency, and rollback. All tested changes were rolled back; the student's original balances remain 22/22. No production database or GitHub `main` changes.
+
+Next implementation phase: inspect the activity scoring/review database flow and design a single transactional server-side operation that updates the activity record and points ledger atomically. Do not replace the current activity flow until its schema, triggers, and existing functions are inspected.
