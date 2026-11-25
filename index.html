@@ -109,7 +109,7 @@ let passwordFlowActive=false;
 <div class="grid2">
 <div class="card"><div class="summary-title"><div><h2>⭐ Award Points</h2><div class="small">Select exactly who should receive the points.</div></div><button id="awardLockBtn" class="btn gold" onclick="toggleAwardLock()">🔒 Lock Award Points</button></div><div id="awardLockNotice" class="notice hidden"></div>
 <div class="scopebar"><button id="scopeIndividual" class="active" onclick="setScope('individual')">👤 Individual</button><button id="scopeMultiple" onclick="setScope('multiple')">👥 Multiple</button><button id="scopeAll" onclick="setScope('all')">🌟 Select All</button></div>
-<input id="studentSearch" class="search" placeholder="🔎 Search students..." oninput="renderAwardStudents()">
+<input id="studentSearch" class="search" placeholder="🔎 ${window.TemmyI18n?.t('groups.searchStudents')}" oninput="renderAwardStudents()">
 <div class="selection-info" id="selectionInfo">1 student selected</div>
 <div id="awardStudents" class="student-list"></div>
 <div class="footer-note">Individual = one student • Multiple = any selected students • Select All = the whole class</div>
@@ -893,7 +893,7 @@ function setPunctualityScope(next){
   if(info&&cls){
     info.textContent=next==='all'
       ? `All ${cls.students.length} students selected`
-      : '0 students selected';
+      : window.TemmyI18n?.t('groups.selectedStudents',{count:0})||'0 students selected';
   }
 }
 function selectPunctualityStatus(status,points){
@@ -1169,7 +1169,7 @@ async function loadCloudGroups(){
 function syncGroupClassSelect(){const el=document.getElementById('groupClassSelect');if(!el)return;const previous=el.value;const opts=cloudClasses.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');el.innerHTML=opts;const wanted=cloudClasses.some(c=>c.id===previous)?previous:(current()?.id||cloudClasses[0]?.id||'');if(wanted)el.value=wanted;el.onchange=()=>renderGroups();}
 function renderGroups(){const el=document.getElementById('groupsList');if(!el)return;syncGroupClassSelect();const tr=(key,values={})=>window.TemmyI18n?.t(`groups.${key}`,values)||key;if(!authSession){el.innerHTML=`<div class="notice">${tr('signIn')}</div>`;return;}if(!cloudClasses.length){el.innerHTML=`<div class="group-empty">${tr('createClass')}</div>`;return;}const classId=document.getElementById('groupClassSelect')?.value||current()?.id;const cls=cloudClasses.find(c=>c.id===classId);const groups=cloudGroups.filter(g=>g.classId===classId);if(!groups.length){el.innerHTML=`<div class="group-empty"><strong>${tr('noGroups')}</strong><br>${tr('firstGroup')}</div>`;return;}el.innerHTML='<div class="group-grid">'+groups.map(g=>{const names=g.members.map(id=>cls?.students.find(s=>s.id===id)?.name).filter(Boolean);return `<div class="group-card"><div class="summary-title"><div><h3>👥 ${esc(g.name)}</h3><div class="small">${esc(g.description||tr('noDescription'))}</div></div><strong>${names.length}</strong></div><div class="small">${tr('students',{count:names.length})}</div><div class="group-members">${names.length?names.map(n=>`<span class="member-chip">${esc(n)}</span>`).join(''):`<span class="small">${tr('noMembers')}</span>`}</div><div class="group-actions"><button class="btn" onclick="editGroup('${esc(g.id)}')">✏️ ${tr('edit')}</button><button class="btn" onclick="manageGroupMembers('${esc(g.id)}')">👥 ${tr('members')}</button><button class="btn danger" onclick="deleteGroup('${esc(g.id)}')">🗑️ ${tr('delete')}</button></div></div>`;}).join('')+'</div>';}
 async function refreshGroups(){await loadCloudGroups();}
-function openCreateGroup(){if(!authSession)return showTab('account');const classId=document.getElementById('groupClassSelect')?.value||current()?.id;const cls=cloudClasses.find(c=>c.id===classId);if(!cls)return alert('Please select a class first.');openModal('Create Student Group',`<div class="formrow"><label>Class</label><input value="${esc(cls.name)}" disabled></div><div class="formrow"><label>Group name</label><input id="newGroupName" placeholder="e.g. Group A" autofocus></div><div class="formrow"><label>Description (optional)</label><input id="newGroupDescription" placeholder="e.g. Problem-solving team"></div>`,async()=>{const name=document.getElementById('newGroupName').value.trim();const description=document.getElementById('newGroupDescription').value.trim();if(!name)return alert('Please enter a group name.');if(cloudGroups.some(g=>g.classId===classId&&g.name.toLowerCase()===name.toLowerCase()))return alert('That group already exists in this class.');const {error}=await supabaseClient.from('groups').insert({class_id:classId,name,description:description||null});if(error)return alert('Could not create group: '+error.message);closeModal();await loadCloudGroups();alert(`✓ Group "${name}" created successfully.`);});}
+function openCreateGroup(){if(!authSession)return showTab('account');const classId=document.getElementById('groupClassSelect')?.value||current()?.id;const cls=cloudClasses.find(c=>c.id===classId);if(!cls)return alert('Please select a class first.');openModal('Create Student Group',`<div class="formrow"><label>'+window.TemmyI18n?.t('groups.classLabel')+'</label><input value="${esc(cls.name)}" disabled></div><div class="formrow"><label>Group name</label><input id="newGroupName" placeholder="e.g. Group A" autofocus></div><div class="formrow"><label>Description (optional)</label><input id="newGroupDescription" placeholder="e.g. Problem-solving team"></div>`,async()=>{const name=document.getElementById('newGroupName').value.trim();const description=document.getElementById('newGroupDescription').value.trim();if(!name)return alert('Please enter a group name.');if(cloudGroups.some(g=>g.classId===classId&&g.name.toLowerCase()===name.toLowerCase()))return alert('That group already exists in this class.');const {error}=await supabaseClient.from('groups').insert({class_id:classId,name,description:description||null});if(error)return alert('Could not create group: '+error.message);closeModal();await loadCloudGroups();alert(`✓ Group "${name}" created successfully.`);});}
 function groupById(id){return cloudGroups.find(g=>g.id===id)||null}
 function editGroup(id){const g=groupById(id);if(!g)return;openModal('Edit Student Group',`<div class="formrow"><label>Group name</label><input id="editGroupName" value="${esc(g.name)}"></div><div class="formrow"><label>Description</label><input id="editGroupDescription" value="${esc(g.description||'')}"></div>`,async()=>{const name=document.getElementById('editGroupName').value.trim();const description=document.getElementById('editGroupDescription').value.trim();if(!name)return alert('Please enter a group name.');const {error}=await supabaseClient.from('groups').update({name,description:description||null}).eq('id',g.id);if(error)return alert('Could not update group: '+error.message);closeModal();await loadCloudGroups();alert('✓ Group updated successfully.');});}
 async function deleteGroup(id){const g=groupById(id);if(!g)return;if(!confirm(`Delete group "${g.name}"? Student records will remain in the class.`))return;const {error}=await supabaseClient.from('groups').delete().eq('id',g.id);if(error)return alert('Could not delete group: '+error.message);await loadCloudGroups();alert(`✓ Group "${g.name}" deleted successfully.`);}
@@ -1183,7 +1183,7 @@ async function loadCloudActivities(){
  const {data:rows,error}=await q;
  if(error){
    const el=document.getElementById('activitiesList');
-   if(el)el.innerHTML='<div class="notice" style="background:#fff0f0;border-color:#e6bcbc"><strong>Activities could not be loaded.</strong><br>'+esc(error.message)+'</div>';
+   if(el)el.innerHTML='<div class="notice" style="background:#fff0f0;border-color:#e6bcbc"><strong>'+window.TemmyI18n?.t('groups.activitiesLoadError')+'</strong><br>'+esc(error.message)+'</div>';
    return;
  }
  cloudActivities=(rows||[]).map(a=>({id:a.id,classId:a.class_id,type:a.activity_type||a.type,title:a.title,instructions:a.description||a.instructions||'',points:Number(a.points)||0,status:a.status||'draft',createdBy:a.teacher_id,createdAt:a.created_at}));
@@ -1220,7 +1220,7 @@ function openGameLauncher(){
   const cls=cloudClasses.find(c=>c.id===classId);
 
   if(!cls)return alert('Please select a class first.');
-  if(!cls.students.length)return alert('This class has no active students.');
+  if(!cls.students.length)return alert(window.TemmyI18n?.t('groups.classNoActiveStudents')||'This class has no active students.');
 
 const studentsHtml=cls.students.map(s=>`
   <label class="student-row" data-name="${esc(s.name.toLowerCase())}">
@@ -1234,19 +1234,19 @@ const studentsHtml=cls.students.map(s=>`
 `).join('');
 
   openModal(
-    'Start Temmy Smart Game',
+    window.TemmyI18n?.t('groups.startGameTitle')||'Start Temmy Smart Game',
     `<div class="formrow">
        <label>Class</label>
        <input value="${esc(cls.name)}" disabled>
      </div>
      <div class="formrow">
-       <label>Game</label>
+       <label>'+window.TemmyI18n?.t('groups.gameLabel')+'</label>
        <select id="gameSelect" class="select">
          <option value="grade3-temmy-number-challenge">Temmy Number Challenge</option>
        </select>
      </div>
      <div class="small" style="margin:10px 0">
-       Select the student(s) who will receive the game session.
+       ${window.TemmyI18n?.t('groups.gameSelectionHelp')}
      </div>
      <div class="controls" style="margin:10px 0;gap:8px;flex-wrap:wrap">
   <input
@@ -1258,14 +1258,14 @@ const studentsHtml=cls.students.map(s=>`
     type="button"
     class="btn"
 onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=true);const n=document.querySelectorAll('.game-student-check:checked').length;document.getElementById('gameSelectionInfo').textContent=n+(n===1?' student selected':' students selected')"  >
-    ✅ Select All
+    ✅ ${window.TemmyI18n?.t('groups.selectAll')}
   </button>
   <button
     type="button"
     class="btn"
     onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked=false);document.getElementById('gameSelectionInfo').textContent='0 students selected'"
   >
-    ↩ Clear All
+    ↩ ${window.TemmyI18n?.t('groups.clearAll')}
   </button>
 </div>
      <div class="selection-info" id="gameSelectionInfo">
@@ -1275,13 +1275,13 @@ onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked
        ${studentsHtml}
      </div>
      <div class="footer-note" style="margin-top:10px">
-       Each selected student receives a secure 30-minute game session.
+       ${window.TemmyI18n?.t('groups.gameSessionDuration')}
      </div>`,
     async()=>{
       const gameId=document.getElementById('gameSelect')?.value;
       const ids=[...document.querySelectorAll('.game-student-check:checked')].map(el=>el.value);
 
-      if(!ids.length)return alert('Please select at least one student.');
+      if(!ids.length)return alert(window.TemmyI18n?.t('groups.selectAtLeastOne')||'Please select at least one student.');
 
       const selected=cls.students.filter(s=>ids.includes(s.id));
       const results=[];
@@ -1322,12 +1322,12 @@ onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked
       const success=results.filter(r=>r.url);
       const failed=results.filter(r=>r.error);
 
-      document.getElementById('modalTitle').textContent='Game Sessions Ready';
+      document.getElementById('modalTitle').textContent=window.TemmyI18n?.t('groups.gameSessionsReady')||'Game Sessions Ready';
 
       document.getElementById('modalBody').innerHTML=
         (success.length
           ? `<div class="notice">
-               <strong>${success.length} game session${success.length===1?'':'s'} created successfully.</strong>
+               <strong>${window.TemmyI18n?.t('groups.sessionsCreated',{count:success.length})}</strong>
              </div>
              <div class="group-grid" style="margin-top:12px">
                ${success.map(r=>`
@@ -1335,16 +1335,16 @@ onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked
                    <div class="summary-title">
                      <div>
                        <h3>${esc(r.name)}</h3>
-                       <div class="small">Temmy Number Challenge</div>
+                       <div class="small">${window.TemmyI18n?.t('groups.gameName')}</div>
                      </div>
-                     <span class="tag plus">READY</span>
+                     <span class="tag plus">${window.TemmyI18n?.t('groups.ready')}</span>
                    </div>
                    <div class="group-actions" style="margin-top:14px">
                      <a class="btn primary"
                         href="${esc(r.url)}"
                         target="_blank"
                         rel="noopener">
-                       Open Game
+                       ${window.TemmyI18n?.t('groups.openGame')}
                      </a>
                    </div>
                  </div>
@@ -1353,12 +1353,12 @@ onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked
           : '')+
         (failed.length
           ? `<div class="notice" style="margin-top:12px;background:#fff0f0;border-color:#e6bcbc">
-               <strong>Some sessions could not be created:</strong><br>
+               <strong>${window.TemmyI18n?.t('groups.sessionsFailed')}</strong><br>
                ${failed.map(r=>`${esc(r.name)} — ${esc(r.error)}`).join('<br>')}
              </div>`
           : '');
 
-      document.getElementById('modalSave').textContent='Done';
+      document.getElementById('modalSave').textContent=window.TemmyI18n?.t('groups.done')||'Done';
       document.getElementById('modalSave').onclick=closeModal;
     },
     'Start Smart Game'
@@ -1380,8 +1380,8 @@ onclick="document.querySelectorAll('.game-student-check').forEach(el=>el.checked
  },tr('createButton'));
 }
 function findActivity(id){return cloudActivities.find(a=>a.id===id)||null}
-async function launchActivity(id){const a=findActivity(id);if(!a)return;const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;if(!confirm(tr('launchConfirm')+' "'+a.title+'"? '+tr('launchExplain')))return;const {error}=await supabaseClient.from('class_activities').update({status:'live'}).eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert(tr('launchError')+error.message);await loadCloudActivities();alert('✓ "'+a.title+'" '+tr('nowLive'))}
-async function closeActivity(id){const a=findActivity(id);if(!a)return;const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;if(!confirm(tr('closeConfirm')+' "'+a.title+'"?'))return;const {error}=await supabaseClient.from('class_activities').update({status:'closed'}).eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert(tr('closeError')+error.message);await loadCloudActivities();alert('✓ "'+a.title+'" '+tr('nowClosed'))}
+async function launchActivity(id){const a=findActivity(id);if(!a)return;const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;if(!confirm(tr('launchConfirm')+' "'+a.title+'"? '+tr('launchExplain')))return;const {error}=await supabaseClient.from('class_activities').update({status:'live'}).eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert(tr('launchError')+error.message);await loadCloudActivities();alert('✓ "'+a.title+'" '+tr('activityLaunchSuccess'))}
+async function closeActivity(id){const a=findActivity(id);if(!a)return;const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;if(!confirm(tr('closeConfirm')+' "'+a.title+'"?'))return;const {error}=await supabaseClient.from('class_activities').update({status:'closed'}).eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert(tr('closeError')+error.message);await loadCloudActivities();alert('✓ "'+a.title+'" '+tr('activityCloseSuccess'))}
 async function deleteActivity(id){const a=findActivity(id);if(!a)return;const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;if(!confirm(tr('deleteConfirm')+' "'+a.title+'"? '+tr('deleteExplain')))return;const {error}=await supabaseClient.from('class_activities').delete().eq('id',a.id).eq('teacher_id',authSession.user.id);if(error)return alert(tr('deleteError')+error.message);await loadCloudActivities();alert('✓ '+tr('activityDeleted'))}
 function viewActivityDetails(id){const a=findActivity(id);if(!a)return;const tr=(key)=>window.TemmyI18n?.t('groups.'+key)||key;const cls=cloudClasses.find(c=>c.id===a.classId);openModal(activityTypeLabel(a.type)+' — '+a.title,'<div class="notice"><strong>'+tr('statusLabel')+':</strong> '+activityStatusLabel(a.status)+'<br><strong>'+tr('classLabel')+':</strong> '+esc(cls?.name||'')+'<br><strong>'+tr('maximumPoints')+':</strong> '+a.points+'</div><div class="formrow"><label>'+tr('instructionsLabel')+'</label><div class="card" style="box-shadow:none;border:1px solid #e1e6ee">'+esc(a.instructions||tr('noInstructions'))+'</div></div><div class="small">'+tr('createdLabel')+': '+esc(a.createdAt||'')+'</div>',closeModal,tr('close'))}
 
