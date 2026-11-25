@@ -107,78 +107,78 @@ let passwordFlowActive=false;
 <section id="award" class="hidden">
 <div class="controls"><select id="awardClassSelect" class="select"></select><button class="btn" onclick="showTab('students')">← Students</button></div>
 <div class="grid2">
-<div class="card"><div class="summary-title"><div><h2>⭐ Award Points</h2><div class="small">Select exactly who should receive the points.</div></div><button id="awardLockBtn" class="btn gold" onclick="toggleAwardLock()">🔒 Lock Award Points</button></div><div id="awardLockNotice" class="notice hidden"></div>
-<div class="scopebar"><button id="scopeIndividual" class="active" onclick="setScope('individual')">👤 Individual</button><button id="scopeMultiple" onclick="setScope('multiple')">👥 Multiple</button><button id="scopeAll" onclick="setScope('all')">🌟 Select All</button></div>
+<div class="card"><div class="summary-title"><div><h2>⭐ <span data-i18n="groups.awardTitle">Award Points</span></h2><div class="small" data-i18n="groups.awardHelp">Select exactly who should receive the points.</div></div><button id="awardLockBtn" class="btn gold" onclick="toggleAwardLock()">🔒 <span data-i18n="groups.lockAward">Lock Award Points</span></button></div><div id="awardLockNotice" class="notice hidden"></div>
+<div class="scopebar"><button id="scopeIndividual" class="active" onclick="setScope('individual')">👤 <span data-i18n="groups.individual">Individual</span></button><button id="scopeMultiple" onclick="setScope('multiple')">👥 <span data-i18n="groups.multiple">Multiple</span></button><button id="scopeAll" onclick="setScope('all')">🌟 <span data-i18n="groups.selectAll">Select All</span></button></div>
 <input id="studentSearch" class="search" placeholder="🔎 ${window.TemmyI18n?.t('groups.searchStudents')}" oninput="renderAwardStudents()">
 <div class="selection-info" id="selectionInfo">1 student selected</div>
 <div id="awardStudents" class="student-list"></div>
-<div class="footer-note">Individual = one student • Multiple = any selected students • Select All = the whole class</div>
+<div class="footer-note" data-i18n="groups.individualRule">Individual = one student • Multiple = any selected students • Select All = the whole class</div>
 </div>
-<div class="card"><h2>Positive Actions</h2><div class="action-grid">
-<button class="action positive-action" onclick="applyAward(1,'Participation')"><strong>🙋 Participation +1</strong><span>Active contribution</span></button>
-<button class="action positive-action" onclick="applyAward(2,'Correct Answer')"><strong>✅ Correct Answer +2</strong><span>Correct mathematical response</span></button>
-<button class="action positive-action" onclick="applyAward(3,'Excellent Explanation')"><strong>💡 Excellent Explanation +3</strong><span>Clear reasoning</span></button>
-<button class="action positive-action" onclick="applyAward(5,'Outstanding Effort')"><strong>🌟 Outstanding Effort +5</strong><span>Exceptional effort</span></button>
-<button class="action positive-action" onclick="applyAward(2,'Helping a Classmate')"><strong>🤝 Helping a Classmate +2</strong><span>Positive peer support</span></button>
-<button class="action positive-action" onclick="applyAward(2,'Homework Completed')"><strong>📘 Homework Completed +2</strong><span>Work completed responsibly</span></button>
-<button class="action positive-action" onclick="applyAward(3,'Excellent Behaviour')"><strong>👏 Excellent Behaviour +3</strong><span>Consistently positive conduct</span></button>
-<button class="action positive-action" onclick="applyAward(3,'Live Task Completed')"><strong>📝 Live Task +3</strong><span>Completed an in-class live task</span></button>
-<button class="action positive-action" onclick="applyAward(5,'Excellent Task Performance')"><strong>🏅 Task Excellence +5</strong><span>Outstanding performance on a learning task</span></button>
+<div class="card"><h2 data-i18n="groups.positiveActions">Positive Actions</h2><div class="action-grid">
+<button class="action positive-action" onclick="applyAward(1,'Participation')"><strong>🙋 <span data-i18n="groups.participation">Participation</span> +1</strong><span data-i18n="groups.activeContribution">Active contribution</span></button>
+<button class="action positive-action" onclick="applyAward(2,'Correct Answer')"><strong>✅ <span data-i18n="groups.correctAnswer">Correct Answer</span> +2</strong><span data-i18n="groups.correctMath">Correct mathematical response</span></button>
+<button class="action positive-action" onclick="applyAward(3,'Excellent Explanation')"><strong>💡 <span data-i18n="groups.excellentExplanation">Excellent Explanation</span> +3</strong><span data-i18n="groups.clearReasoning">Clear reasoning</span></button>
+<button class="action positive-action" onclick="applyAward(5,'Outstanding Effort')"><strong>🌟 <span data-i18n="groups.outstandingEffort">Outstanding Effort</span> +5</strong><span data-i18n="groups.exceptionalEffort">Exceptional effort</span></button>
+<button class="action positive-action" onclick="applyAward(2,'Helping a Classmate')"><strong>🤝 <span data-i18n="groups.helpingClassmate">Helping a Classmate</span> +2</strong><span data-i18n="groups.peerSupport">Positive peer support</span></button>
+<button class="action positive-action" onclick="applyAward(2,'Homework Completed')"><strong>📘 <span data-i18n="groups.homeworkCompleted">Homework Completed</span> +2</strong><span data-i18n="groups.responsibleWork">Work completed responsibly</span></button>
+<button class="action positive-action" onclick="applyAward(3,'Excellent Behaviour')"><strong>👏 <span data-i18n="groups.excellentBehaviour">Excellent Behaviour</span> +3</strong><span data-i18n="groups.positiveConduct">Consistently positive conduct</span></button>
+<button class="action positive-action" onclick="applyAward(3,'Live Task Completed')"><strong>📝 <span data-i18n="groups.liveTaskCompleted">Live Task</span> +3</strong><span data-i18n="groups.completedLiveTask">Completed an in-class live task</span></button>
+<button class="action positive-action" onclick="applyAward(5,'Excellent Task Performance')"><strong>🏅 <span data-i18n="groups.taskExcellence">Task Excellence</span> +5</strong><span data-i18n="groups.outstandingTask">Outstanding performance on a learning task</span></button>
 <div style="grid-column:1 / -1;border:1px solid #d9e3f4;border-radius:12px;padding:16px;background:#f8fbff">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
     <div>
-      <h3 style="margin:0">⏰ Punctuality</h3>
-      <div class="small">Record punctuality for selected students.</div>
+      <h3 style="margin:0">⏰ <span data-i18n="groups.punctuality">Punctuality</span></h3>
+      <div class="small" data-i18n="groups.recordPunctuality">Record punctuality for selected students.</div>
     </div>
-    <div style="font-weight:700;color:#2457a6">Today</div>
+    <div style="font-weight:700;color:#2457a6" data-i18n="groups.today">Today</div>
   </div>
 
   <div class="scopebar" style="margin-bottom:12px">
-<button type="button" id="punctualityAllBtn" class="active" onclick="setPunctualityScope('all')">ALL</button>
-<button type="button" id="punctualityMultipleBtn" onclick="setPunctualityScope('multiple')">MULTIPLE</button>
+<button type="button" id="punctualityAllBtn" class="active" onclick="setPunctualityScope('all')"><span data-i18n="groups.all">ALL</span></button>
+<button type="button" id="punctualityMultipleBtn" onclick="setPunctualityScope('multiple')"><span data-i18n="groups.multipleUpper">MULTIPLE</span></button>
   </div>
 
-<div class="selection-info" id="punctualitySelectionInfo">    All students selected
+<div class="selection-info" id="punctualitySelectionInfo">    ${window.TemmyI18n?.t('groups.allStudentsSelected')||'All students selected'}
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
     <button type="button" id="punctualityOnTimeBtn" class="btn success" onclick="selectPunctualityStatus('On Time',2)">
-      <strong>On Time</strong><br>
+      <strong data-i18n="groups.onTime">On Time</strong><br>
       <span class="small">+2 points</span>
     </button>
 
     <button type="button" id="punctualityLateBtn" class="btn gold" onclick="selectPunctualityStatus('Late',1)">
-      <strong>Late</strong><br>
+      <strong data-i18n="groups.late">Late</strong><br>
       <span class="small">+1 point</span>
     </button>
 
     <button type="button" id="punctualityAbsentBtn" class="btn" onclick="selectPunctualityStatus('Absent',0)">
-      <strong>Absent</strong><br>
+      <strong data-i18n="groups.absent">Absent</strong><br>
       <span class="small">0 points</span>
     </button>
 
     <button type="button" id="punctualityExcusedBtn" class="btn" onclick="selectPunctualityStatus('Excused',0)">
-      <strong>Excused</strong><br>
+      <strong data-i18n="groups.excused">Excused</strong><br>
       <span class="small">0 points</span>
     </button>
   </div>
 
   <div style="margin-top:12px;text-align:right">
-    <button type="button" class="btn primary" onclick="applyPunctuality()">Apply Punctuality</button>
+    <button type="button" class="btn primary" onclick="applyPunctuality()" data-i18n="groups.applyPunctuality">Apply Punctuality</button>
   </div>
 </div></div>
-<div class="custom"><h3>➕ Custom Positive Adjustment</h3><div class="custom-row"><input id="customPlus" type="number" min="1" value="1"><button class="btn success" onclick="applyCustom(1)">Add Points</button></div></div>
+<div class="custom"><h3>➕ <span data-i18n="groups.customPositive">Custom Positive Adjustment</span></h3><div class="custom-row"><input id="customPlus" type="number" min="1" value="1"><button class="btn success" onclick="applyCustom(1)" data-i18n="groups.addPoints">Add Points</button></div></div>
 </div></div>
 <div class="grid2">
-<div class="card"><h2>Negative Actions</h2><div class="action-grid">
-<button class="action negative-action" onclick="applyAward(-2,'Off-task Behaviour')"><strong>⚠️ Off-task Behaviour −2</strong><span>Not focused on learning</span></button>
-<button class="action negative-action" onclick="applyAward(-3,'Disruption')"><strong>🔕 Disruption −3</strong><span>Interfering with learning</span></button>
-<button class="action negative-action" onclick="applyAward(-2,'Unprepared')"><strong>📚 Unprepared −2</strong><span>Missing required materials/work</span></button>
-<button class="action negative-action" onclick="applyAward(-1,'Late Work')"><strong>⏰ Late Work −1</strong><span>Work submitted late</span></button>
+<div class="card"><h2 data-i18n="groups.negativeActions">Negative Actions</h2><div class="action-grid">
+<button class="action negative-action" onclick="applyAward(-2,'Off-task Behaviour')"><strong>⚠️ <span data-i18n="groups.offTask">Off-task Behaviour</span> −2</strong><span data-i18n="groups.notFocused">Not focused on learning</span></button>
+<button class="action negative-action" onclick="applyAward(-3,'Disruption')"><strong>🔕 <span data-i18n="groups.disruption">Disruption</span> −3</strong><span data-i18n="groups.interferingLearning">Interfering with learning</span></button>
+<button class="action negative-action" onclick="applyAward(-2,'Unprepared')"><strong>📚 <span data-i18n="groups.unprepared">Unprepared</span> −2</strong><span data-i18n="groups.missingMaterials">Missing required materials/work</span></button>
+<button class="action negative-action" onclick="applyAward(-1,'Late Work')"><strong>⏰ <span data-i18n="groups.lateWork">Late Work</span> −1</strong><span data-i18n="groups.submittedLate">Work submitted late</span></button>
 </div>
-<div class="custom"><h3>➖ Custom Negative Adjustment</h3><div class="custom-row"><input id="customMinus" type="number" min="1" value="1"><button class="btn negative" onclick="applyCustom(-1)">Remove Points</button></div></div>
+<div class="custom"><h3>➖ <span data-i18n="groups.customNegative">Custom Negative Adjustment</span></h3><div class="custom-row"><input id="customMinus" type="number" min="1" value="1"><button class="btn negative" onclick="applyCustom(-1)" data-i18n="groups.removePoints">Remove Points</button></div></div>
 </div>
-<div class="card"><div class="summary-title"><h2>↩️ Last Point Action</h2><button class="btn gold" onclick="undoLastPointAction()">Undo</button></div><div id="lastActionBox" class="notice">No point action recorded yet.</div><h3>Recent Activity</h3><div id="recentHistory" class="history-scroll"></div></div>
+<div class="card"><div class="summary-title"><h2>↩️ <span data-i18n="groups.lastPointAction">Last Point Action</span></h2><button class="btn gold" onclick="undoLastPointAction()" data-i18n="groups.undo">Undo</button></div><div id="lastActionBox" class="notice">${window.TemmyI18n?.t('groups.noActionRecorded')||'No point action recorded yet.'}</div><h3 data-i18n="groups.recentActivity">Recent Activity</h3><div id="recentHistory" class="history-scroll"></div></div>
 </div>
 </section>
 
