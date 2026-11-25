@@ -158,3 +158,26 @@ No points migration has been applied. Before choosing whether to backfill direct
 
 - Reconciliation script commit: 22b87ab52a63bfbf46030e086ed4232d821d053d
 - Next: inspect the per-student results and purchase reconciliation; then implement the additive account ledger and update the existing purchase RPC without removing its idempotency/locking protections.
+
+
+## 10. Per-student purchase reconciliation and account foundation — 2026-11-25
+
+The focused read-only reconciliation returned eight students. Proposed opening balances are all non-negative:
+- Student `04e6d02b…`: Aggregate 315; Spendable 315; 143 legacy transactions.
+- Student `0cf1c3fc…`: Aggregate 210; Spendable 0; 74 legacy transactions.
+- Three students have zero balances and no legacy transactions.
+- Remaining students: Aggregate/Spendable 22/22 (9 transactions), 20/20 (12), and 12/12 (4).
+
+The purchase-versus-deduction comparison returned one student with historical purchases: 6 purchase rows / 210 points and 6 marketplace deduction rows / 210 points; difference = 0. This reconciles the recorded historical marketplace spending for that student. The per-student account backfill rule is therefore supported by the inspected legacy data supplied so far.
+
+Added the first additive migration file:
+- `supabase/migrations/20261125000100_create_student_point_accounts.sql`
+- Creates one account summary row per student with separate Aggregate and Spendable balances.
+- Backfills each student's balances from their own legacy `point_transactions` rows; marketplace deductions are excluded from Aggregate and included in Spendable.
+- Uses `ON CONFLICT DO NOTHING` so rerunning the backfill cannot overwrite a subsequently initialized account.
+- Enables RLS and revokes direct browser-role access; future approved SECURITY DEFINER functions will provide the controlled application interface.
+- Includes a transaction guard that aborts if any opening Spendable balance is negative.
+
+Migration commit on `cloud-test`: `9455c490ccf8b717098d3ba5e34f3b602266b48b`.
+
+**Important:** this is a repository migration file only. It has NOT been run against Supabase. Do not apply it to the hosted database yet. Next work is to inspect exact existing points RPC definitions and client call paths, then add atomic/idempotent award and purchase integration plus isolated tests before asking for migration review.
