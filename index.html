@@ -2527,5 +2527,6 @@ async function initCloudTeacher(){const {data:{session}}=await supabaseClient.au
 supabaseClient.auth.onAuthStateChange((event,session)=>{authSession=session;if(event==='PASSWORD_RECOVERY'&&session&&!passwordFlowActive){setTimeout(showPasswordReset,0);return}setTimeout(()=>{renderAccount();if(session)loadCloudClasses()},0)});
 window.addEventListener('DOMContentLoaded',()=>{initCloudTeacher();});
 </script>
+<script type="module" src="./js/i18n.js"></script>
 </body>
 </html>
