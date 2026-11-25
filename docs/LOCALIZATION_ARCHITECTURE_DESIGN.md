@@ -490,3 +490,10 @@ Decision: do not expose the new student language RPCs to `anon` or `authenticate
 Required next component: a dedicated Supabase Edge Function (or equivalent trusted server endpoint) for student language get/set. It must validate request shape, apply persistent/distributed rate limiting before attempting code verification, avoid logging access codes, call the service-role-only RPCs, return only the minimal language preference payload, and use generic authentication failures. A process-local in-memory limiter alone is insufficient for a horizontally scaled/serverless deployment. The exact persistent limiter design and Edge Function deployment/configuration remain to be designed and reviewed before implementation.
 
 The existing `student_portal_login` and `verify_student_access_code` functions are not modified by this localization work. The existing login flow remains unchanged until a separately tested integration change is approved.
+
+
+## 18. Student Edge Function design record
+
+A proposed request/response contract, security requirements, rollout sequence and rate-limiter decision are recorded in `docs/ADR_STUDENT_LOCALIZATION_EDGE_FUNCTION.md`. The design proposes a single `student-language-preference` Edge Function and a shared atomic rate limiter. Upstash Redis is the preferred option only if the user approves the external dependency; a Postgres-backed atomic limiter remains an alternative. Initial thresholds are illustrative and are not approved configuration.
+
+No Edge Function source has been written or deployed. No Redis account or secret has been configured. No database migration has been applied.
