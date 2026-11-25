@@ -9,7 +9,7 @@
     "name": "Temmy Smart Classroom"
   },
   "common": {
-    "language": "Idioma",
+    "language": "Idioma de la interfaz",
     "english": "Inglés",
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -24,6 +24,10 @@
     "settings": "Configuración",
     "dashboard": "Panel",
     "logout": "Cerrar sesión",
-    "languageSaved": "Preferencia de idioma guardada."
+    "languageSaved": "Preferencia de idioma guardada.",
+    "languageDeviceSaved": "La preferencia de idioma se guarda en este dispositivo.",
+    "languageLoading": "Cargando idioma…",
+    "languageLoadError": "No se pudo cargar ese idioma. Inténtalo de nuevo.",
+    "languageServiceUnavailable": "El servicio de idiomas no está listo."
   }
 }
