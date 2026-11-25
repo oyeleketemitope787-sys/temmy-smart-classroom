@@ -497,3 +497,10 @@ The existing `student_portal_login` and `verify_student_access_code` functions a
 A proposed request/response contract, security requirements, rollout sequence and rate-limiter decision are recorded in `docs/ADR_STUDENT_LOCALIZATION_EDGE_FUNCTION.md`. The design proposes a single `student-language-preference` Edge Function and a shared atomic rate limiter. Upstash Redis is the preferred option only if the user approves the external dependency; a Postgres-backed atomic limiter remains an alternative. Initial thresholds are illustrative and are not approved configuration.
 
 No Edge Function source has been written or deployed. No Redis account or secret has been configured. No database migration has been applied.
+
+
+## 19. PostgreSQL student rate limiter design
+
+The user selected Supabase PostgreSQL instead of an external Redis provider. The proposed atomic limiter architecture, HMAC source/credential keys, dual-window counters, fail-closed behaviour, cleanup/capacity plan, client-IP trust caveat, provisional test thresholds and rollout sequence are documented in `docs/ADR_POSTGRES_STUDENT_RATE_LIMITER.md`.
+
+No limiter table/function or Edge Function source has been created. The thresholds are provisional test values only. Client-IP header trust must be validated on the exact test endpoint; arbitrary X-Forwarded-For values are not accepted. No database SQL has been executed.
