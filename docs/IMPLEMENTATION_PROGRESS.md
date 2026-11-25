@@ -251,3 +251,22 @@ Updated `index.html` on `cloud-test`:
 Commit: `cb397c538f26108952638af60f2387e5ee385d83`.
 
 Validation: static source review only. The summary RPC migration is not applied, so the new class loader cannot yet be exercised against the hosted database. Other student/teacher surfaces still need explicit Aggregate/Spendable labels and balances. The marketplace purchase RPC still needs to be updated to deduct Spendable only while preserving its existing request idempotency and locking. No Supabase changes have been made.
+
+
+## 15. Marketplace purchase RPC updated for Spendable Points — 2026-11-25
+
+The complete hosted definition of `public.purchase_marketplace_reward(uuid, uuid, uuid[])` was supplied and used as the source for the replacement. Added:
+
+- `supabase/migrations/20261125000400_update_marketplace_purchase_spendable_account.sql`
+- Preserves the existing authenticated-teacher check, request claim/row lock, request-detail reuse protection, completed-result replay, reward ownership/active check and reward lock, selected-student validation/locks, all-students-before-any-purchase validation, purchase records and result payload.
+- Changes affordability checks to read `student_point_accounts.spendable_points`, not a sum of the legacy transaction ledger.
+- Ensures any missing selected-student account is initialized from that student's own legacy transactions, with marketplace deductions excluded from Aggregate and included in Spendable.
+- Locks account rows in deterministic student order.
+- Inserts the same auditable negative marketplace transaction and purchase row, then decreases Spendable Points only. Aggregate Points are not modified.
+- The account check constraint and row lock protect against a negative Spendable balance; all purchase inserts, account deductions and idempotency result storage remain in the same database transaction.
+
+Migration commit on `cloud-test`: `9abe5f6f9006cf758c5256544dc69d59fe5fb7bc`.
+
+Validation status: source-level review against the exact hosted function supplied by the user. It has not been executed in PostgreSQL, tested under concurrent requests, or applied to Supabase. The four points migrations remain repository files only. Before application, run the migrations in order in an isolated test database and verify: (1) a purchase lowers Spendable only; (2) Aggregate is unchanged; (3) insufficient funds for any selected student leaves every student's balances and purchase rows unchanged; (4) same request retry returns the stored result without a second deduction; (5) same request ID with different details is rejected; and (6) concurrent purchase/award operations cannot overspend.
+
+Next: continue migrating remaining student and teacher balance displays to explicit Aggregate/Spendable labels, then prepare an isolated database verification checklist. Do not run these migrations against the hosted project until the complete migration set is reviewed and explicit approval is given.
