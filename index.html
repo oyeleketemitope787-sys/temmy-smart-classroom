@@ -921,11 +921,11 @@ async function applyPunctuality(){
 function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');if(info){const cls=current();info.textContent=scope==='all'?`All ${cls.students.length} students selected`:selectedIds.length?`${selectedIds.length} student${selectedIds.length===1?'':'s'} selected`:'Select students';}}
 function getSelected(){const cls=current();if(!cls)return[];const domIds=[...document.querySelectorAll('#awardStudents input.check:checked')].map(el=>el.dataset.studentId).filter(Boolean);if(domIds.length){selectedIds=[...new Set(domIds)];if(scope==='all')selectedIds=[...cls.students.map(s=>s.id)];}return cls.students.filter(s=>selectedIds.includes(s.id))}
 async function applyAward(amount,reason){
- if(awardLocked){alert('Award Points is locked. Unlock it first.');return;}
+ if(awardLocked){alert(window.TemmyI18n?.t('groups.lockedMessage')||'Award Points is locked. Unlock it first.');return;}
  if(awardBusy)return;
- if(!authSession){alert('Please sign in as the teacher first.');return;}
+ if(!authSession){alert(window.TemmyI18n?.t('groups.signInTeacher')||'Please sign in as the teacher first.');return;}
  const cls=current();
- if(!cls||!cls.id){alert('Please select a cloud class first.');return;}
+ if(!cls||!cls.id){alert(window.TemmyI18n?.t('groups.cloudClass')||'Please select a cloud class first.');return;}
 
  const targets=getSelected();
  if(!targets.length){
@@ -966,7 +966,7 @@ async function applyAward(amount,reason){
    const {data:result,error}=await supabaseClient.rpc('record_student_point_transactions',{
      p_request_id:requestId,p_class_id:cls.id,p_entries:entries
    });
-   if(error||!result||result.success!==true){alert('Could not confirm the point award: '+(error?.message||'The server did not confirm the transaction. Refresh before retrying.'));return;}
+   if(error||!result||result.success!==true){alert((window.TemmyI18n?.t('groups.awardFailed')||'Could not confirm the point award')+': '+(error?.message||window.TemmyI18n?.t('groups.serverNoConfirm')||'The server did not confirm the transaction. Refresh before retrying.'));return;}
 
    deltas.forEach(d=>{
      const s=cls.students.find(x=>x.id===d.studentId);
@@ -980,7 +980,7 @@ async function applyAward(amount,reason){
    const verb=amount>0?'added to':'deducted from';
    const unit=totalPoints===1?'point':'points';
    const targetText=totalStudents===1?deltas[0].name:`${totalStudents} students`;
-   alert(`✓ ${totalPoints} ${unit} ${verb} ${targetText}.`);
+   alert(window.TemmyI18n?.t('groups.awardSuccess',{points:totalPoints,unit,verb,target:targetText})||('✓ '+totalPoints+' '+unit+' '+verb+' '+targetText+'.'));
 
    // Refresh cloud balances in the background, but keep the current student selection.
    const keepSelection=[...selectedIds];
@@ -1056,7 +1056,7 @@ async function undoLastPointAction(){
    const {data:result,error}=await supabaseClient.rpc('record_student_point_transactions',{
      p_request_id:requestId,p_class_id:cls.id,p_entries:entries
    });
-   if(error||!result||result.success!==true){alert('Could not confirm the undo: '+(error?.message||'The server did not confirm the transaction. Refresh before retrying.'));return;}
+   if(error||!result||result.success!==true){alert((window.TemmyI18n?.t('groups.undoFailed')||'Could not confirm the undo')+': '+(error?.message||window.TemmyI18n?.t('groups.serverNoConfirm')||'The server did not confirm the transaction. Refresh before retrying.'));return;}
 
    // Update the visible UI immediately from the confirmed cloud write.
    reversible.forEach(d=>{
@@ -1086,7 +1086,7 @@ async function undoLastPointAction(){
    renderHistory();
    renderReports();
 
-   alert(`Last point action has been undone successfully for ${reversible.length} student${reversible.length===1?'':'s'}.`);
+   alert(window.TemmyI18n?.t('groups.undoSuccess')||'Last point action has been undone successfully.');
 
    // Reconcile the UI with the authoritative cloud balance in the background.
    const keepSelection=[...selectedIds];
