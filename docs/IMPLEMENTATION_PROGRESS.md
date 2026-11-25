@@ -458,3 +458,22 @@ In the isolated `temmy-smart-classroom-test` project, Code Final (Aggregate 22, 
 Marketplace behavioural tests now cover spendable-only deduction, insufficient Spendable Points rejection with no changes, identical-request idempotency, and rollback. All tested changes were rolled back; the student's original balances remain 22/22. No production database or GitHub `main` changes.
 
 Next implementation phase: inspect the activity scoring/review database flow and design a single transactional server-side operation that updates the activity record and points ledger atomically. Do not replace the current activity flow until its schema, triggers, and existing functions are inspected.
+
+
+### Live Activity interface and workflow decisions documented — 2026-11-25
+
+The approved Live Activity plan is recorded in `docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` on `cloud-test`.
+
+Confirmed requirements:
+- Six formats: multiple choice, fill in the gaps, true/false, matching, short answer, and extended response/explain your work.
+- The user-approved screenshot is the shared interface reference for all six formats.
+- Countdown timer and progress indicator remain at the top.
+- Numbered question tiles are the sole navigation method; no Previous/Next buttons.
+- Answered = green, current = blue, unanswered = neutral.
+- Teacher sets a configurable duration for each activity; no global fixed duration.
+- Autosave and safe reconnect/resume preserve confirmed saved work; timer does not reset.
+- At 00:00, saved work is automatically submitted, assessed where possible, and the attempt is locked. Unanswered questions receive no marks. Written responses requiring judgement remain pending teacher marking, including partial credit.
+- Submission, expiry, grading, and points effects must be server-controlled and idempotent.
+- Teacher monitoring may show progress/status but not active answers.
+
+Implementation status: requirements/design documented; database and frontend implementation not yet started. Next action is to inspect the actual `class_activities` and `student_activity_records` schema, then inspect related functions/triggers/RLS and frontend workflow before drafting migrations. All work remains limited to `cloud-test` and `temmy-smart-classroom-test`; `main` and production remain untouched.
