@@ -279,5 +279,25 @@
     "deductSuccessOne": "{student} سے {points} پوائنٹس کم کر دیے گئے۔",
     "deductSuccessMany": "{count} طلبہ سے {points} پوائنٹس کم کر دیے گئے۔",
     "selectStudentsPrompt": "طلبہ منتخب کریں۔"
+  },
+  "classes": {
+    "classesTitle": "میری کلاسیں",
+    "classesDescription": "اپنی کلاسیں بنائیں اور ان کا انتظام کریں۔ کلاسیں اور طلبہ کا ڈیٹا پروڈکشن کلاؤڈ ڈیٹابیس سے لوڈ ہوتا ہے۔",
+    "createNewClass": "نئی کلاس بنائیں",
+    "className": "کلاس کا نام",
+    "classNamePlaceholder": "مثلاً 8A_1",
+    "classDescriptionOptional": "تفصیل (اختیاری)",
+    "classDescriptionPlaceholder": "مثلاً ریاضی کی کلاس",
+    "enterClassName": "براہِ کرم کلاس کا نام درج کریں۔",
+    "classAlreadyExists": "یہ کلاس پہلے سے موجود ہے۔",
+    "createClassError": "کلاس نہیں بن سکی: {error}",
+    "signInLoadClasses": "اپنی کلاؤڈ کلاسیں لوڈ کرنے کے لیے بطور استاد سائن اِن کریں۔",
+    "noCloudClasses": "ابھی کوئی کلاؤڈ کلاس نہیں۔ اپنی پہلی کلاس بنائیں۔",
+    "openClass": "کلاس کھولیں",
+    "classSummary": "{count} طلبہ • {aggregate} مجموعی پوائنٹس • {spendable} قابلِ استعمال پوائنٹس",
+    "cloudClassesLoadError": "کلاؤڈ کلاسیں لوڈ نہیں ہو سکیں: {error}",
+    "classesLoadedBalancesError": "کلاسیں لوڈ ہو گئیں، لیکن الگ پوائنٹس بیلنس لوڈ نہیں ہو سکے: {error}",
+    "classLoadedStudentsError": "کلاس لوڈ ہو گئی، لیکن طلبہ لوڈ نہیں ہو سکے: {error}",
+    "cloudConnectedStatus": "کلاؤڈ کلاسیں اور پوائنٹس بیلنس منسلک ہیں۔ پوائنٹس Supabase سے لوڈ ہوتے ہیں۔"
   }
 }
