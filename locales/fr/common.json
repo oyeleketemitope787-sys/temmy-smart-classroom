@@ -273,6 +273,11 @@
     "recoveryNotice": "En production, utilisez l’adresse e-mail enseignant enregistrée pour récupérer le mot de passe.",
     "pinRecovery": "Le code PIN ne peut être récupéré qu’après vérification sécurisée du compte enseignant.",
     "pinExposed": "Si le code PIN est divulgué, l’enseignant peut le modifier depuis Compte enseignant → Sécurité et contrôles du compte.",
-    "pinSecurity": "Cela empêche les élèves de récupérer ou modifier les identifiants de sécurité de l’enseignant."
+    "pinSecurity": "Cela empêche les élèves de récupérer ou modifier les identifiants de sécurité de l’enseignant.",
+    "awardSuccessOne": "{points} point(s) ajouté(s) à {student}.",
+    "awardSuccessMany": "{points} point(s) ajouté(s) à {count} élèves.",
+    "deductSuccessOne": "{points} point(s) retiré(s) à {student}.",
+    "deductSuccessMany": "{points} point(s) retiré(s) à {count} élèves.",
+    "selectStudentsPrompt": "Sélectionnez des élèves."
   }
 }
