@@ -279,5 +279,25 @@
     "deductSuccessOne": "Pointi {points} zimeondolewa kwa {student}.",
     "deductSuccessMany": "Pointi {points} zimeondolewa kwa wanafunzi {count}.",
     "selectStudentsPrompt": "Chagua wanafunzi."
+  },
+  "classes": {
+    "classesTitle": "Madarasa Yangu",
+    "classesDescription": "Unda na udhibiti madarasa yako. Madarasa na data za wanafunzi hupakiwa kutoka kwenye hifadhidata ya uzalishaji ya wingu.",
+    "createNewClass": "Unda Darasa Jipya",
+    "className": "Jina la darasa",
+    "classNamePlaceholder": "Mf. 8A_1",
+    "classDescriptionOptional": "Maelezo (si lazima)",
+    "classDescriptionPlaceholder": "Mf. Darasa la Hisabati",
+    "enterClassName": "Tafadhali weka jina la darasa.",
+    "classAlreadyExists": "Darasa hilo tayari lipo.",
+    "createClassError": "Imeshindwa kuunda darasa: {error}",
+    "signInLoadClasses": "Ingia kama mwalimu ili kupakia madarasa yako ya wingu.",
+    "noCloudClasses": "Bado hakuna madarasa ya wingu. Unda darasa lako la kwanza.",
+    "openClass": "Fungua Darasa",
+    "classSummary": "Wanafunzi {count} • Pointi za jumla {aggregate} • Pointi zinazoweza kutumika {spendable}",
+    "cloudClassesLoadError": "Madarasa ya wingu hayakuweza kupakiwa: {error}",
+    "classesLoadedBalancesError": "Madarasa yamepakiwa, lakini salio tofauti la pointi halikuweza kupakiwa: {error}",
+    "classLoadedStudentsError": "Darasa limepakiwa, lakini wanafunzi hawakuweza kupakiwa: {error}",
+    "cloudConnectedStatus": "Madarasa ya wingu na salio la pointi yameunganishwa. Pointi zinapakiwa kutoka Supabase."
   }
 }
