@@ -1468,12 +1468,12 @@ async function loadCloudClasses(){
  const {data:rows,error}=await supabaseClient.from('classes').select('*').eq('teacher_id',authSession.user.id).eq('active',true).order('name');
  if(error){cloudLoading=false;showCloudStatus('Cloud classes could not be loaded: '+error.message,true);return;}
 
- const {data:txRows,error:txError}=await supabaseClient.from('point_transactions').select('student_id,points,created_at,action_name,action_type,reason,source').eq('teacher_id',authSession.user.id).order('created_at',{ascending:false});
- if(txError){cloudLoading=false;showCloudStatus('Classes loaded, but cloud points could not be loaded: '+txError.message,true);return;}
+ const {data:accountRows,error:accountError}=await supabaseClient.rpc('get_teacher_student_point_accounts');
+ if(accountError){cloudLoading=false;showCloudStatus('Classes loaded, but separate point balances could not be loaded: '+accountError.message,true);return;}
 
- const totals={};
- (txRows||[]).forEach(t=>{
-   totals[t.student_id]=(totals[t.student_id]||0)+(Number(t.points)||0);
+ const accountsByStudent={};
+ (accountRows||[]).forEach(a=>{
+   accountsByStudent[a.student_id]={aggregatePoints:Number(a.aggregate_points)||0,spendablePoints:Number(a.spendable_points)||0};
  });
 
  const mapped=[];
@@ -1490,7 +1490,9 @@ async function loadCloudClasses(){
      first_name:x.first_name||'',
      last_name:x.last_name||'',
      student_code_hint:x.student_code_hint||'',
-     points:Math.max(0,totals[x.id]||0),
+     aggregatePoints:Math.max(0,accountsByStudent[x.id]?.aggregatePoints||0),
+     spendablePoints:Math.max(0,accountsByStudent[x.id]?.spendablePoints||0),
+     points:Math.max(0,accountsByStudent[x.id]?.aggregatePoints||0),
      cloud:true
    }))
   });
@@ -1644,7 +1646,7 @@ function buyReward(id){
   if(!cls||!cls.id)return alert('Please select a cloud class first.');
   if(!students.length)return alert('Add a student first.');
   let requestSignature='',requestId='';
-  openModal('Purchase: '+r.name,`<div class="formrow"><label>Select students</label><div class="scopebar"><button type="button" class="btn" onclick="selectPurchaseAll(true)">🌟 Select All</button><button type="button" class="btn" onclick="selectPurchaseAll(false)">Clear</button></div><div id="purchaseStudents" class="student-list" style="max-height:360px">${students.map(s=>`<label class="student-row"><input class="check purchase-check" type="checkbox" value="${esc(s.id)}"><span class="rank">#${students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points} pts</strong></label>`).join('')}</div></div><div class="notice">Cost per student: <strong>${r.price} points</strong><br><span class="small">Multiple purchase is all-or-nothing. Balances will be verified by Supabase before any deduction.</span></div>`,async()=>{
+  openModal('Purchase: '+r.name,`<div class="formrow"><label>Select students</label><div class="scopebar"><button type="button" class="btn" onclick="selectPurchaseAll(true)">🌟 Select All</button><button type="button" class="btn" onclick="selectPurchaseAll(false)">Clear</button></div><div id="purchaseStudents" class="student-list" style="max-height:360px">${students.map(s=>`<label class="student-row"><input class="check purchase-check" type="checkbox" value="${esc(s.id)}"><span class="rank">#${students.slice().sort((a,b)=>b.aggregatePoints-a.aggregatePoints).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.spendablePoints} spendable pts</strong></label>`).join('')}</div></div><div class="notice">Cost per student: <strong>${r.price} points</strong><br><span class="small">Purchase eligibility is based on Spendable Points. Multiple purchase is all-or-nothing; Supabase verifies balances before deduction.</span></div>`,async()=>{
     const saveButton=document.getElementById('modalSave');
     if(saveButton?.disabled)return;
     const ids=[...new Set([...document.querySelectorAll('.purchase-check:checked')].map(x=>x.value))].sort();
