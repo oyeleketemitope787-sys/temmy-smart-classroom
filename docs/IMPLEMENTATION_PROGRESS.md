@@ -650,3 +650,18 @@ This approval settles the initial language registry and platform fallback only. 
 Documentation-only update on `cloud-test`; no migration, schema, app code, translation resources or user preference data changed. GitHub `main` and production Supabase remain untouched.
 
 Next: decide the time-zone preference policy, then complete the remaining localization design and security review before drafting any migration.
+
+
+## 29. Global time-zone preference policy approved — 2026-11-25
+
+The user approved the time-zone design for the global platform:
+
+- Store IANA time-zone identifiers (for example, `Asia/Muscat`, `Europe/London`, and `Africa/Lagos`), never fixed UTC offsets.
+- Support individual teacher and student time-zone preferences and a class default time zone.
+- Use individual preferences for personal date/time presentation; class defaults provide scheduling/context defaults where an individual preference is absent. Exact display-resolution rules must be made consistent across the UI/API.
+- Server-side timestamps, deadlines, expiry instants, grading and points remain authoritative. Changing a display time zone must not move a deadline or reset a countdown.
+- A device/browser time zone may be offered as an initial suggestion, but is not persisted as an authoritative preference without user confirmation.
+
+Updated `docs/LOCALIZATION_ARCHITECTURE_DESIGN.md` on `cloud-test` (commit `1f98f94f0b4802487c6696f68ea217a2d811e22f`). This is a design decision only; no migration, application code or preference data has changed.
+
+The initial language registry, English fallback, teacher/student/class preference scope, dedicated RPC boundary, and time-zone storage policy are now approved. Remaining design work includes translation-resource packaging/versioning and coverage/rollout targets, precise time-zone resolution in class-context views, and final security/compatibility review before migration drafting. GitHub `main` and production Supabase remain untouched.
