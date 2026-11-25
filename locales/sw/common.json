@@ -72,8 +72,8 @@
     "description": "Unda na udhibiti vikundi vya mtandaoni katika kila darasa kwa ajili ya kujifunza kwa ushirikiano.",
     "createGroup": "Unda Kikundi",
     "refresh": "Onyesha upya",
-    "signIn": "Ingia kama mwalimu ili kudhibiti vikundi vyako vya mtandaoni.",
-    "createClass": "Unda darasa kwanza kabla ya kuunda vikundi vya wanafunzi.",
+    "signIn": "Ingia kama mwalimu ili kudhibiti shughuli za mtandaoni.",
+    "createClass": "Unda darasa kwanza kabla ya kuunda shughuli.",
     "noGroups": "Bado hakuna vikundi.",
     "firstGroup": "Unda kikundi chako cha kwanza cha darasa hili.",
     "noDescription": "Hakuna maelezo",
@@ -85,6 +85,20 @@
     "activitiesTitle": "Shughuli za Kujifunza",
     "activitiesDesc": "Unda na udhibiti kazi za moja kwa moja na michezo ya Temmy Smart Games kwa madarasa yako.",
     "createTask": "Unda Kazi ya Moja kwa Moja",
-    "startGame": "Anzisha Mchezo Mahiri"
+    "startGame": "Anzisha Mchezo Mahiri",
+    "none": "Bado hakuna shughuli.",
+    "first": "Unda kazi, zoezi au jaribio lako la kwanza la moja kwa moja.",
+    "activity": "Shughuli",
+    "liveTask": "Kazi ya Moja kwa Moja",
+    "live": "INAENDELEA",
+    "closed": "IMEFUNGWA",
+    "draft": "RASIMU",
+    "noInstructions": "Hakuna maelekezo yaliyotolewa.",
+    "points": "alama",
+    "available": "zinapatikana",
+    "launch": "Anzisha",
+    "close": "Funga",
+    "monitor": "Fuatilia",
+    "view": "Tazama"
   }
 }
