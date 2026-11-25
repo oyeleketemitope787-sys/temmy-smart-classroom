@@ -87,7 +87,7 @@ A teacher's current class default must not silently override the teacher's own i
 
 If a stored language tag is no longer supported, ignore it safely and continue through the fallback chain. If an individual language is supported but a particular translation key is missing, use the configured per-key fallback and record missing translation coverage during development/testing.
 
-The exact platform fallback language and the initial supported-language list remain undecided. Do not assume English or publish an arbitrary list as an approved decision.
+The initial supported-language registry and platform fallback were approved on 2026-11-25; see Section 11 for the exact registry and fallback.
 
 Future organisation default insertion point:
 - Student: individual -> class -> organisation -> platform.
@@ -134,8 +134,7 @@ Do not implement translations by replacing arbitrary English text in the DOM. Do
 
 ## 8. Outstanding decisions and blockers
 
-- Initial supported language list and rollout order.
-- Platform fallback language.
+- Translation-resource packaging/versioning and translation coverage/rollout order.
 - Time-zone preference policy (user-selected zone versus a derived device default); server timestamps remain authoritative.
 - Exact language registry source and translation-resource packaging/versioning.
 - Final decision on whether teacher class context should ever influence teacher UI language; current recommendation is no.
@@ -164,3 +163,26 @@ Read-only review of the existing student login boundary confirmed:
 - Existing student login and verification function ACLs were inspected. The preference API must not broaden direct access to student_access or credential fields.
 
 The user also approved using dedicated RPCs for all three preference operations while retaining existing direct workflows for unrelated profile/class/student information. This is an approved architecture decision; no migration, function, UI or data change has yet been made.
+
+
+## 11. Initial language registry and platform fallback approved — 2026-11-25
+
+The user approved the recommended initial interface-language registry and the platform fallback:
+
+| Language | BCP 47 tag |
+|---|---|
+| English | `en` |
+| Arabic | `ar` |
+| French | `fr` |
+| Spanish | `es` |
+| Portuguese | `pt` |
+| Hindi | `hi` |
+| Urdu | `ur` |
+| Swahili | `sw` |
+| Chinese (Simplified) | `zh-Hans` |
+
+**Platform fallback:** English (`en`).
+
+The registry is extensible; adding a language later must not require a schema enum change. Registering a language does not imply that every screen or translation key is already translated. Track translation-resource coverage explicitly. If a selected language lacks a particular key, resolve that key through the English fallback and record the missing translation during development/testing. Keep language selection separate from educational content language.
+
+This approval settles the initial registry and platform fallback only. It does not settle the time-zone preference policy, translation-resource packaging/versioning, or translation rollout/coverage targets. No SQL migration, application code, translation file or preference data has been changed by this decision.
