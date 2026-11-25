@@ -1003,8 +1003,13 @@ async function applyAward(amount,reason){
      created_at:stamp
    }));
 
-   const {error}=await supabaseClient.from('point_transactions').insert(rows);
-   if(error){alert('Could not save points to Supabase: '+error.message);return;}
+   const requestId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():null;
+   if(!requestId){alert('This browser cannot create a secure point request ID. Please use an updated browser.');return;}
+   const entries=rows.map(({student_id,points,action_name,action_type,reason,source})=>({student_id,points,action_name,action_type,reason,source}));
+   const {data:result,error}=await supabaseClient.rpc('record_student_point_transactions',{
+     p_request_id:requestId,p_class_id:cls.id,p_entries:entries
+   });
+   if(error||!result||result.success!==true){alert('Could not confirm the point award: '+(error?.message||'The server did not confirm the transaction. Refresh before retrying.'));return;}
 
    deltas.forEach(d=>{
      const s=cls.students.find(x=>x.id===d.studentId);
@@ -1088,8 +1093,13 @@ async function undoLastPointAction(){
  }));
 
  try{
-   const {error}=await supabaseClient.from('point_transactions').insert(rows);
-   if(error){alert('Could not save the undo to Supabase: '+error.message);return;}
+   const requestId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():null;
+   if(!requestId){alert('This browser cannot create a secure point request ID. Please use an updated browser.');return;}
+   const entries=rows.map(({student_id,points,action_name,action_type,reason,source})=>({student_id,points,action_name,action_type,reason,source}));
+   const {data:result,error}=await supabaseClient.rpc('record_student_point_transactions',{
+     p_request_id:requestId,p_class_id:cls.id,p_entries:entries
+   });
+   if(error||!result||result.success!==true){alert('Could not confirm the undo: '+(error?.message||'The server did not confirm the transaction. Refresh before retrying.'));return;}
 
    // Update the visible UI immediately from the confirmed cloud write.
    reversible.forEach(d=>{
@@ -1400,11 +1410,18 @@ async function reviewActivitySubmission(recordId,activityId){
    const {error:updateError}=await supabaseClient.from('student_activity_records').update({status:'scored',points_awarded:score,completed_at:r.completed_at||nowStamp,notes:notes||null}).eq('id',r.id).eq('teacher_id',authSession.user.id);
    if(updateError)return alert('Could not save the score: '+updateError.message);
    if(delta!==0){
-     const tx={student_id:r.student_id,teacher_id:authSession.user.id,points:delta,action_name:'Activity Score: '+a.title,action_type:'activity_score',reason:'Activity Score: '+a.title,source:'teacher',created_at:nowStamp};
-     const {error:txError}=await supabaseClient.from('point_transactions').insert(tx);
-     if(txError){
+     const requestId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():null;
+     if(!requestId){
        await supabaseClient.from('student_activity_records').update({status:r.status||'submitted',points_awarded:currentScore,notes:r.notes||null}).eq('id',r.id).eq('teacher_id',authSession.user.id);
-       return alert('Score was not finalized because the point transaction failed: '+txError.message);
+       return alert('Score was not finalized because this browser cannot create a secure point request ID.');
+     }
+     const {data:txResult,error:txError}=await supabaseClient.rpc('record_student_point_transactions',{
+       p_request_id:requestId,p_class_id:a.classId,
+       p_entries:[{student_id:r.student_id,points:delta,action_name:'Activity Score: '+a.title,action_type:'activity_score',reason:'Activity Score: '+a.title,source:'teacher'}]
+     });
+     if(txError||!txResult||txResult.success!==true){
+       await supabaseClient.from('student_activity_records').update({status:r.status||'submitted',points_awarded:currentScore,notes:r.notes||null}).eq('id',r.id).eq('teacher_id',authSession.user.id);
+       return alert('Score was not finalized because the point transaction failed: '+(txError?.message||'The server did not confirm the transaction.'));
      }
    }
    closeModal();
