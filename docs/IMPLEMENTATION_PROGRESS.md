@@ -399,3 +399,12 @@ Added `supabase/migrations/20261125000600_route_punctuality_through_point_accoun
 Migration commit: `971b77dc96b05ef1a91f187fcb458a3996042440`.
 
 Validation status: static review only; this new migration has NOT been run in Supabase or tested with concurrent sessions. The six-migration set now needs a complete review and isolated behavioural tests. Do not apply this migration to any production project. The earlier five migrations are already applied only to the separately named `temmy-smart-classroom-test` project. GitHub `main` remains untouched.
+
+
+### Follow-up static-review hardening for migration 006
+
+A cross-RPC lock-order review found that the first draft locked punctuality students in caller-supplied array order, while marketplace and points operations lock students by ID. Updated migration 006 to lock and validate the complete student set in deterministic ID order before processing the punctuality rows. This reduces deadlock risk when punctuality overlaps marketplace or other points operations.
+
+Updated migration commit: `afb9927ca375a4bee0c1c1456c0158ec22f27851`.
+
+This remains static review only. Migration 006 is not applied; PostgreSQL execution and concurrent-session tests are still required.
