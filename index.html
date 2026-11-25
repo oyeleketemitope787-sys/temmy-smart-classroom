@@ -62,8 +62,8 @@ let passwordFlowActive=false;
 <div class="grid2">
 <div class="card"><div class="summary-title"><div><h2 id="classTitle">Class</h2><div class="small">Student leaderboard</div></div><button class="btn" onclick="showTab('award')">Award points →</button></div>
 <table><thead><tr><th>Rank</th><th>Student</th><th>Points</th><th>Status</th></tr></thead><tbody id="studentRows"></tbody></table></div>
-<div>
-<div class="card"><h2>🏆 Class Summary</h2><div class="grid3"><div class="stat"><small>Class Points</small><strong id="classPoints">0</strong></div><div class="stat"><small>Students</small><strong id="studentCount">0</strong></div><div class="stat"><small>Average</small><strong id="classAverage">0</strong></div></div></div>
+<table><thead><tr><th>Rank</th><th>Student</th><th>Aggregate Points</th><th>Spendable Points</th><th>Status</th></tr></thead><tbody id="studentRows"></tbody></table></div>
+<div class="card"><h2>🏆 Class Summary</h2><div class="grid2"><div class="stat"><small>Class Aggregate Points</small><strong id="classPoints">0</strong></div><div class="stat"><small>Class Spendable Points</small><strong id="classSpendablePoints">0</strong></div><div class="stat"><small>Students</small><strong id="studentCount">0</strong></div><div class="stat"><small>Average Aggregate Points</small><strong id="classAverage">0</strong></div></div></div>
 <div class="card"><h2>🎯 Reward Level Progress</h2><p>🥉 <strong>Bronze</strong> — 50+ points</p><p>🥈 <strong>Silver</strong> — 100+ points</p><p>🥇 <strong>Gold</strong> — 150+ points</p><p>🏆 <strong>Champion</strong> — 500+ points</p></div>
 </div></div></section>
 
@@ -652,7 +652,7 @@ function renderStudents(){
                 </button>
               </td>
 
-              <td class="points">${s.points}</td>
+              <td class="points">${Number(s.aggregatePoints??s.points)||0}</td>\n              <td>${Number(s.spendablePoints)||0}</td>
 
               <td>
                 ${status}
@@ -699,11 +699,11 @@ function renderStudents(){
           </td>
         </tr>`;
 
-  const total=cls.students.reduce(
-    (a,s)=>a+s.points,
-    0
-  );
-
+  const total=cls.students.reduce((a,s)=>a+(Number(s.aggregatePoints??s.points)||0),0);
+  const spendableTotal=cls.students.reduce((a,s)=>a+(Number(s.spendablePoints)||0),0);
+  document.getElementById('classPoints').textContent=total;
+  const spendableEl=document.getElementById('classSpendablePoints');
+  if(spendableEl)spendableEl.textContent=spendableTotal;
   document.getElementById('classPoints').textContent=total;
   document.getElementById('studentCount').textContent=cls.students.length;
   document.getElementById('classAverage').textContent=
@@ -1457,7 +1457,7 @@ function renderClasses(){
  const el=document.getElementById('classCards');
  if(!el)return;
  if(!authSession){el.innerHTML='<div class="notice">Sign in as a teacher to load your cloud classes.</div>';return;}
- if(cloudLoading){el.innerHTML='<div class="notice">Loading your classes from Supabase...</div>';return;}
+  el.innerHTML=cloudClasses.length?cloudClasses.map(c=>{const aggregate=(c.students||[]).reduce((a,s)=>a+(Number(s.aggregatePoints??s.points)||0),0);const spendable=(c.students||[]).reduce((a,s)=>a+(Number(s.spendablePoints)||0),0);return `<div class="class-card"><div class="summary-title"><div><h3>🏫 ${esc(c.name)}</h3><div class="small">${c.students.length} students • ${aggregate} Aggregate Points • ${spendable} Spendable Points</div></div><div class="controls" style="margin:0"><button class="btn primary" onclick="selectClass('${esc(c.name)}')">Open Class</button></div></div></div>`}).join(''):'<div class="empty">No cloud classes yet. Create your first class.</div>';
  el.innerHTML=cloudClasses.length?cloudClasses.map(c=>{const pts=(c.students||[]).reduce((a,s)=>a+(Number(s.points)||0),0);return `<div class="class-card"><div class="summary-title"><div><h3>🏫 ${esc(c.name)}</h3><div class="small">${c.students.length} students • ${pts} total points</div></div><div class="controls" style="margin:0"><button class="btn primary" onclick="selectClass('${esc(c.name)}')">Open Class</button></div></div></div>`}).join(''):'<div class="empty">No cloud classes yet. Create your first class.</div>';
 }
 function selectClass(name){data.currentClass=name;selectedIds=[];renderAll();showTab('students')}
@@ -1707,23 +1707,23 @@ async function renderStudentHistory(){
   if(!s)return;
 
   const profile=document.getElementById('studentProfile');
-  const list=document.getElementById('studentHistoryList');
-  const next=nextLevel(s.points);
-  const progress=Math.min(100,Math.round((s.points/500)*100));
-
+  const aggregatePoints=Number(s.aggregatePoints??s.points)||0;
+  const spendablePoints=Number(s.spendablePoints)||0;
+  const next=nextLevel(aggregatePoints);
+  const progress=Math.min(100,Math.round((aggregatePoints/500)*100));
   profile.innerHTML=`
     <div class="grid3">
       <div class="stat"><small>Student</small><strong style="font-size:20px">${esc(s.name)}</strong></div>
       <div class="stat"><small>Current Points</small><strong>${s.points}</strong></div>
-      <div class="stat"><small>Reward Level</small><strong style="font-size:20px">${levelFor(s.points)}</strong></div>
+      <div class="stat"><small>Aggregate Points</small><strong>${aggregatePoints}</strong></div>\n      <div class="stat"><small>Spendable Points</small><strong>${spendablePoints}</strong></div>\n      <div class="stat"><small>Reward Level</small><strong style="font-size:20px">${levelFor(aggregatePoints)}</strong></div>
     </div>
     <div class="notice" style="margin-top:14px">
       <strong>Reward Progress:</strong>
-      ${s.points>=500?'Champion achieved.':`${Math.max(0,next.need-s.points)} more points to ${next.name}.`}
+      ${aggregatePoints>=500?'Champion achieved.':`${Math.max(0,next.need-aggregatePoints)} more Aggregate Points to ${next.name}.`}
       <div style="margin-top:8px;height:12px;background:#edf0f5;border-radius:999px;overflow:hidden">
         <div style="height:100%;width:${progress}%;background:#2457a6"></div>
       </div>
-      <div class="small" style="margin-top:5px">${Math.min(s.points,500)} / 500 points</div>
+      <div class="small" style="margin-top:5px">${Math.min(aggregatePoints,500)} / 500 Aggregate Points</div>
     </div>`;
 
   if(list) list.innerHTML='<div class="notice">Loading cloud transaction history...</div>';
