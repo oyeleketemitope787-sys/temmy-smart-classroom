@@ -200,3 +200,117 @@ The user approved the recommended time-zone arrangement:
 - Use a device/browser time zone only as a possible initial suggestion, not as an authoritative persisted choice without user confirmation.
 
 This decision approves the preference scope and storage standard. The precise resolution rules for class-context displays versus individual displays must be implemented consistently and documented in the API/UI design. No schema migration, app code or preference data has been changed by this approval.
+
+
+
+## 13. Translation-resource architecture — recommended design (25 November 2026)
+
+This section records an implementation recommendation, not a separately user-approved product constraint.
+
+### 13.1 Resource format and ownership
+
+Use source-controlled UTF-8 JSON translation resources, separated by language and functional namespace. Keep the English resource set as the canonical source for keys and fallback text.
+
+Recommended layout when the localization layer is extracted from the current monolithic `index.html`:
+
+```text
+/locales/
+  /en/
+    common.json
+    teacher.json
+    student.json
+    activities.json
+    games.json
+    reports.json
+    settings.json
+  /ar/
+    common.json
+    teacher.json
+    student.json
+    activities.json
+    games.json
+    reports.json
+    settings.json
+  /fr/
+    ...
+```
+
+The initial namespaces are a practical starting point and may be split as the application grows. A namespace should represent a functional area, not an individual page or component. Keep shared navigation, buttons, generic validation and common status labels in `common`.
+
+Do not create one enormous translation file per language. Load only the namespaces required by the active workflow, while ensuring the English fallback namespace is available whenever a translated namespace is loaded.
+
+### 13.2 Stable key conventions
+
+Use semantic, language-neutral keys grouped by namespace and purpose. Example JSON keys:
+
+```json
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {name}"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "status": {
+    "draft": "Draft",
+    "live": "Live",
+    "closed": "Closed"
+  }
+}
+```
+
+Conventions:
+- Keys describe meaning and context, not the current English wording.
+- Use consistent lower-camel-case segments.
+- Keep persisted status/type codes independent of translation keys; map stable codes to display labels in the UI.
+- Do not use English sentences as keys, concatenate translated fragments, or reuse a key where the meaning/context differs.
+- Renaming/removing a key is a resource-contract change: update all callers and all language resources together.
+- Dynamic values use named placeholders; translators must be able to reorder sentence elements.
+- Plural/select messages must use a documented message format (prefer ICU MessageFormat-compatible syntax) rather than manually concatenated singular/plural strings. Select and pin a compatible parser/runtime during implementation; do not hand-roll a partial ICU parser.
+
+### 13.3 Resource metadata, direction and fallback
+
+The central language registry should own each language's BCP 47 tag, native display name, direction (`ltr`/`rtl`), enabled state and resource coverage metadata. Do not duplicate direction decisions in individual screens.
+
+Each resource bundle should carry or be associated with:
+- its language tag;
+- a resource/schema version;
+- the namespace name;
+- the application/resource release identifier.
+
+Resolution for a requested key:
+1. Look in the active language's requested namespace.
+2. If absent, look in the matching English namespace.
+3. If still absent, emit a development diagnostic and use a safe non-empty diagnostic fallback in development; production must never render `undefined`, `null` or a raw missing-key token to the learner.
+
+Missing translations should be measurable by language, namespace and key. A language must not be described as fully translated merely because it is present in the registry.
+
+### 13.4 Coverage and quality checks
+
+Add automated checks before expanding translations:
+- Every key in each non-English namespace is valid JSON and has a matching English key.
+- Every English key is reported as translated, intentionally deferred, or missing for each enabled language.
+- Placeholder names and plural/select variables match the English source.
+- No duplicate keys, invalid Unicode, accidental empty values or unsupported message syntax.
+- All new UI text is sourced through the localization API; review new/changed UI code for hard-coded user-facing strings.
+- RTL smoke tests cover navigation, forms, dialogs, tables, question tiles, mixed-script content and mathematical expressions.
+
+Track coverage by namespace and key count. Do not block the whole application from using a language solely because some namespaces remain incomplete; show English fallback for missing keys and make coverage status visible to developers/administrators.
+
+### 13.5 Translation workflow and versioning
+
+- English is the canonical source language for resource keys and fallback text.
+- Translation resources are reviewed source files committed with the application, not mutable strings stored in user profile rows.
+- Changes to keys and English source text are reviewed with the relevant feature change.
+- Translators receive context, placeholders and notes for ambiguous educational/assessment terminology.
+- Keep resource schema versioning separate from the user's language preference and from database schema versioning.
+- Do not send classroom content, student data or user-authored material to an external translation service as part of runtime UI localization.
+- A resource bundle mismatch should fail safely to the English bundle and produce a developer diagnostic.
+
+### 13.6 Initial rollout recommendation
+
+Implement the resource loader and key conventions first, then complete the shared `common` namespace in English and Arabic as the first RTL validation pair. Add the remaining approved languages incrementally, with coverage reported per namespace. This is a sequencing recommendation, not a claim that Arabic or any other language is already translated.
+
+No translation files, parser dependency, application code or UI have been added by this design section.
