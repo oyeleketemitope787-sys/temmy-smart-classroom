@@ -273,6 +273,11 @@
     "recoveryNotice": "پروڈکشن میں پاس ورڈ بازیافت کرنے کے لیے رجسٹرڈ استاد کا ای میل استعمال کریں۔",
     "pinRecovery": "PIN صرف محفوظ استاد اکاؤنٹ کی تصدیق کے بعد بازیافت کیا جا سکتا ہے۔",
     "pinExposed": "PIN ظاہر ہونے پر استاد اسے Teacher Account → Security & Account Controls سے تبدیل کر سکتا ہے۔",
-    "pinSecurity": "اس سے طلبہ استاد کی حفاظتی اسناد بازیافت یا تبدیل نہیں کر سکیں گے۔"
+    "pinSecurity": "اس سے طلبہ استاد کی حفاظتی اسناد بازیافت یا تبدیل نہیں کر سکیں گے۔",
+    "awardSuccessOne": "{student} کو {points} پوائنٹس دے دیے گئے۔",
+    "awardSuccessMany": "{count} طلبہ کو {points} پوائنٹس دے دیے گئے۔",
+    "deductSuccessOne": "{student} سے {points} پوائنٹس کم کر دیے گئے۔",
+    "deductSuccessMany": "{count} طلبہ سے {points} پوائنٹس کم کر دیے گئے۔",
+    "selectStudentsPrompt": "طلبہ منتخب کریں۔"
   }
 }
