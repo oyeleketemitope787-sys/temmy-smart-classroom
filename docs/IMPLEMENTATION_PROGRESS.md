@@ -298,3 +298,30 @@ Updated the teacher reports renderer in `index.html`:
 Commit: `fbec646019b79e562149f90dbdcccc121fb44214`.
 
 Source review completed; browser verification remains outstanding. The student portal balance display is not yet changed because it requires a secure access-code RPC that returns the account balances. The existing access-code verification function's exact definition must be inspected before designing that RPC. No Supabase migration has been applied.
+
+
+## 18. Secure student point balances — 2026-11-25
+
+The exact hosted definitions of both access-code functions were supplied and reviewed:
+- `verify_student_access_code(text)` verifies the supplied code against the active access-code hash and returns the active student identity.
+- `get_student_point_history(text)` uses that verifier to scope history to the verified student.
+
+Added `supabase/migrations/20261125000500_add_student_point_account_summary_rpc.sql`:
+- Adds `get_student_point_account_summary(text)`, a read-only SECURITY DEFINER RPC with an empty search path.
+- Uses the existing `verify_student_access_code(text)` function and returns only Aggregate Points and Spendable Points for the verified active student.
+- Returns zero balances if the student's account row has not yet been initialised.
+- Revokes default/public execution and grants only the `anon` and `authenticated` roles needed by the access-code student portal. It does not grant direct access to `student_point_accounts`.
+
+Updated the student portal in `index.html`:
+- Loads the two balances through the new access-code RPC.
+- Displays Aggregate Points and Spendable Points separately.
+- Uses Aggregate Points for the student's reward level and reward progress.
+- Keeps today's net transaction change separate from the two current balances.
+- Shows an explicit error if the balance RPC cannot be loaded; it does not derive Spendable Points from the visible transaction history.
+- Clears balance and history state on student logout.
+
+Commits on `cloud-test`:
+- Student portal UI: `55ce6d41d44332cec32bcf10229d4c6f2082dbd6`
+- Student balance RPC migration: `23d787675ea89d4f6e7fa186b7aef5ab99f64ba2`
+
+Validation status: source-level review only. The new migration has not been run against Supabase, and the portal change has not been browser-tested against the hosted database. All five points migrations remain repository files only; none has been applied. Next: review the complete migration set and perform isolated PostgreSQL tests before requesting approval to apply anything to the hosted project.
