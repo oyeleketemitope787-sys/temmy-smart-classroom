@@ -43,5 +43,28 @@
     "studentPortal": "طالب علم پورٹل",
     "teacherAccount": "استاد کا اکاؤنٹ",
     "messages": "پیغامات"
+  },
+  "students": {
+    "addStudent": "طالب علم شامل کریں",
+    "awardPoints": "پوائنٹس دیں",
+    "exportData": "ڈیٹا برآمد کریں",
+    "awardPointsLink": "پوائنٹس دیں",
+    "leaderboard": "طلبہ کی درجہ بندی",
+    "rank": "درجہ",
+    "student": "طالب علم",
+    "aggregatePoints": "مجموعی پوائنٹس",
+    "spendablePoints": "خرچ کرنے کے قابل پوائنٹس",
+    "status": "حیثیت",
+    "classSummary": "کلاس کا خلاصہ",
+    "classAggregatePoints": "کلاس کے مجموعی پوائنٹس",
+    "classSpendablePoints": "کلاس کے قابلِ خرچ پوائنٹس",
+    "studentsCount": "طلبہ",
+    "averageAggregatePoints": "مجموعی پوائنٹس کی اوسط",
+    "rewardLevelProgress": "انعامی سطح کی پیش رفت",
+    "bronze": "کانسی",
+    "silver": "چاندی",
+    "gold": "سونا",
+    "champion": "چیمپئن",
+    "points": "پوائنٹس"
   }
 }
