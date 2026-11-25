@@ -7,6 +7,11 @@ BEGIN;
 
 DO $preflight$
 BEGIN
+  -- SECURITY DEFINER RPCs and the trigger bypass rely on this trusted owner.
+  IF current_user <> 'postgres' THEN
+    RAISE EXCEPTION 'Run this migration as postgres; current role is %', current_user;
+  END IF;
+
   IF to_regclass('public.teacher_profiles') IS NULL
      OR to_regclass('public.students') IS NULL
      OR to_regclass('public.classes') IS NULL
