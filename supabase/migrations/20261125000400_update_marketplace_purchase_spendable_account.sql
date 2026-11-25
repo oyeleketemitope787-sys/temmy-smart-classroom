@@ -129,7 +129,6 @@ BEGIN
     FROM public.students AS s
     LEFT JOIN public.point_transactions AS pt
       ON pt.student_id = s.id
-     AND pt.teacher_id = v_teacher_id
     WHERE s.id = ANY(v_student_ids)
     GROUP BY s.id
     ORDER BY s.id
