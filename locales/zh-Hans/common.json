@@ -72,8 +72,8 @@
     "description": "在每个班级中创建和管理云端小组，促进协作学习。",
     "createGroup": "创建小组",
     "refresh": "刷新",
-    "signIn": "请以教师身份登录以管理云端小组。",
-    "createClass": "请先创建班级，再创建学生小组。",
+    "signIn": "请以教师身份登录以管理云端活动。",
+    "createClass": "请先创建班级，再创建活动。",
     "noGroups": "暂无小组。",
     "firstGroup": "为此班级创建第一个小组。",
     "noDescription": "暂无描述",
@@ -85,6 +85,20 @@
     "activitiesTitle": "学习活动",
     "activitiesDesc": "为您的班级创建和管理实时任务及 Temmy Smart Games 游戏。",
     "createTask": "创建实时任务",
-    "startGame": "开始智能游戏"
+    "startGame": "开始智能游戏",
+    "none": "暂无活动。",
+    "first": "创建您的第一个实时任务、作业或测验。",
+    "activity": "活动",
+    "liveTask": "实时任务",
+    "live": "进行中",
+    "closed": "已关闭",
+    "draft": "草稿",
+    "noInstructions": "未提供说明。",
+    "points": "积分",
+    "available": "可用",
+    "launch": "启动",
+    "close": "关闭",
+    "monitor": "监控",
+    "view": "查看"
   }
 }
