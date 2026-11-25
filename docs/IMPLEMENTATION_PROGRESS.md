@@ -417,3 +417,14 @@ In the isolated `temmy-smart-classroom-test` project, migration 006 was applied 
 A transaction-wrapped trial for Code Final (initial Aggregate 22, Spendable 22) recorded an On Time award of +1. Inside the transaction both balances read 23. The transaction was explicitly rolled back. A subsequent independent query confirmed Aggregate 22, Spendable 22, zero punctuality records for 2026-11-25, and zero punctuality ledger entries for that date. This verifies the basic award path and rollback behaviour in the isolated project.
 
 Next: test punctuality adjustment and unchanged paths within a transaction that is rolled back, then proceed to the other atomic point-operation and marketplace behavioural tests. No production database or GitHub `main` changes.
+
+
+### Punctuality adjustment / unchanged trial passed — 2026-11-25
+
+A transaction-wrapped trial for Code Final recorded On Time with +2 points, changed the same date's status to Late with 1 point (a -1 adjustment), and repeated the identical Late/1 submission. Temporary inspection showed Aggregate 23, Spendable 23, and exactly two punctuality transactions, consistent with the unchanged repeat creating no extra transaction. After rollback, an independent query confirmed Aggregate 22, Spendable 22, zero punctuality records, and zero punctuality transactions for the date.
+
+### Generic atomic points RPC idempotency trial passed — 2026-11-25
+
+Submitted the same `record_student_point_transactions` request twice using the same request UUID and identical payload, inside an explicitly rolled-back transaction. Temporary inspection showed Aggregate 23, Spendable 23, and exactly one matching ledger transaction, confirming an identical retry does not award twice. A subsequent independent query confirmed Aggregate 22, Spendable 22, and zero matching test transactions, verifying rollback.
+
+Next: test that reusing the same request UUID with a different payload is rejected without changing balances or ledger entries. All tests remain isolated to `temmy-smart-classroom-test`; production remains untouched.
