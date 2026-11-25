@@ -1,0 +1,29 @@
+{
+  "$meta": {
+    "language": "hi",
+    "namespace": "common",
+    "resourceVersion": 1,
+    "direction": "ltr"
+  },
+  "app": {
+    "name": "टेमी स्मार्ट क्लासरूम"
+  },
+  "common": {
+    "language": "भाषा",
+    "english": "अंग्रेज़ी",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "close": "बंद करें",
+    "back": "वापस",
+    "refresh": "रीफ़्रेश करें",
+    "loading": "लोड हो रहा है…",
+    "error": "कुछ गलत हुआ। कृपया फिर से प्रयास करें।",
+    "yes": "हाँ",
+    "no": "नहीं",
+    "search": "खोजें",
+    "settings": "सेटिंग्स",
+    "dashboard": "डैशबोर्ड",
+    "logout": "लॉग आउट",
+    "languageSaved": "भाषा की प्राथमिकता सहेजी गई।"
+  }
+}
