@@ -273,6 +273,11 @@
     "recoveryNotice": "正式环境中，请使用已注册的教师邮箱恢复平台密码。",
     "pinRecovery": "只有通过教师账户安全验证后才能恢复 PIN。",
     "pinExposed": "如果 PIN 泄露，教师可以在教师账户 → 安全与账户控制中立即更改。",
-    "pinSecurity": "这可以防止学生恢复或更改教师安全凭据。"
+    "pinSecurity": "这可以防止学生恢复或更改教师安全凭据。",
+    "awardSuccessOne": "已为 {student} 增加 {points} 分。",
+    "awardSuccessMany": "已为 {count} 名学生增加 {points} 分。",
+    "deductSuccessOne": "已从 {student} 扣除 {points} 分。",
+    "deductSuccessMany": "已从 {count} 名学生扣除 {points} 分。",
+    "selectStudentsPrompt": "请选择学生。"
   }
 }
