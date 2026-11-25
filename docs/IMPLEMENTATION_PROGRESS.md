@@ -408,3 +408,12 @@ A cross-RPC lock-order review found that the first draft locked punctuality stud
 Updated migration commit: `afb9927ca375a4bee0c1c1456c0158ec22f27851`.
 
 This remains static review only. Migration 006 is not applied; PostgreSQL execution and concurrent-session tests are still required.
+
+
+### Punctuality RPC installed and rollback trial passed — 2026-11-25
+
+In the isolated `temmy-smart-classroom-test` project, migration 006 was applied successfully. Read-only inspection confirmed the installed `record_student_punctuality` signature, `SECURITY DEFINER`, empty `search_path`, and nested call to `record_student_point_transactions`.
+
+A transaction-wrapped trial for Code Final (initial Aggregate 22, Spendable 22) recorded an On Time award of +1. Inside the transaction both balances read 23. The transaction was explicitly rolled back. A subsequent independent query confirmed Aggregate 22, Spendable 22, zero punctuality records for 2026-11-25, and zero punctuality ledger entries for that date. This verifies the basic award path and rollback behaviour in the isolated project.
+
+Next: test punctuality adjustment and unchanged paths within a transaction that is rolled back, then proceed to the other atomic point-operation and marketplace behavioural tests. No production database or GitHub `main` changes.
