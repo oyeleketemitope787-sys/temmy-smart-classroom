@@ -273,6 +273,11 @@
     "recoveryNotice": "Production account recovery: use the registered teacher email to recover your platform password.",
     "pinRecovery": "The Award Point PIN can be recovered only after secure teacher-account verification.",
     "pinExposed": "If a PIN is exposed, the teacher can change it immediately from Teacher Account → Security & Account Controls.",
-    "pinSecurity": "This prevents students from recovering or changing teacher security credentials."
+    "pinSecurity": "This prevents students from recovering or changing teacher security credentials.",
+    "awardSuccessOne": "{points} points added to {student}.",
+    "awardSuccessMany": "{points} points added to {count} students.",
+    "deductSuccessOne": "{points} points deducted from {student}.",
+    "deductSuccessMany": "{points} points deducted from {count} students.",
+    "selectStudentsPrompt": "Select students."
   }
 }
