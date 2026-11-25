@@ -158,6 +158,26 @@
     "serverNoConfirm": "सर्वर ने लेन-देन की पुष्टि नहीं की।",
     "scoredResult": "ने प्राप्त किए",
     "classPointsUpdated": "कक्षा अंक इतने बदले",
-    "saveScore": "अंक सहेजें"
+    "saveScore": "अंक सहेजें",
+    "activitiesLoadError": "गतिविधियाँ लोड नहीं हो सकीं।",
+    "classNoActiveStudents": "इस कक्षा में कोई सक्रिय विद्यार्थी नहीं है।",
+    "startGameTitle": "Temmy स्मार्ट गेम शुरू करें",
+    "gameLabel": "गेम",
+    "gameSelectionHelp": "गेम सत्र पाने वाले विद्यार्थी चुनें।",
+    "searchStudents": "विद्यार्थियों को खोजें...",
+    "selectAll": "सभी चुनें",
+    "clearAll": "चयन हटाएँ",
+    "selectedStudents": "{count} विद्यार्थी चुने गए",
+    "gameSessionDuration": "प्रत्येक चुने गए विद्यार्थी को सुरक्षित 30 मिनट का गेम सत्र मिलेगा।",
+    "selectAtLeastOne": "कृपया कम से कम एक विद्यार्थी चुनें।",
+    "gameSessionsReady": "गेम सत्र तैयार हैं",
+    "sessionsCreated": "{count} गेम सत्र सफलतापूर्वक बनाए गए।",
+    "gameName": "Temmy नंबर चुनौती",
+    "ready": "तैयार",
+    "openGame": "गेम खोलें",
+    "sessionsFailed": "कुछ सत्र नहीं बनाए जा सके:",
+    "done": "हो गया",
+    "activityLaunchSuccess": "अब लाइव है।",
+    "activityCloseSuccess": "अब बंद है।"
   }
 }
