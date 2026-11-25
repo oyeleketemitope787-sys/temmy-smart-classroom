@@ -623,3 +623,30 @@ Read-only inspection of student_portal_login(text) and verify_student_access_cod
 Documentation updated on cloud-test: docs/LOCALIZATION_ARCHITECTURE_DESIGN.md (commit afd7bd6705ce30b9241525daa648d6d8a182b6ae). No database migration, function, UI or data change has been made. GitHub main and production Supabase remain untouched.
 
 Next: finish read-only review of the exact teacher/class/student preference write boundaries and settle the supported language registry, platform fallback and time-zone policy before drafting migration SQL.
+
+
+## 28. Initial localization language registry and fallback approved — 2026-11-25
+
+The user approved the initial supported interface-language registry and English platform fallback. The first-stage registry is:
+
+| Language | BCP 47 tag |
+|---|---|
+| English | `en` |
+| Arabic | `ar` |
+| French | `fr` |
+| Spanish | `es` |
+| Portuguese | `pt` |
+| Hindi | `hi` |
+| Urdu | `ur` |
+| Swahili | `sw` |
+| Chinese (Simplified) | `zh-Hans` |
+
+Platform fallback: English (`en`).
+
+The registry remains extensible and must not be represented by a PostgreSQL enum. Registering a language does not claim that all interface screens are translated; translation-resource coverage must be tracked, and missing keys fall back to English while being surfaced during development/testing. Interface language remains independent of educational content language.
+
+This approval settles the initial language registry and platform fallback only. The time-zone preference policy and translation-resource packaging/coverage rollout remain open. The detailed decision is recorded in `docs/LOCALIZATION_ARCHITECTURE_DESIGN.md`.
+
+Documentation-only update on `cloud-test`; no migration, schema, app code, translation resources or user preference data changed. GitHub `main` and production Supabase remain untouched.
+
+Next: decide the time-zone preference policy, then complete the remaining localization design and security review before drafting any migration.
