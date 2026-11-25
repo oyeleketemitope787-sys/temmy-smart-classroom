@@ -72,8 +72,8 @@
     "description": "Créez et gérez des groupes en ligne dans chaque classe pour favoriser l’apprentissage collaboratif.",
     "createGroup": "Créer un groupe",
     "refresh": "Actualiser",
-    "signIn": "Connectez-vous en tant qu’enseignant pour gérer vos groupes en ligne.",
-    "createClass": "Créez d’abord une classe avant de créer des groupes d’élèves.",
+    "signIn": "Connectez-vous en tant qu’enseignant pour gérer les activités en ligne.",
+    "createClass": "Créez d’abord une classe avant de créer une activité.",
     "noGroups": "Aucun groupe pour le moment.",
     "firstGroup": "Créez le premier groupe de cette classe.",
     "noDescription": "Aucune description",
@@ -85,6 +85,20 @@
     "activitiesTitle": "Activités d’apprentissage",
     "activitiesDesc": "Créez et gérez des tâches en direct et des jeux Temmy Smart Games pour vos classes.",
     "createTask": "Créer une tâche en direct",
-    "startGame": "Lancer un jeu intelligent"
+    "startGame": "Lancer un jeu intelligent",
+    "none": "Aucune activité pour le moment.",
+    "first": "Créez votre première tâche, devoir ou évaluation en direct.",
+    "activity": "Activité",
+    "liveTask": "Tâche en direct",
+    "live": "EN DIRECT",
+    "closed": "FERMÉ",
+    "draft": "BROUILLON",
+    "noInstructions": "Aucune consigne fournie.",
+    "points": "points",
+    "available": "disponibles",
+    "launch": "Lancer",
+    "close": "Fermer",
+    "monitor": "Suivre",
+    "view": "Voir"
   }
 }
