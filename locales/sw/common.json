@@ -43,5 +43,28 @@
     "studentPortal": "Tovuti ya mwanafunzi",
     "teacherAccount": "Akaunti ya mwalimu",
     "messages": "Ujumbe"
+  },
+  "students": {
+    "addStudent": "Ongeza mwanafunzi",
+    "awardPoints": "Toa pointi",
+    "exportData": "Hamisha data",
+    "awardPointsLink": "Toa pointi",
+    "leaderboard": "Orodha ya wanafunzi kwa nafasi",
+    "rank": "Nafasi",
+    "student": "Mwanafunzi",
+    "aggregatePoints": "Jumla ya pointi",
+    "spendablePoints": "Pointi za kutumia",
+    "status": "Hali",
+    "classSummary": "Muhtasari wa darasa",
+    "classAggregatePoints": "Jumla ya pointi za darasa",
+    "classSpendablePoints": "Pointi za darasa za kutumia",
+    "studentsCount": "Wanafunzi",
+    "averageAggregatePoints": "Wastani wa jumla ya pointi",
+    "rewardLevelProgress": "Maendeleo ya viwango vya zawadi",
+    "bronze": "Shaba",
+    "silver": "Fedha",
+    "gold": "Dhahabu",
+    "champion": "Bingwa",
+    "points": "pointi"
   }
 }
