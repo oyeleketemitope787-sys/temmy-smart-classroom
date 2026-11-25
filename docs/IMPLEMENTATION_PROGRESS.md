@@ -428,3 +428,10 @@ A transaction-wrapped trial for Code Final recorded On Time with +2 points, chan
 Submitted the same `record_student_point_transactions` request twice using the same request UUID and identical payload, inside an explicitly rolled-back transaction. Temporary inspection showed Aggregate 23, Spendable 23, and exactly one matching ledger transaction, confirming an identical retry does not award twice. A subsequent independent query confirmed Aggregate 22, Spendable 22, and zero matching test transactions, verifying rollback.
 
 Next: test that reusing the same request UUID with a different payload is rejected without changing balances or ledger entries. All tests remain isolated to `temmy-smart-classroom-test`; production remains untouched.
+
+
+### Generic atomic points RPC rejects changed-payload request-ID reuse — 2026-11-25
+
+In the isolated `temmy-smart-classroom-test` project, a transaction-wrapped test submitted a +1 request and then reused the same request UUID with a changed +2 payload. The PL/pgSQL test was written to re-raise a deliberate test-failure exception if the changed payload were accepted; the SQL script proceeded to its temporary balance query, indicating the changed-payload call was rejected as expected. Temporary balances were 23/23. After explicit rollback, an independent query confirmed Aggregate 22, Spendable 22, and zero matching test transactions. This verifies rejection of changed payload reuse and rollback.
+
+The generic points RPC behavioural tests now cover identical-request idempotency, changed-payload rejection, and rollback. Next: proceed to marketplace purchase behaviour tests in the isolated project. No production database or GitHub `main` changes.
