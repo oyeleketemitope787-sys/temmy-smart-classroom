@@ -1197,18 +1197,19 @@ function syncActivityClassSelect(){
  if(wanted)el.value=wanted;
  el.onchange=()=>loadCloudActivities();
 }
-function activityTypeLabel(type){return type==='live_task'?'Live Task':'Activity'}function activityStatusLabel(status){return status==='live'?'LIVE':status==='closed'?'CLOSED':'DRAFT'}
+function activityTypeLabel(type){return window.TemmyI18n?.t(type==='live_task'?'groups.liveTask':'groups.activity')||(type==='live_task'?'Live Task':'Activity')}function activityStatusLabel(status){const key=status==='live'?'live':status==='closed'?'closed':'draft';return window.TemmyI18n?.t('groups.'+key)||key.toUpperCase()}
 function renderActivities(){
  const el=document.getElementById('activitiesList');if(!el)return;
- if(!authSession){el.innerHTML='<div class="notice">Sign in as a teacher to manage cloud activities.</div>';return;}
- if(!cloudClasses.length){el.innerHTML='<div class="group-empty">Create a class first before creating an activity.</div>';return;}
+ const tr=key=>window.TemmyI18n?.t('groups.'+key)||key;
+ if(!authSession){el.innerHTML='<div class="notice">'+tr('signIn')+'</div>';return;}
+ if(!cloudClasses.length){el.innerHTML='<div class="group-empty">'+tr('createClass')+'</div>';return;}
  syncActivityClassSelect();
  const classId=document.getElementById('activityClassSelect')?.value||current()?.id;
  const rows=cloudActivities.filter(a=>a.classId===classId);
- if(!rows.length){el.innerHTML='<div class="group-empty"><strong>No activities yet.</strong><br>Create your first Live Task, Live Assignment or Live Quiz.</div>';return;}
+ if(!rows.length){el.innerHTML='<div class="group-empty"><strong>'+tr('none')+'</strong><br>'+tr('first')+'</div>';return;}
  el.innerHTML='<div class="group-grid">'+rows.map(a=>{
-   const tag=a.status==='live'?'plus':a.status==='closed'?'minus':'';
-   return '<div class="group-card"><div class="summary-title"><div><h3>'+activityTypeLabel(a.type)+'</h3><div class="small">'+esc(a.title)+'</div></div><span class="tag '+tag+'">'+activityStatusLabel(a.status)+'</span></div><div class="small" style="margin-top:10px">'+esc(a.instructions||'No instructions provided.')+'</div><div style="margin-top:10px"><strong>'+a.points+' points</strong> <span class="small">available</span></div><div class="group-actions" style="margin-top:14px">'+(a.status==='draft'?'<button class="btn primary" onclick="launchActivity(\''+esc(a.id)+'\')">▶ Launch</button>':'')+(a.status==='live'?'<button class="btn negative" onclick="closeActivity(\''+esc(a.id)+'\')">■ Close</button>':'')+'<button class="btn primary" onclick="monitorActivity(\''+esc(a.id)+'\')">👀 Monitor</button><button class="btn" onclick="viewActivityDetails(\''+esc(a.id)+'\')">View</button>'+(a.status==='draft'?'<button class="btn danger" onclick="deleteActivity(\''+esc(a.id)+'\')">🗑️ Delete</button>':'')+'</div></div>';
+ const tag=a.status==='live'?'plus':a.status==='closed'?'minus':'';
+ return '<div class="group-card"><div class="summary-title"><div><h3>'+activityTypeLabel(a.type)+'</h3><div class="small">'+esc(a.title)+'</div></div><span class="tag '+tag+'">'+activityStatusLabel(a.status)+'</span></div><div class="small" style="margin-top:10px">'+esc(a.instructions||tr('noInstructions'))+'</div><div style="margin-top:10px"><strong>'+a.points+' '+tr('points')+'</strong> <span class="small">'+tr('available')+'</span></div><div class="group-actions" style="margin-top:14px">'+(a.status==='draft'?'<button class="btn primary" onclick="launchActivity(\\''+esc(a.id)+'\\')">▶ '+tr('launch')+'</button>':'')+(a.status==='live'?'<button class="btn negative" onclick="closeActivity(\\''+esc(a.id)+'\\')">■ '+tr('close')+'</button>':'')+'<button class="btn primary" onclick="monitorActivity(\\''+esc(a.id)+'\\')">👀 '+tr('monitor')+'</button><button class="btn" onclick="viewActivityDetails(\\''+esc(a.id)+'\\')">'+tr('view')+'</button>'+(a.status==='draft'?'<button class="btn danger" onclick="deleteActivity(\\''+esc(a.id)+'\\')">🗑️ '+tr('delete')+'</button>':'')+'</div></div>';
  }).join('')+'</div>';
 }
 function refreshActivities(){loadCloudActivities()}
