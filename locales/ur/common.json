@@ -158,6 +158,26 @@
     "serverNoConfirm": "سرور نے لین دین کی تصدیق نہیں کی۔",
     "scoredResult": "نے حاصل کیے",
     "classPointsUpdated": "کلاس پوائنٹس میں تبدیلی",
-    "saveScore": "نمبر محفوظ کریں"
+    "saveScore": "نمبر محفوظ کریں",
+    "activitiesLoadError": "سرگرمیاں لوڈ نہیں ہو سکیں۔",
+    "classNoActiveStudents": "اس کلاس میں کوئی فعال طالب علم نہیں ہے۔",
+    "startGameTitle": "Temmy اسمارٹ گیم شروع کریں",
+    "gameLabel": "گیم",
+    "gameSelectionHelp": "گیم سیشن حاصل کرنے والے طالب علم منتخب کریں۔",
+    "searchStudents": "طلبہ تلاش کریں...",
+    "selectAll": "سب منتخب کریں",
+    "clearAll": "انتخاب صاف کریں",
+    "selectedStudents": "{count} طلبہ منتخب ہیں",
+    "gameSessionDuration": "ہر منتخب طالب علم کو محفوظ 30 منٹ کا گیم سیشن ملے گا۔",
+    "selectAtLeastOne": "براہِ کرم کم از کم ایک طالب علم منتخب کریں۔",
+    "gameSessionsReady": "گیم سیشن تیار ہیں",
+    "sessionsCreated": "{count} گیم سیشن کامیابی سے بنائے گئے۔",
+    "gameName": "Temmy نمبر چیلنج",
+    "ready": "تیار",
+    "openGame": "گیم کھولیں",
+    "sessionsFailed": "کچھ سیشن نہیں بن سکے:",
+    "done": "مکمل",
+    "activityLaunchSuccess": "اب لائیو ہے۔",
+    "activityCloseSuccess": "اب بند ہے۔"
   }
 }
