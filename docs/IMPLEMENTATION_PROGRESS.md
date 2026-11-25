@@ -181,3 +181,20 @@ Added the first additive migration file:
 Migration commit on `cloud-test`: `9455c490ccf8b717098d3ba5e34f3b602266b48b`.
 
 **Important:** this is a repository migration file only. It has NOT been run against Supabase. Do not apply it to the hosted database yet. Next work is to inspect exact existing points RPC definitions and client call paths, then add atomic/idempotent award and purchase integration plus isolated tests before asking for migration review.
+
+
+## 11. Atomic teacher transaction RPC prepared — 2026-11-25
+
+Added `supabase/migrations/20261125000200_add_atomic_point_transaction_rpc.sql` on `cloud-test`.
+
+The migration adds:
+- `student_point_operation_requests`, keyed by `(teacher_id, request_id)`, to preserve request payloads/results and make retries idempotent.
+- `record_student_point_transactions(uuid, uuid, jsonb)`, a SECURITY DEFINER RPC for non-marketplace teacher point transactions.
+- Authenticated teacher check, active-class ownership validation, active-student/class validation, deterministic student/account row locking, duplicate-student rejection, request-payload reuse protection, negative Spendable guard, ledger inserts and atomic Aggregate/Spendable updates.
+- RLS enabled and direct browser-role access revoked on the idempotency table; function execution granted only to authenticated users.
+
+The RPC deliberately excludes `marketplace_purchase`; the existing purchase RPC must be updated separately while preserving its currently confirmed request-locking/idempotency behaviour. The browser UI still uses direct ledger inserts in award, undo and activity-score paths; those call sites must be switched to the new RPC before this migration is applied in any shared environment.
+
+Commit: `567e7b9bf7576a9b036da781ef76fa4464a4b136`.
+
+Validation status: reviewed statically against the inspected table/function architecture, but not executed against PostgreSQL/Supabase. It has not been applied to the hosted database. The exact hosted purchase function body and a complete test environment are still required before replacing purchase accounting and declaring the points workflow ready.
