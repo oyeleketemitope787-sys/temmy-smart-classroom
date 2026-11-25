@@ -801,3 +801,8 @@ No SQL migration, limiter table/function, Edge Function, secret or deployment ha
 Added `supabase/migrations/20261125000100_create_student_language_rate_limiter.sql` on `cloud-test` (initial commit `9102192aefa9da53d20a80aa3265863d741e7c8f`; SQL expression correction commit `9c6eaa189ccf70cec17fc0a73ca211cdf256ef89`). The draft creates a non-exposed `private` counter table, a service-role-only public RPC backed by atomic upserts, and a bounded cleanup RPC. It uses provisional test thresholds only. This is an unapplied draft and requires careful SQL/security review and test-project validation before execution. It assumes `public` is available for PostgREST RPC calls; API exposed-schema configuration remains unverified. Client-IP header trust and Edge Function implementation remain outstanding.
 
 No migration has been executed; no schema/table/function has been created in the database. Production remains untouched.
+
+
+### Rate limiter scope approved — 2026-11-25
+
+User approved protecting the entire student access-code authentication pathway, not merely localization preference requests. The limiter should run before access-code verification in the existing student login flow. It should not require re-entering an access code for every request after a student session is established. The current SQL draft's `student_language_*` names are too narrow and must be generalized before application. Next: inspect the existing login Edge Function and frontend call path on `cloud-test`, then revise SQL and Edge Function integration together. No migration has been applied.
