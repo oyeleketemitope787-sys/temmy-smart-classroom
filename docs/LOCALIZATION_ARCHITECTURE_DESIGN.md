@@ -135,7 +135,7 @@ Do not implement translations by replacing arbitrary English text in the DOM. Do
 ## 8. Outstanding decisions and blockers
 
 - Translation-resource packaging/versioning and translation coverage/rollout order.
-- Time-zone preference policy (user-selected zone versus a derived device default); server timestamps remain authoritative.
+- Translation-resource packaging/versioning and translation coverage/rollout targets.
 - Exact language registry source and translation-resource packaging/versioning.
 - Final decision on whether teacher class context should ever influence teacher UI language; current recommendation is no.
 - Full RLS/grants/function-ACL review for `classes`, `students` and `teacher_profiles` before choosing direct updates versus narrow RPCs.
@@ -186,3 +186,17 @@ The user approved the recommended initial interface-language registry and the pl
 The registry is extensible; adding a language later must not require a schema enum change. Registering a language does not imply that every screen or translation key is already translated. Track translation-resource coverage explicitly. If a selected language lacks a particular key, resolve that key through the English fallback and record the missing translation during development/testing. Keep language selection separate from educational content language.
 
 This approval settles the initial registry and platform fallback only. It does not settle the time-zone preference policy, translation-resource packaging/versioning, or translation rollout/coverage targets. No SQL migration, application code, translation file or preference data has been changed by this decision.
+
+
+## 12. Time-zone preference policy approved — 2026-11-25
+
+The user approved the recommended time-zone arrangement:
+
+- Persist time zones as IANA identifiers (for example, `Asia/Muscat`, `Europe/London`, and `Africa/Lagos`), never as fixed UTC offsets.
+- Support individual time-zone preferences for teachers and students.
+- Support a class default time zone for class scheduling and context.
+- Use an individual's selected time zone for that person's date/time presentation; class defaults provide context where an individual has no preference, subject to the final display-resolution implementation.
+- Keep authoritative timestamps, activity deadlines, expiry instants, grading and points operations server-controlled. Changing a display time zone must never move an already-established deadline, reset a countdown, or alter the underlying instant.
+- Use a device/browser time zone only as a possible initial suggestion, not as an authoritative persisted choice without user confirmation.
+
+This decision approves the preference scope and storage standard. The precise resolution rules for class-context displays versus individual displays must be implemented consistently and documented in the API/UI design. No schema migration, app code or preference data has been changed by this approval.
