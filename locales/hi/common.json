@@ -279,5 +279,25 @@
     "deductSuccessOne": "{student} से {points} अंक घटाए गए।",
     "deductSuccessMany": "{count} विद्यार्थियों से {points} अंक घटाए गए।",
     "selectStudentsPrompt": "विद्यार्थियों का चयन करें।"
+  },
+  "classes": {
+    "classesTitle": "मेरी कक्षाएँ",
+    "classesDescription": "अपनी कक्षाएँ बनाएँ और प्रबंधित करें। कक्षाएँ और विद्यार्थियों का डेटा प्रोडक्शन क्लाउड डेटाबेस से लोड होता है।",
+    "createNewClass": "नई कक्षा बनाएँ",
+    "className": "कक्षा का नाम",
+    "classNamePlaceholder": "उदाहरण: 8A_1",
+    "classDescriptionOptional": "विवरण (वैकल्पिक)",
+    "classDescriptionPlaceholder": "उदाहरण: गणित की कक्षा",
+    "enterClassName": "कृपया कक्षा का नाम दर्ज करें।",
+    "classAlreadyExists": "यह कक्षा पहले से मौजूद है।",
+    "createClassError": "कक्षा नहीं बनाई जा सकी: {error}",
+    "signInLoadClasses": "अपनी क्लाउड कक्षाएँ लोड करने के लिए शिक्षक के रूप में साइन इन करें।",
+    "noCloudClasses": "अभी कोई क्लाउड कक्षा नहीं है। अपनी पहली कक्षा बनाएँ।",
+    "openClass": "कक्षा खोलें",
+    "classSummary": "{count} विद्यार्थी • {aggregate} कुल अंक • {spendable} उपयोग योग्य अंक",
+    "cloudClassesLoadError": "क्लाउड कक्षाएँ लोड नहीं हो सकीं: {error}",
+    "classesLoadedBalancesError": "कक्षाएँ लोड हुईं, लेकिन अलग अंक शेष लोड नहीं हो सके: {error}",
+    "classLoadedStudentsError": "कक्षा लोड हुई, लेकिन विद्यार्थी लोड नहीं हो सके: {error}",
+    "cloudConnectedStatus": "क्लाउड कक्षाएँ और अंक शेष जुड़े हैं। अंक Supabase से लोड होते हैं।"
   }
 }
