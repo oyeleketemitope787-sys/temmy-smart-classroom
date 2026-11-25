@@ -794,3 +794,10 @@ No function source, credentials, Redis resources, deployment or database executi
 User selected Supabase PostgreSQL instead of Upstash Redis. Added `docs/ADR_POSTGRES_STUDENT_RATE_LIMITER.md` (commit `40a21017a7ad6583eeb5428465c6e578cdf2d43f`). It proposes an atomic upsert-based shared limiter with separate HMAC source and credential fingerprints, dual windows, fail-closed behaviour, cleanup/capacity controls and tests. Example thresholds (20/source/10m, 100/source/hour, 5/credential/10m, 20/credential/hour) are provisional test values only, not production-approved. The trustworthiness of the client IP header must be verified on the exact hosted test endpoint; arbitrary XFF values are explicitly excluded.
 
 No SQL migration, limiter table/function, Edge Function, secret or deployment has been created. No database changes have been applied. Production remains untouched.
+
+
+### Draft PostgreSQL rate-limiter migration — 2026-11-25
+
+Added `supabase/migrations/20261125000100_create_student_language_rate_limiter.sql` on `cloud-test` (initial commit `9102192aefa9da53d20a80aa3265863d741e7c8f`; SQL expression correction commit `9c6eaa189ccf70cec17fc0a73ca211cdf256ef89`). The draft creates a non-exposed `private` counter table, a service-role-only public RPC backed by atomic upserts, and a bounded cleanup RPC. It uses provisional test thresholds only. This is an unapplied draft and requires careful SQL/security review and test-project validation before execution. It assumes `public` is available for PostgREST RPC calls; API exposed-schema configuration remains unverified. Client-IP header trust and Edge Function implementation remain outstanding.
+
+No migration has been executed; no schema/table/function has been created in the database. Production remains untouched.
