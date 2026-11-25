@@ -34,6 +34,14 @@
     "students": "Wanafunzi",
     "classes": "Madarasa yangu",
     "groups": "Vikundi",
-    "activities": "Shughuli"
+    "activities": "Shughuli",
+    "awardPoints": "Toa pointi",
+    "marketplace": "Soko",
+    "purchases": "Manunuzi",
+    "reports": "Ripoti",
+    "studentHistory": "Historia ya mwanafunzi",
+    "studentPortal": "Tovuti ya mwanafunzi",
+    "teacherAccount": "Akaunti ya mwalimu",
+    "messages": "Ujumbe"
   }
 }
