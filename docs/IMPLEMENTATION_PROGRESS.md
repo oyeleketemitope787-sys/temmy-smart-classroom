@@ -477,3 +477,19 @@ Confirmed requirements:
 - Teacher monitoring may show progress/status but not active answers.
 
 Implementation status: requirements/design documented; database and frontend implementation not yet started. Next action is to inspect the actual `class_activities` and `student_activity_records` schema, then inspect related functions/triggers/RLS and frontend workflow before drafting migrations. All work remains limited to `cloud-test` and `temmy-smart-classroom-test`; `main` and production remain untouched.
+
+## 22. Existing Games system — inspection findings recorded — 2026-11-25
+
+A dedicated audit has been created at `docs/GAME_SYSTEM_AUDIT.md`. It records the inspected game-session schema, functions, effective execution permissions, RLS posture, historical scoring observations, points-account integration risk, and the issues to address later.
+
+**Sequencing decision:** Do not modify the Games system during Live Activity implementation. Finish, verify and stabilise Live Activity first; then return to Games using the audit as the baseline.
+
+Key deferred findings:
+- Student game-session creation and lookup functions are executable by `anon` and `authenticated`; teacher-created sessions require authentication.
+- `record_student_game_result` is SECURITY DEFINER and executable by anonymous callers; it trusts caller-supplied game name, score and maximum score beyond basic numeric checks and session/game-ID matching.
+- Game-result recording inserts directly into `point_transactions`. After the Aggregate/Spendable account foundation, this direct insert does not itself update `student_point_accounts`; Games must be routed through a trusted atomic points operation before the new account balances can be relied upon for game awards.
+- `student_game_sessions` has a primary key and unique session-token constraint, but the inspection returned no foreign keys for `student_id` or `class_id`.
+- RLS is enabled on `student_game_sessions`, with no table policies returned; student workflows currently operate through SECURITY DEFINER functions.
+- Historical game transactions for the inspected student total +49 across three transactions; one historical reason records 24/15 and another 29/15. The current inspected function caps awards using `least(p_score, p_max_score)`; the historical entries may predate the current function or reflect different supplied maximums. Preserve them and investigate before changing scoring rules.
+
+No Games code, schema, function, permission, or historical record has been modified. The audit is documentation only. GitHub `main` and production remain untouched.
