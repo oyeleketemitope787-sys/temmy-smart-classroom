@@ -379,3 +379,23 @@ A small hardening edit was also made on `cloud-test` to the atomic RPC migration
 **Current verification boundary:** migration application, opening-balance reconciliation and function catalog/definition checks have passed. Actual behavioural tests have NOT yet been run. Still required: real access-code ownership test; direct table privilege denial; teacher-scope RPC test under authenticated identity; award/negative/undo and idempotency tests; purchase Spendable-only, insufficient-funds rollback and retry tests; account-to-ledger reconciliation after test transactions; ideally concurrent award/purchase tests using separate sessions. Browser integration of teacher/student UI against this test project is also outstanding.
 
 No migration has been applied to the separate live production Supabase project. Do not deploy or alter production without explicit approval. The repository working branch remains `cloud-test`; production Git branch `main` remains untouched.
+
+
+
+## 21. Punctuality point-account integration prepared — 2026-11-25
+
+Inspected the exact hosted definition of `record_student_punctuality(uuid, uuid[], text, integer, date)`. The legacy function wrote directly to `point_transactions` and did not update `student_point_accounts`, which would leave Aggregate/Spendable balances stale after punctuality awards or adjustments.
+
+The punctuality table has a primary key and a unique index on `(student_id, class_id, punctuality_date)`.
+
+Added `supabase/migrations/20261125000600_route_punctuality_through_point_accounts.sql` on `cloud-test`:
+- Replaces the punctuality function while preserving its return columns and recorded/updated/unchanged actions.
+- Requires an active teacher-owned class and active students; rejects empty or duplicate student lists and invalid inputs.
+- Locks the class row to serialize punctuality updates and avoid the absent-record insert race; locks each target student and existing punctuality row.
+- Builds only the non-zero award/adjustment deltas and sends them through `record_student_point_transactions(uuid, uuid, jsonb)`.
+- Because the nested RPC call is in the same PostgreSQL transaction, a rejected points change (including a negative Spendable result) rolls back the punctuality record changes too.
+- Uses a fresh server-generated request UUID for the atomic points operation.
+
+Migration commit: `971b77dc96b05ef1a91f187fcb458a3996042440`.
+
+Validation status: static review only; this new migration has NOT been run in Supabase or tested with concurrent sessions. The six-migration set now needs a complete review and isolated behavioural tests. Do not apply this migration to any production project. The earlier five migrations are already applied only to the separately named `temmy-smart-classroom-test` project. GitHub `main` remains untouched.
