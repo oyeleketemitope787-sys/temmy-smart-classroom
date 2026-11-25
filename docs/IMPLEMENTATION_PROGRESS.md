@@ -286,3 +286,15 @@ Commit: `e74aa58c24ca148c456d7a37af2871aa768af78d`.
 Validation: reviewed the changed source sections and confirmed the old duplicate table/class-card markup was removed. No browser test has been run. The report renderer and student portal still need separate-balance labels/data. The student portal must receive its balances through a secure access-code RPC; it must not be given direct table access or infer Spendable Points from the visible transaction-history rows.
 
 No Supabase migration has been applied.
+
+
+## 17. Reports balance separation — 2026-11-25
+
+Updated the teacher reports renderer in `index.html`:
+- Shows total Aggregate Points and total Spendable Points separately.
+- Average, ranking, top-student selection, and reward-level counts explicitly use Aggregate Points.
+- Student report table displays both balances and the reward level derived from Aggregate Points.
+
+Commit: `fbec646019b79e562149f90dbdcccc121fb44214`.
+
+Source review completed; browser verification remains outstanding. The student portal balance display is not yet changed because it requires a secure access-code RPC that returns the account balances. The existing access-code verification function's exact definition must be inspected before designing that RPC. No Supabase migration has been applied.
