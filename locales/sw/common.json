@@ -66,5 +66,11 @@
     "gold": "Dhahabu",
     "champion": "Bingwa",
     "points": "pointi"
+  },
+  "groups": {
+    "title": "Vikundi vya Wanafunzi",
+    "description": "Unda na udhibiti vikundi vya mtandaoni katika kila darasa kwa ajili ya kujifunza kwa ushirikiano.",
+    "createGroup": "Unda Kikundi",
+    "refresh": "Onyesha upya"
   }
 }
