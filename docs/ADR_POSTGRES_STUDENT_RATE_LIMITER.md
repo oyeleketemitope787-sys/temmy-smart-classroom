@@ -148,3 +148,8 @@ Next preflight: inspect database-level CREATE privileges and current role member
 ## Database creation privilege result — 2026-11-25
 
 The test SQL editor reports `current_user = postgres`, database `postgres`, database owner `postgres`, and `has_database_privilege(..., 'CREATE') = true`. The intended migration role can create a schema in this test database. This is a capability check only; it does not authorize or perform schema creation. Before drafting the migration, inspect role membership and default privileges so the schema/table/function ownership and grants are explicit.
+
+
+## Role membership preflight — 2026-11-25
+
+The membership query for `anon`, `authenticated`, `service_role`, and `postgres` returned only rows where `postgres` is the member and the granted role is `anon`, `authenticated`, `authenticator`, `service_role`, or several PostgreSQL administrative roles. It returned no rows showing `anon`, `authenticated`, or `service_role` as members of another role. This does not show browser roles inheriting `postgres` privileges. Regardless, the private schema and its objects must explicitly revoke `PUBLIC`, `anon`, and `authenticated` privileges and grant only narrowly required access.
