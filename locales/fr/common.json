@@ -279,5 +279,25 @@
     "deductSuccessOne": "{points} point(s) retiré(s) à {student}.",
     "deductSuccessMany": "{points} point(s) retiré(s) à {count} élèves.",
     "selectStudentsPrompt": "Sélectionnez des élèves."
+  },
+  "classes": {
+    "classesTitle": "Mes classes",
+    "classesDescription": "Créez et gérez vos classes. Les classes et les données des élèves sont chargées depuis la base de données cloud de production.",
+    "createNewClass": "Créer une classe",
+    "className": "Nom de la classe",
+    "classNamePlaceholder": "Ex. : 8A_1",
+    "classDescriptionOptional": "Description (facultatif)",
+    "classDescriptionPlaceholder": "Ex. : classe de mathématiques",
+    "enterClassName": "Veuillez saisir un nom de classe.",
+    "classAlreadyExists": "Cette classe existe déjà.",
+    "createClassError": "Impossible de créer la classe : {error}",
+    "signInLoadClasses": "Connectez-vous en tant qu’enseignant pour charger vos classes cloud.",
+    "noCloudClasses": "Aucune classe cloud. Créez votre première classe.",
+    "openClass": "Ouvrir la classe",
+    "classSummary": "{count} élève(s) • {aggregate} points cumulés • {spendable} points disponibles",
+    "cloudClassesLoadError": "Impossible de charger les classes cloud : {error}",
+    "classesLoadedBalancesError": "Classes chargées, mais les soldes de points séparés n’ont pas pu être chargés : {error}",
+    "classLoadedStudentsError": "Classe chargée, mais les élèves n’ont pas pu être chargés : {error}",
+    "cloudConnectedStatus": "Classes cloud et soldes de points connectés. Les points sont chargés depuis Supabase."
   }
 }
