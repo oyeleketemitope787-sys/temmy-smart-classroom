@@ -153,3 +153,8 @@ The test SQL editor reports `current_user = postgres`, database `postgres`, data
 ## Role membership preflight — 2026-11-25
 
 The membership query for `anon`, `authenticated`, `service_role`, and `postgres` returned only rows where `postgres` is the member and the granted role is `anon`, `authenticated`, `authenticator`, `service_role`, or several PostgreSQL administrative roles. It returned no rows showing `anon`, `authenticated`, or `service_role` as members of another role. This does not show browser roles inheriting `postgres` privileges. Regardless, the private schema and its objects must explicitly revoke `PUBLIC`, `anon`, and `authenticated` privileges and grant only narrowly required access.
+
+
+## Private-schema object check — 2026-11-25
+
+The read-only query against `pg_class` joined to `pg_namespace` for `nspname = 'private'` returned `Success. No rows returned`. This confirms there are currently no relations in a `private` schema; the earlier namespace check also confirmed that the schema itself does not exist. This removes a name collision concern for the proposed private limiter objects. It does not itself verify PostgREST exposed-schema configuration.
