@@ -66,5 +66,11 @@
     "gold": "金级",
     "champion": "冠军",
     "points": "积分"
+  },
+  "groups": {
+    "title": "学生小组",
+    "description": "在每个班级中创建和管理云端小组，促进协作学习。",
+    "createGroup": "创建小组",
+    "refresh": "刷新"
   }
 }
