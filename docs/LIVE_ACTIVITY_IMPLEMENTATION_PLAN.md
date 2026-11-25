@@ -7,9 +7,21 @@
 **Production branch:** `main` — do not modify  
 **Database:** isolated Supabase project `temmy-smart-classroom-test` only
 
-## 1. Scope
+## 1. Scope and global product direction
 
 Implement the approved Live Activity experience in Temmy Smart Classroom. Preserve existing classroom, student, teacher, points, and activity data. Do not redesign or integrate other Temmy products.
+
+**Global, all-subject, multilingual product principle (user-confirmed 25 November 2026):**
+- Temmy Smart Classroom is not a Mathematics-only product. It must support teaching and learning across all school subjects and disciplines.
+- It is intended for teachers and learners in different countries and education systems, not only Oman or any single national curriculum.
+- Teachers should be able to select their preferred interface language and use the classroom in that language.
+- Multilingual capability is a planned core development requirement, not a cosmetic afterthought. New UI text, system messages, activity instructions and teacher/student workflows must be designed for localization rather than hard-coded to English.
+- Keep educational content separate from interface language: a teacher may use the interface in one language while creating or delivering learning content in another.
+- Do not assume a single curriculum, grade naming convention, date format, time zone, number format, currency, or school-week pattern globally. These must be configurable or appropriately localized where relevant.
+- The initial language set and rollout order are not yet selected. Do not invent or hard-code a fixed list as a product decision.
+- Preserve language choice at the appropriate user/profile level, with a sensible school/classroom default and a clear fallback when a translation is unavailable.
+- Use Unicode-safe storage and rendering throughout. Design search, sorting and text input with multilingual scripts in mind, including right-to-left languages where applicable.
+- These requirements apply across Temmy Smart Classroom, not only Live Activity.
 
 ## 2. Supported activity formats
 
@@ -92,7 +104,17 @@ The user-approved screenshot dated 25 November 2026 is the visual reference and 
 7. Test all six formats, manual submission, timeout on a partially completed question, autosave/reconnect, duplicate requests, teacher marking/partial credit, attempt locking, and points integrity.
 8. Update `docs/IMPLEMENTATION_PROGRESS.md` with evidence and commit changes to `cloud-test` only.
 
-## 10. Safety and release boundaries
+## 10. Localization and internationalization requirements for Live Activity
+
+- All student and teacher interface labels, validation messages, timer/status text, submission confirmations and accessibility labels must use translation keys/localized resources.
+- Activity questions, answer choices, teacher instructions and feedback are user-authored educational content. Store and display them as content, not as interface translation strings; support Unicode text.
+- Support mixed-language activities and text, including right-to-left scripts. Layout direction must follow the selected interface/content direction where appropriate without breaking the approved question navigation layout.
+- Use locale-aware date, time, number and decimal formatting; store timestamps as timezone-aware server values and retain the relevant activity/student timezone context for display.
+- Avoid embedding English-only assumptions in question-type enums, server status codes or database identifiers. Persist stable language-neutral codes and translate their display labels in the client.
+- The server remains authoritative for timing and scoring regardless of the user's locale or timezone.
+- Add localization, mixed-script, RTL and locale-formatting cases to the Live Activity verification plan.
+
+## 11. Safety and release boundaries
 
 - Apply database migrations manually only in `temmy-smart-classroom-test`.
 - Work only on GitHub branch `cloud-test`.
