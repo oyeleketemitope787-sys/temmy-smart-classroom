@@ -787,3 +787,10 @@ Architecture documentation records the required server-side endpoint and persist
 Added `docs/ADR_STUDENT_LOCALIZATION_EDGE_FUNCTION.md` (commit `23b99da1998fabad541065d0b3316100a138b4af`). It defines the proposed student-language endpoint contract, generic failure responses, server-only secrets, CORS/request validation, test cases, rollout gates and a shared atomic rate limiter. Upstash Redis is proposed subject to explicit user approval; a Postgres-backed atomic limiter remains an alternative. Example thresholds are proposals only.
 
 No function source, credentials, Redis resources, deployment or database execution has been created. Production remains untouched.
+
+
+### PostgreSQL student rate limiter design — 2026-11-25
+
+User selected Supabase PostgreSQL instead of Upstash Redis. Added `docs/ADR_POSTGRES_STUDENT_RATE_LIMITER.md` (commit `40a21017a7ad6583eeb5428465c6e578cdf2d43f`). It proposes an atomic upsert-based shared limiter with separate HMAC source and credential fingerprints, dual windows, fail-closed behaviour, cleanup/capacity controls and tests. Example thresholds (20/source/10m, 100/source/hour, 5/credential/10m, 20/credential/hour) are provisional test values only, not production-approved. The trustworthiness of the client IP header must be verified on the exact hosted test endpoint; arbitrary XFF values are explicitly excluded.
+
+No SQL migration, limiter table/function, Edge Function, secret or deployment has been created. No database changes have been applied. Production remains untouched.
