@@ -727,3 +727,20 @@ Commits on `cloud-test`:
 - Progress record: this documentation update (commit recorded in Git history)
 
 Next: perform the final read-only test-project preflight against the exact current schema and function ACLs, then draft an additive migration for review. Do not apply it until the full SQL is reviewed and explicitly approved. GitHub `main` and production Supabase remain untouched.
+
+
+### Read-only localization preflight prepared — 2026-11-25
+
+Added `supabase/preflight_localization_preferences.sql` on `cloud-test`. The script is SELECT-only and checks:
+- Current database/schema context.
+- Existing columns, constraints and indexes on `teacher_profiles`, `students` and `classes`.
+- Existing language/locale/time-zone registry-like tables and relations.
+- RLS state, policies, table grants and column-level grants.
+- Exact `verify_student_access_code(text)` definition, owner, SECURITY DEFINER setting, function configuration and EXECUTE ACL.
+- Collisions with the six proposed language RPC names.
+- Availability and role properties of `anon`, `authenticated`, `service_role` and `postgres`.
+- Representative IANA time-zone catalog entries.
+
+Commit: `b40e6d8b5e4f57edca94748d68ad84e91a79c8d2`.
+
+The preflight has not been run. It must be run only after confirming the SQL Editor is connected to the separately named `temmy-smart-classroom-test` project. No database write, migration, preference field or RPC has been created. GitHub `main` and production Supabase remain untouched.
