@@ -879,7 +879,7 @@ const cls=current();if(!cls)return;let arr=[...cls.students];const q=(document.g
 const count=scope==='all'?cls.students.length:scope==='individual'?(selectedIds.length?1:0):selectedIds.length;const label=window.TemmyI18n?.t('groups.selectedStudents',{count})||count+' students selected';document.getElementById('selectionInfo').textContent=label;
 document.getElementById('awardStudents').innerHTML=arr.length?arr.map(s=>`<label class="student-row"><input class="check" data-student-id="${esc(s.id)}" type="checkbox" ${selectedIds.includes(s.id)?'checked':''} ${scope==='all'?'disabled':''} onchange="toggleStudent('${s.id}')"><span class="rank">#${cls.students.slice().sort((a,b)=>b.points-a.points).findIndex(x=>x.id===s.id)+1}</span><span class="student-name">${esc(s.name)}</span><strong>${s.points}</strong></label>`).join(''):('<div class="empty">'+(window.TemmyI18n?.t('groups.noMatchingStudents')||'No matching students.')+'</div>');
 }
-function setPunctualityScope(next){scope=next;selectedIds=[];const allBtn=document.getElementById('punctualityAllBtn');const multipleBtn=document.getElementById('punctualityMultipleBtn');if(allBtn)allBtn.classList.toggle('active',next==='all');if(multipleBtn)multipleBtn.classList.toggle('active',next==='multiple');renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');const cls=current();if(info&&cls){info.textContent=next==='all'?(window.TemmyI18n?.t('groups.allStudentsSelected')||'All students selected'):(window.TemmyI18n?.t('groups.selectedStudents',{count:0})||'0 students selected');}}
+function setPunctualityScope(next){scope=next;selectedIds=[];const allBtn=document.getElementById('punctualityAllBtn');const multipleBtn=document.getElementById('punctualityMultipleBtn');if(allBtn)allBtn.classList.toggle('active',next==='all');if(multipleBtn)multipleBtn.classList.toggle('active',next==='multiple');renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');const cls=current();if(info&&cls){const count=next==='all'?cls.students.length:0;info.textContent=next==='all'?(window.TemmyI18n?.t('groups.allStudentsSelected')||'All students selected'):(window.TemmyI18n?.t('groups.selectedStudents',{count})||count+' students selected');}}
 function selectPunctualityStatus(status,points){
   window.punctualityStatus={status,points};
 
@@ -918,7 +918,7 @@ async function applyPunctuality(){
   }catch(error){console.error(error);alert((window.TemmyI18n?.t('groups.punctualityFailed')||'Unable to record punctuality')+': '+(error.message||error));}
   finally{awardBusy=false;}
 }
-function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');if(info){const cls=current();info.textContent=scope==='all'?`All ${cls.students.length} students selected`:selectedIds.length?`${selectedIds.length} student${selectedIds.length===1?'':'s'} selected`:'Select students';}}
+function toggleStudent(id){if(scope==='all')return;if(scope==='individual')selectedIds=[id];else selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAwardStudents();const info=document.getElementById('punctualitySelectionInfo');if(info){const cls=current();const count=scope==='all'?(cls?.students.length||0):selectedIds.length;info.textContent=scope==='all'?(window.TemmyI18n?.t('groups.allStudentsSelected')||'All students selected'):count?(window.TemmyI18n?.t('groups.selectedStudents',{count})||count+' students selected'):(window.TemmyI18n?.t('groups.selectStudentsPrompt')||'Select students.');}}
 function getSelected(){const cls=current();if(!cls)return[];const domIds=[...document.querySelectorAll('#awardStudents input.check:checked')].map(el=>el.dataset.studentId).filter(Boolean);if(domIds.length){selectedIds=[...new Set(domIds)];if(scope==='all')selectedIds=[...cls.students.map(s=>s.id)];}return cls.students.filter(s=>selectedIds.includes(s.id))}
 async function applyAward(amount,reason){
  if(awardLocked){alert(window.TemmyI18n?.t('groups.lockedMessage')||'Award Points is locked. Unlock it first.');return;}
@@ -930,7 +930,7 @@ async function applyAward(amount,reason){
  const targets=getSelected();
  if(!targets.length){
    renderAwardStudents();
-   return alert('Please select at least one student.');
+   return alert(window.TemmyI18n?.t('groups.selectStudent')||'Please select at least one student.');
  }
 
  const deltas=targets.map(s=>({
@@ -977,10 +977,9 @@ async function applyAward(amount,reason){
 
    const totalStudents=deltas.length;
    const totalPoints=deltas.reduce((sum,d)=>sum+Math.abs(Number(d.delta)||0),0);
-   const verb=amount>0?'added to':'deducted from';
-   const unit=totalPoints===1?'point':'points';
-   const targetText=totalStudents===1?deltas[0].name:`${totalStudents} students`;
-   alert(window.TemmyI18n?.t('groups.awardSuccess',{points:totalPoints,unit,verb,target:targetText})||('✓ '+totalPoints+' '+unit+' '+verb+' '+targetText+'.'));
+   const successKey=amount>0?(totalStudents===1?'awardSuccessOne':'awardSuccessMany'):(totalStudents===1?'deductSuccessOne':'deductSuccessMany');
+   const successValues=totalStudents===1?{points:totalPoints,student:deltas[0].name}:{points:totalPoints,count:totalStudents};
+   alert('✓ '+(window.TemmyI18n?.t('groups.'+successKey,successValues)||(amount>0?'Points awarded successfully.':'Points deducted successfully.')));
 
    // Refresh cloud balances in the background, but keep the current student selection.
    const keepSelection=[...selectedIds];
@@ -994,7 +993,7 @@ async function applyAward(amount,reason){
 }
 
 function applyCustom(sign){
- if(awardLocked){alert('Award Points is locked. Unlock it first.');return}
+ if(awardLocked){alert(window.TemmyI18n?.t('groups.lockedMessage')||'Award Points is locked. Unlock it first.');return}
  const id=sign>0?'customPlus':'customMinus';
  const n=Math.floor(Number(document.getElementById(id).value));
  if(!Number.isFinite(n)||n<1)return alert(window.TemmyI18n?.t('groups.validAmount')||'Enter a valid point amount.');
@@ -1024,11 +1023,11 @@ function recordPointAction(reason,deltas,stamp){
 async function undoLastPointAction(){
  if(awardLocked){alert('Award Points is locked. Unlock it first.');return;}
  if(awardBusy)return;
- if(!authSession){alert('Please sign in as the teacher first.');return;}
+ if(!authSession){alert(window.TemmyI18n?.t('groups.signInTeacher')||'Please sign in as the teacher first.');return;}
 
  const a=data.lastPointAction;
  if(!a)return alert(window.TemmyI18n?.t('groups.noUndo')||'There is no point action to undo.');
- if(!confirm(`Undo "${a.reason}" for ${a.deltas.length} student${a.deltas.length===1?'':'s'}?`))return;
+ if(!confirm(window.TemmyI18n?.t('groups.undoConfirm',{count:a.deltas.length})||'Undo this point action?'))return;
 
  const cls=data.classes[a.className];
  if(!cls||!cls.id)return alert(window.TemmyI18n?.t('groups.classUnavailable')||'The cloud class is no longer available.');
